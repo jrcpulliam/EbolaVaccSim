@@ -1,22 +1,25 @@
- library(data.table); library(dplyr)
+library(data.table); library(dplyr)
 if(grepl('bellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 ## Simulate SWCT vs RCT vs CRCT for SL
 source('simFuns.R')
 
-yearToMonth <- 12/365.25
-meanHaz <- .2 * yearToMonth  ## converting from per year
+yearToDays <- 1/365.25
+monthToDays <- 1/30
+meanHaz <- .1 * yearToDays  ## converting from per year
 varC <- meanHaz^2/2
 varI <- meanHaz^2/8
-
+ 
 samp <- reParmRgamma(10^5, meanHaz, varC)
 breaks <- 100
-hist(samp, col = 'black', xlab = 'hazard / month', main = 'distribution of cluster hazards', 
+hist(samp/monthToDays, col = 'black', xlab = 'hazard / month', main = 'distribution of cluster hazards', 
      xlim = c(0, .05), breaks=breaks)
-title(main=paste('average hazard = ', signif(meanHaz,2)), line = -2)
+title(main=paste('average hazard = ', signif(meanHaz/monthToDays,2)), line = -2)
 
-res <- simSWCT()
+resRCT <- simTrial(makeParms('RCT',numClus=4, clusSize=10), browse=T)
+resSWCT <- simTrial(makeParms('SWCT'))
 
-firstStop(res, verb=1)
+firstStop(resSWCT, verb=1)
+firstStop(resRCT, verb=1)
 
 t1 <- truncSurvDat(stest$st, 6)
 
