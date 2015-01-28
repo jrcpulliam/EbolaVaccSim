@@ -1,4 +1,3 @@
-library(data.table); library(dplyr)
 if(grepl('bellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 ## Simulate SWCT vs RCT vs CRCT for SL
 source('simFuns.R')
@@ -15,7 +14,7 @@ hist(samp/monthToDays, col = 'black', xlab = 'hazard / month', main = 'distribut
      xlim = c(0, .05), breaks=breaks)
 title(main=paste('average hazard = ', signif(meanHaz/monthToDays,2)), line = -2)
 
-resRCT <- simTrial(makeParms('RCT',numClus=4, clusSize=10), browse=T)
+resRCT <- simTrial(makeParms('RCT'))
 resSWCT <- simTrial(makeParms('SWCT'))
 
 firstStop(resSWCT, verb=1)
