@@ -1,4 +1,4 @@
-if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 ## Simulate SWCT vs RCT vs CRCT for SL
 source('simFuns.R')
@@ -10,11 +10,23 @@ hist(samp/monthToDays, col = 'black', xlab = 'hazard / month', main = 'distribut
      xlim = c(0, .05), breaks=breaks)
 title(main=paste('average hazard = ', signif(parms$mu/monthToDays,2)), line = -2)
 
-resSWCT <- simTrial(makeParms('SWCT'))
-resRCT <- simTrial(makeParms('RCT'))
+swctSims <- simNtrials(parms=makeParms('SWCT'), N = 50)
+rctSims <- simNtrials(parms=makeParms('RCT'), N = 50)
+
+resSWCT <- simTrial(makeParms('SWCT')) #, numClus = 2, clusSize = 6))
+resSWCT
+resRCT <- simTrial(makeParms('RCT', numClus = 2, clusSize = 6))
+resRCT
+
+mu <- makeParms()$mu
+resSWCT <- simTrial(makeParms('SWCT', varClus = mu^2/200, varIndiv = mu^2/100, numClus = 50, clusSize = 1000, vaccEff = .4))
+doCoxPH(censSurvDat(resSWCT, 200))
+doGlmer(censSurvDat(resSWCT, 200),T)
+doGlmer(censSurvDat(resSWCT, 200),F)
 
 summTrial(censSurvDat(resRCT$st, 30))
 doCoxPH(censSurvDat(resRCT$st, 70))
+
 
 firstStop(simTrial(makeParms('SWCT')), verb=1)
 firstStop(simTrial(makeParms('RCT')), verb=1)
