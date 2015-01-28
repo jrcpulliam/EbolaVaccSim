@@ -1,4 +1,4 @@
-library(dplyr); library(data.table)
+ library(data.table); library(dplyr)
 if(grepl('bellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 ## Simulate SWCT vs RCT vs CRCT for SL
 source('simFuns.R')
@@ -14,19 +14,16 @@ hist(samp, col = 'black', xlab = 'hazard / month', main = 'distribution of clust
      xlim = c(0, .05), breaks=breaks)
 title(main=paste('average hazard = ', signif(meanHaz,2)), line = -2)
 
-test <- makePop(20,300)
-test <- setSW(test)
-test <- setHazs(test, mean  = meanHaz, varClus = varC, varIndiv = varI)
-test <- simSWCT(test, vaccEff = .6)
+stest <- simSWCT()
 
-stest <- makeSurvDat(test)
-t1 <- truncSurvDat(stest, 6)
+t1 <- truncSurvDat(stest$st, 6)
 
+doCoxPH(t1)
 summarise(group_by(t1, vacc), sum(infected))
 ## summarise(group_by(t1, vacc, cluster), sum(infected))
 
-hist(test[,infectTime], breaks = seq(0, max(test[,infectTime])+1, by = 1), xlim = c(0, 4), xlab = 'months')
-sum(test$infectTime < 30*4)
+hist(test[,infectTimeTrunc], breaks = 0:12, xlim = c(0, 12), col = 'black', xlab = 'infection times (months)')
+
 
 
 nGroups <- 16
