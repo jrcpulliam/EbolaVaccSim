@@ -2,27 +2,25 @@ if(grepl('bellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim
 ## Simulate SWCT vs RCT vs CRCT for SL
 source('simFuns.R')
 
-yearToDays <- 1/365.25
-monthToDays <- 1/30
-meanHaz <- .1 * yearToDays  ## converting from per year
-varC <- meanHaz^2/2
-varI <- meanHaz^2/8
- 
-samp <- reParmRgamma(10^5, meanHaz, varC)
+parms <- makeParms()
+samp <- reParmRgamma(10^5, parms$mu, parms$varClus)
 breaks <- 100
 hist(samp/monthToDays, col = 'black', xlab = 'hazard / month', main = 'distribution of cluster hazards', 
      xlim = c(0, .05), breaks=breaks)
-title(main=paste('average hazard = ', signif(meanHaz/monthToDays,2)), line = -2)
+title(main=paste('average hazard = ', signif(parms$mu/monthToDays,2)), line = -2)
 
-resRCT <- simTrial(makeParms('RCT'))
 resSWCT <- simTrial(makeParms('SWCT'))
+resRCT <- simTrial(makeParms('RCT'))
 
-firstStop(resSWCT, verb=1)
-firstStop(resRCT, verb=1)
+summTrial(censSurvDat(resRCT$st, 30))
+doCoxPH(censSurvDat(resRCT$st, 70))
 
-t1 <- truncSurvDat(stest$st, 6)
+firstStop(simTrial(makeParms('SWCT')), verb=1)
+firstStop(simTrial(makeParms('RCT')), verb=1)
 
-doCoxPH(truncSurvDat(stest$st, 62/30))
+t1 <- censSurvDat(resSWCT$st, 180)
+
+doCoxPH(censSurvDat(stest$st, 62/30))
 summarise(group_by(t1, vacc), sum(infected))
 ## summarise(group_by(t1, vacc, cluster), sum(infected))
 
