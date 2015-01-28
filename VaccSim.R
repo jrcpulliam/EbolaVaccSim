@@ -14,11 +14,13 @@ hist(samp, col = 'black', xlab = 'hazard / month', main = 'distribution of clust
      xlim = c(0, .05), breaks=breaks)
 title(main=paste('average hazard = ', signif(meanHaz,2)), line = -2)
 
-stest <- simSWCT()
+res <- simSWCT()
+
+firstStop(res, verb=1)
 
 t1 <- truncSurvDat(stest$st, 6)
 
-doCoxPH(t1)
+doCoxPH(truncSurvDat(stest$st, 62/30))
 summarise(group_by(t1, vacc), sum(infected))
 ## summarise(group_by(t1, vacc, cluster), sum(infected))
 
