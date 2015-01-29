@@ -15,14 +15,19 @@ rctSims <- simNtrials(parms=makeParms('RCT'), N = 50)
 
 resSWCT <- simTrial(makeParms('SWCT')) #, numClus = 2, clusSize = 6))
 resSWCT
-resRCT <- simTrial(makeParms('RCT', numClus = 2, clusSize = 6))
+resRCT <- simTrial(makeParms('RCT')) #, numClus = 2, clusSize = 6))
 resRCT
 
 mu <- makeParms()$mu
-resSWCT <- simTrial(makeParms('SWCT', varClus = mu^2/200, varIndiv = mu^2/100, numClus = 50, clusSize = 1000, vaccEff = .4))
-doCoxPH(censSurvDat(resSWCT, 200))
-doGlmer(censSurvDat(resSWCT, 200),T)
-doGlmer(censSurvDat(resSWCT, 200),F)
+
+censSurvDat(resSWCT, 40)[,active]
+censSurvDat(resRCT, 40)[,active]
+
+resSWCT <- simTrial(makeParms('SWCT', varClus = mu^2/2, varIndiv = mu^2/1, numClus = 20, clusSize = 300, vaccEff = .6))
+tt <- 60
+for(tt in 7*(6:20)) print(doCoxPH(censSurvDat(resSWCT, tt)))
+doGlmer(censSurvDat(resSWCT, tt),T)
+doGlmer(censSurvDat(resSWCT, tt),F)
 
 summTrial(censSurvDat(resRCT$st, 30))
 doCoxPH(censSurvDat(resRCT$st, 70))
