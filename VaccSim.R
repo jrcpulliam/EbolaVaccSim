@@ -10,12 +10,14 @@ hist(samp/monthToDays, col = 'black', xlab = 'hazard / month', main = 'distribut
      xlim = c(0, .05), breaks=breaks)
 title(main=paste('average hazard = ', signif(parms$mu/monthToDays,2)), line = -2)
 
-swctSims <- simNtrials(parms=makeParms('SWCT'), N = 3)
-rctSims <- simNtrials(parms=makeParms('RCT'), N = 3)
+swctSims <- simNtrials(parms=makeParms('SWCT'), N = 10)
+rctSims <- simNtrials(parms=makeParms('RCT'), N = 10)
+crctSims <- simNtrials(parms=makeParms('CRCT'), N = 10)
 
 resSWCT <- simTrial(makeParms('SWCT')) #, numClus = 2, clusSize = 6))
 resSWCT
 resRCT <- simTrial(makeParms('RCT')) #, numClus = 2, clusSize = 6))
+resCRCT <- simTrial(makeParms('CRCT')) #, numClus = 2, clusSize = 6))
 head(resRCT$pop,50)
 
 mu <- makeParms()$mu
@@ -41,10 +43,12 @@ list(summarise(group_by(temp, cluster), sum(infected))
 summTrial(censSurvDat(resRCT$st, 30))
 doCoxPH(censSurvDat(resRCT$st, 70))
 
-firstStop(simTrial(makeParms('SWCT')), verb=0)
-seqStop(simTrial(makeParms('SWCT')), verb=0)
+firstStop(simTrial(makeParms('SWCT')), verb=1)
+seqStop(simTrial(makeParms('SWCT')))
+seqStop(simTrial(makeParms('RCT')))
+seqStop(simTrial(makeParms('CRCT')))
 
-firstStop(simTrial(makeParms('RCT')), verb=1)
+firstStop(simTrial(makeParms('RCT')), verb=0)
 
 t1 <- censSurvDat(resSWCT$st, 180)
 
