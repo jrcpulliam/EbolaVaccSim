@@ -3,15 +3,6 @@ if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R'), source)
 
-pdf('distribution of mean cluster hazards.pdf')
-parms <- makeParms()
-samp <- reParmRgamma(10^5, parms$mu, parms$varClus)
-breaks <- 100
-hist(samp/monthToDays, col = 'black', xlab = 'hazard / month', main = 'distribution of cluster hazards', 
-     xlim = c(0, .05), breaks=breaks)
-title(main=paste('average hazard = ', signif(parms$mu/monthToDays,2)), line = -2)
-graphics.off()
-
 swctSims <- simNtrials(parms=makeParms('SWCT'), N = 10)
 rctSims <- simNtrials(parms=makeParms('RCT'), N = 10)
 crctSims <- simNtrials(parms=makeParms('CRCT'), N = 10)
