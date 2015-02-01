@@ -60,6 +60,7 @@ idat <- data.table(id = 1:N, group = rep(1:nGroups, each = nPerGroup), vacc = 0,
 idat
 
 ## Temporal variation in incidence every week
+## reording of vaccination sequence in time
 ## Vaccination upon trial finishing in RCT/CRCT
 ## Test false positives
 ## Equipoise calculations
