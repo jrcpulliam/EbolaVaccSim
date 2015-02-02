@@ -1,7 +1,7 @@
 if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 ## Simulate SWCT vs RCT vs CRCT for SL
-sapply(c('simFuns.R','AnalysisFuns.R'), source)
+sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R'), source)
 
 swctSims <- simNtrials(parms=makeParms('SWCT'), N = 10)
 rctSims <- simNtrials(parms=makeParms('RCT'), N = 10)
@@ -64,3 +64,5 @@ idat
 ## Vaccination upon trial finishing in RCT/CRCT
 ## Test false positives
 ## Equipoise calculations
+
+## CRCT matched means you have less control groups active early on
