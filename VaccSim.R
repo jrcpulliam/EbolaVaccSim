@@ -3,6 +3,21 @@ if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R'), source)
 
+p1 <- simTrial(makeParms(small=F))
+s1 <- makeSurvDat(p1)
+s1 <- activeFXN(s1)
+sc1 <- censSurvDat(s1, 49)
+summTrial(censSurvDat(s1, 154))
+doCoxPH(censSurvDat(s1, 154),br=F)
+t1 <- seqStop(s1, verbose=0)
+t1
+
+
+## pairs matched for randomization (if matching)
+browser()
+popH$pair <- popH[, cluster %% (numClus/2)]
+popH[pair==0, pair:=numClus/2] 
+
 swctSims <- simNtrials(parms=makeParms('SWCT'), N = 10)
 rctSims <- simNtrials(parms=makeParms('RCT'), N = 10)
 crctSims <- simNtrials(parms=makeParms('CRCT'), N = 10)
@@ -59,8 +74,8 @@ hazPerMonth <- rgamma(nGroups, 1, 1)
 idat <- data.table(id = 1:N, group = rep(1:nGroups, each = nPerGroup), vacc = 0, dis = 0, mort = 0)
 idat
 
-## Temporal variation in incidence every week
-## reording of vaccination sequence in time
+## Temporal variation in incidence every week *
+## reording of vaccination sequence in time *
 ## Vaccination upon trial finishing in RCT/CRCT
 ## Test false positives
 ## Equipoise calculations
