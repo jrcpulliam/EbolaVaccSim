@@ -10,7 +10,7 @@ sc1 <- censSurvDat(s1, 49)
 summTrial(censSurvDat(s1, 154))
 doCoxPH(censSurvDat(s1, 154),br=F)
 t1 <- seqStop(s1, verbose=0)
-t1
+t1$ord <- 'TU'
 
 
 ## pairs matched for randomization (if matching)
