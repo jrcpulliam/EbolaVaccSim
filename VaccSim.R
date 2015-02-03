@@ -3,15 +3,16 @@ if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R'), source)
 
-p1 <- simTrial(makeParms(small=F))
+p1 <- simTrial(makeParms('CRCT',small=F, ord='TU'))
 s1 <- makeSurvDat(p1)
 s1 <- activeFXN(s1)
 sc1 <- censSurvDat(s1, 49)
 summTrial(censSurvDat(s1, 154))
 doCoxPH(censSurvDat(s1, 154),br=F)
 t1 <- seqStop(s1, verbose=0)
-t1$ord <- 'TU'
+t1 <- endT(t1)
 
+summTrial(t1$st)
 
 ## pairs matched for randomization (if matching)
 browser()
@@ -76,8 +77,10 @@ idat
 
 ## Temporal variation in incidence every week *
 ## reording of vaccination sequence in time *
-## Vaccination upon trial finishing in RCT/CRCT
+## Vaccination upon trial finishing in RCT/CRCT*
+## calculate # infected by active & by maxInfectDays
 ## Test false positives
+## add CFR
 ## Equipoise calculations
 
 ## CRCT matched means you have less control groups active early on

@@ -1,4 +1,4 @@
-## Check it works
+## Check end trial functions work. Complicated options and ordering of who gets vaccinated in what order.
 
 ## ## none
 ## p1 <- simTrial(makeParms('CRCT',small=F, ord='none'))
