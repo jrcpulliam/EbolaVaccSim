@@ -76,10 +76,10 @@ makeCaseSummary <- function(parms, browse=F) within(parms, {
     casesXVaccRandGrp[, vaccCases := t(casesByVaccRand)[-1,2]]
     casesXVaccRandGrp[, contPT := t(ptByVaccRand)[-1,1]]
     casesXVaccRandGrp[, vaccPT := t(ptByVaccRand)[-1,2]]
-    rm(nmTmp, tmp, casesTmp, ptTmp, csesByPTImmune, casesByVaccRand)
+    rm(nmTmp, tmp, casesTmp, ptTmp, stI, casesByPTImmune, ptByVaccRand,casesByVaccRand, ptByPTImmune, stNms)
 })
 
-makeCaseSummary(t1,T)
+
 
 ## SWCT is fastest possible vaccination already, so no change
 endSWCT <- function(parms) within(parms, {
