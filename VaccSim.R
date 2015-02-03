@@ -80,7 +80,7 @@ idat
 ## Temporal variation in incidence every week *
 ## reording of vaccination sequence in time *
 ## Vaccination upon trial finishing in RCT/CRCT*
-## calculate # infected by active & by maxInfectDays
+## calculate # infected by active & by maxInfectDays*
 ## Test false positives
 ## add CFR
 ## Equipoise calculations
