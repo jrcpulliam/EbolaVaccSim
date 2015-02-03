@@ -19,26 +19,67 @@ endT <- function(parms, browse=F) {
         EVpopH[, immune := day >= immuneDay]
         EVpop <- copy(pop) ## copy other infection data in to use for pre-end trial time
         EVpop$vaccDay <- EVpopH[day==0, vaccDay]
-        EVpop$vaccDay <- EVpopH[day==0, immuneDay]
-        EVpop$vaccDay <- EVpopH[day==0, infectDay]
+        EVpop$immuneDay <- EVpopH[day==0, immuneDay]
+        EVpop$infectDay <- EVpopH[day==0, infectDay]
     })
     ## do infection process again post-end of trial
     if(with(parms, vaccEffEst['p'] < .05 & vaccEffEst['lci']>0)) { 
         parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
     }
     ## calculate # infected for various permutations
-    browser()
     parms <- makeSurvDat(parms, whichDo='EVpop')
     parms <- activeFXN(parms, whichDo = 'EVst')
-    ## HERE**** haven't gotten the # cases calculated well yet
-    summTrial(censSurvDat(parms, parms$maxInfectDay, 'stActive'))[[3]]
-    summTrial(censSurvDat(parms, parms$maxInfectDay, 'st'))[[3]]
-    summTrial(censSurvDat(parms, parms$maxInfectDay, 'EVst'))[[3]]
-    summTrial(censSurvDat(parms, parms$maxInfectDay, 'EVstActive'))[[3]]
-
-
     return(parms)
 }
+
+## Create summary of # of cases by whether they were currently considered immune or not, & whether
+## they were assigned to vaccination or control groups at baseline.
+makeCaseSummary <- function(parms, browse=F) within(parms, {
+    if(browse) browser()
+    stNms <- c('st','EVst','stActive','EVstActive')
+    ## Create final survival tables for all of these censoring at trial's completion (not end day, but final time planned)
+    ## ##################################################
+    ## by person time spent in immune category (not omnitient immune but thought post vacc eclispe period)
+    ptByPTImmune <- data.table(immuneGrp = 0:1)
+    casesByPTImmune <- data.table(immuneGrp = 0:1)
+    for(stI in stNms) {
+        tmp <- censSurvDat(parms, whichDo = stI)
+        casesTmp <- summarise(group_by(tmp, immuneGrp), sum(infected), sum(perstime))
+        ptTmp <- arrange(casesTmp, immuneGrp)[,3, with=F]
+        casesTmp <- arrange(casesTmp, immuneGrp)[,2, with=F]
+        casesByPTImmune[,(stI) := casesTmp]
+        nmTmp <- paste0(stI,'_pt')
+        ptByPTImmune[,(nmTmp) := ptTmp]
+    }
+    casesXPT_Immune <- data.table(type = stNms) 
+    casesXPT_Immune[, susCases := t(casesByPTImmune)[-1,1]]
+    casesXPT_Immune[, immCases := t(casesByPTImmune)[-1,2]]
+    casesXPT_Immune[, susPT := t(ptByPTImmune)[-1,1]]
+    casesXPT_Immune[, immPT := t(ptByPTImmune)[-1,2]]
+    ## ##################################################
+    ## by person time spent in immune category (not omnitient immune but thought post vacc eclispe period)
+    ptByVaccRand <- data.table(vaccRandGrp = 0:1)
+    casesByVaccRand <- data.table(vaccRandGrp = 0:1)
+    vaccRandClusters <- pop[vaccDay!=Inf, unique(cluster)]
+    for(stI in stNms) {
+        tmp <- censSurvDat(parms, whichDo = stI)
+        tmp$vaccRandGrp <- tmp[, cluster %in% vaccRandClusters]
+        casesTmp <- summarise(group_by(tmp, vaccRandGrp), sum(infected), sum(perstime))
+        ptTmp <- arrange(casesTmp, vaccRandGrp)[,3, with=F]
+        casesTmp <- arrange(casesTmp, vaccRandGrp)[,2, with=F]
+        casesByVaccRand[,(stI) := casesTmp]
+        nmTmp <- paste0(stI,'_pt')
+        ptByVaccRand[,(nmTmp) := ptTmp]
+    }
+    casesXVaccRandGrp <- data.table(type = stNms) 
+    casesXVaccRandGrp[, contCases := t(casesByVaccRand)[-1,1]]
+    casesXVaccRandGrp[, vaccCases := t(casesByVaccRand)[-1,2]]
+    casesXVaccRandGrp[, contPT := t(ptByVaccRand)[-1,1]]
+    casesXVaccRandGrp[, vaccPT := t(ptByVaccRand)[-1,2]]
+    rm(nmTmp, tmp, casesTmp, ptTmp, csesByPTImmune, casesByVaccRand)
+})
+
+makeCaseSummary(t1,T)
 
 ## SWCT is fastest possible vaccination already, so no change
 endSWCT <- function(parms) within(parms, {
@@ -202,3 +243,47 @@ endFRCT <- endRCT <- function(parms, browse=F) within(parms, {
         }
     }
 })
+
+ 
+## with(parms, {
+## browser()
+
+## max(pop[infectDay!=Inf, infectDay])
+## pop[infectDay!=Inf, length(indiv), infectDay < immuneDay]
+
+## st[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+## stActive[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+## summTrial(censSurvDat(parms, parms$maxInfectDay + 7, 'stActive'))[[3]]
+## summTrial(censSurvDat(parms, parms$maxInfectDay + 7, 'st'))[[3]]
+
+## EVpop[infectDay!=Inf & infectDay < endTrialDay, infectDay]
+## pop[infectDay!=Inf & infectDay < endTrialDay, infectDay]
+
+## EVpop[infectDay!=Inf & infectDay > endTrialDay, infectDay]
+## pop[infectDay!=Inf & infectDay > endTrialDay, infectDay]
+
+## EVpop[infectDay!=Inf & infectDay < endTrialDay, length(infectDay)]
+## pop[infectDay!=Inf & infectDay < endTrialDay, length(infectDay)]
+
+## EVpop[infectDay!=Inf & infectDay > endTrialDay, length(infectDay)]
+## pop[infectDay!=Inf & infectDay > endTrialDay, length(infectDay)]
+
+## pop[infectDay!=Inf, length(indiv), infectDay < immuneDay]
+## EVpop[infectDay!=Inf, length(indiv), infectDay < immuneDay]
+
+## st[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+## EVst[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+
+## popTmp[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+
+## stActive[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+## summTrial(censSurvDat(parms, parms$maxInfectDay + 7, 'stActive'))[[3]]
+## summTrial(censSurvDat(parms, parms$maxInfectDay + 7, 'st'))[[3]]
+
+
+## popTmp[infectDay!=Inf, length(indiv), infectDay < immuneDay]
+## stPre[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+## stPre[infectDay!=Inf, sum(infected), infectDay > immuneDayThink]
+
+## stPost[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]
+## stA[infectDay!=Inf, sum(infected), infectDay < immuneDayThink]

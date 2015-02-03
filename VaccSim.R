@@ -1,16 +1,18 @@
 if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 ## Simulate SWCT vs RCT vs CRCT for SL
-sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R'), source)
+sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 
 p1 <- simTrial(makeParms('CRCT',small=F, ord='TU'))
-s1 <- makeSurvDat(p1)
-s1 <- activeFXN(s1)
+s1 <- makeSurvDat(p1,'pop',T)
+s1 <- activeFXN(s1,'st',T)
 sc1 <- censSurvDat(s1, 49)
-summTrial(censSurvDat(s1, 154))
+summTrial(censSurvDat(s1, 365,'st'))
+summTrial(censSurvDat(s1, 365,'stActive'))
 doCoxPH(censSurvDat(s1, 154),br=F)
 t1 <- seqStop(s1, verbose=0)
 t1 <- endT(t1)
+t1 <- makeCaseSummary(t1)
 
 summTrial(t1$st)
 
