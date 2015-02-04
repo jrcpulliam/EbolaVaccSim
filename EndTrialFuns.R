@@ -24,7 +24,6 @@ endT <- function(parms, browse=F) {
     })
     ## do infection process again post-end of trial if not SWCT (which proceeds as normal)
     if(with(parms, trial != 'SWCT' & vaccEffEst['p'] < .05 & vaccEffEst['lci']>0)) { 
-        browser()
         parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
     }
     ## calculate # infected for various permutations
@@ -33,31 +32,31 @@ endT <- function(parms, browse=F) {
     return(parms)
 }
 
-        pop[infectDay!=Inf, list(indiv, infectDay)]
-        arrange(popH[infectDay!=Inf, list(indiv, infectDay)], indiv)
-with(parms, {
-browser()
+##         pop[infectDay!=Inf, list(indiv, infectDay)]
+##         arrange(popH[infectDay!=Inf, list(indiv, infectDay)], indiv)
+## with(parms, {
+## browser()
 
-        EVpop[infectDay!=Inf, list(indiv, infectDay)]
-        arrange(EVpopH[infectDay!=Inf, list(indiv, infectDay)], indiv)
+##         EVpop[infectDay!=Inf, list(indiv, infectDay)]
+##         arrange(EVpopH[infectDay!=Inf, list(indiv, infectDay)], indiv)
 
-nms <- colnames(pop)
-tst <- setcolorder(copy(popH[infectDay!=Inf])[,nms, with=F], nms)
-identical(pop[,1,with=F], tst[,1,with=F])
-identical(pop,tst)
-pop[which(pop[,infectDay]!=tst[,infectDay])]
-})
+## nms <- colnames(pop)
+## tst <- setcolorder(copy(popH[infectDay!=Inf])[,nms, with=F], nms)
+## identical(pop[,1,with=F], tst[,1,with=F])
+## identical(pop,tst)
+## pop[which(pop[,infectDay]!=tst[,infectDay])]
+## })
 
-identical(pop, EVpop)
-nms <- colnames(pop)
-tst <- setcolorder(copy(popH[day==0])[,nms, with=F], nms)
-identical(pop[,1,with=F], tst[,1,with=F])
-identical(pop,tst)
-pop[which(pop[,infectDay]!=tst[,infectDay])]
+## identical(pop, EVpop)
+## nms <- colnames(pop)
+## tst <- setcolorder(copy(popH[day==0])[,nms, with=F], nms)
+## identical(pop[,1,with=F], tst[,1,with=F])
+## identical(pop,tst)
+## pop[which(pop[,infectDay]!=tst[,infectDay])]
 
-for(ii in 1:ncol(pop)) print(setdiff(pop[,ii,with=F], tst[,ii,with=F]))
+## for(ii in 1:ncol(pop)) print(setdiff(pop[,ii,with=F], tst[,ii,with=F]))
 
-identical(popH, EVpopH)
+## identical(popH, EVpopH)
 
 ## tmp <- censSurvDat(parms, 259,'EVstActive')
 ## tmp[immuneGrp==1, sum(infected)]
