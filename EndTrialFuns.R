@@ -17,13 +17,14 @@ endT <- function(parms, browse=F) {
         EVpopH[, immuneDay := vaccDay + immunoDelay] 
         EVpopH[, vacc := day >= vaccDay]
         EVpopH[, immune := day >= immuneDay]
-        EVpop <- copy(pop) ## copy other infection data in to use for pre-end trial time
-        EVpop$vaccDay <- EVpopH[day==0, vaccDay]
-        EVpop$immuneDay <- EVpopH[day==0, immuneDay]
-        EVpop$infectDay <- EVpopH[day==0, infectDay]
+        ## copy pop, but change vaccDays & immuneDays for simInfection below
+        EVpop <- copy(pop) 
+        EVpop[, vaccDay := EVpopH[day==0, vaccDay]]
+        EVpop[, immuneDay := EVpopH[day==0, immuneDay]]
     })
     ## do infection process again post-end of trial if not SWCT (which proceeds as normal)
     if(with(parms, trial != 'SWCT' & vaccEffEst['p'] < .05 & vaccEffEst['lci']>0)) { 
+        browser()
         parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
     }
     ## calculate # infected for various permutations
@@ -31,6 +32,32 @@ endT <- function(parms, browse=F) {
     parms <- activeFXN(parms, whichDo = 'EVst')
     return(parms)
 }
+
+        pop[infectDay!=Inf, list(indiv, infectDay)]
+        arrange(popH[infectDay!=Inf, list(indiv, infectDay)], indiv)
+with(parms, {
+browser()
+
+        EVpop[infectDay!=Inf, list(indiv, infectDay)]
+        arrange(EVpopH[infectDay!=Inf, list(indiv, infectDay)], indiv)
+
+nms <- colnames(pop)
+tst <- setcolorder(copy(popH[infectDay!=Inf])[,nms, with=F], nms)
+identical(pop[,1,with=F], tst[,1,with=F])
+identical(pop,tst)
+pop[which(pop[,infectDay]!=tst[,infectDay])]
+})
+
+identical(pop, EVpop)
+nms <- colnames(pop)
+tst <- setcolorder(copy(popH[day==0])[,nms, with=F], nms)
+identical(pop[,1,with=F], tst[,1,with=F])
+identical(pop,tst)
+pop[which(pop[,infectDay]!=tst[,infectDay])]
+
+for(ii in 1:ncol(pop)) print(setdiff(pop[,ii,with=F], tst[,ii,with=F]))
+
+identical(popH, EVpopH)
 
 ## tmp <- censSurvDat(parms, 259,'EVstActive')
 ## tmp[immuneGrp==1, sum(infected)]
@@ -61,7 +88,7 @@ makeCaseSummary <- function(parms, browse=F) within(parms, {
     casesXPT_Immune[, susPT := t(ptByPTImmune)[-1,1]]
     casesXPT_Immune[, immPT := t(ptByPTImmune)[-1,2]]
     ## ##################################################
-    ## by person time spent in immune category (not omnitient immune but thought post vacc eclispe period)
+    ## by randomization group
     ptByVaccRand <- data.table(vaccRandGrp = 0:1)
     casesByVaccRand <- data.table(vaccRandGrp = 0:1)
     vaccRandIndiv <- pop[vaccDay!=Inf, unique(indiv)]
