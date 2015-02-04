@@ -3,7 +3,7 @@ if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 
-p1 <- simTrial(makeParms('CRCT',small=F, ord='TU'))
+p1 <- simTrial(makeParms('CRCT',small=F, ord='TU', clusSize=900))
 s1 <- makeSurvDat(p1,'pop',T)
 s1 <- activeFXN(s1,'st',T)
 sc1 <- censSurvDat(s1, 49)
