@@ -2,7 +2,7 @@
 ## Vaccinate control groups once vaccine efficacy identified. Wrapper around below functions
 endT <- function(parms, browse=F) {
     if(browse) browser()
-    if(with(parms, delayUnit==0 & vaccEffEst['p'] < .05 & vaccEffEst['lci']>0)) { 
+    if(with(parms, delayUnit==0 & with(tail(weeklyAns,1), stopped & vaccGood))) {
         ## instantly vaccinate everyone 1 week after trial ends
         parms <- within(parms, {
             EVpopH <- copy(popH)
@@ -23,7 +23,7 @@ endT <- function(parms, browse=F) {
         EVpop[, immuneDay := EVpopH[day==0, immuneDay]]
     })
     ## do infection process again post-end of trial if not SWCT (which proceeds as normal)
-    if(with(parms, trial != 'SWCT' & vaccEffEst['p'] < .05 & vaccEffEst['lci']>0)) { 
+    if(with(parms, trial != 'SWCT' & with(tail(weeklyAns,1), stopped & vaccGood))) { 
         parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
     }
     ## calculate # infected for various permutations
@@ -122,7 +122,7 @@ endSWCT <- function(parms) within(parms, {
 
 endCRCT <- function(parms) within(parms, {
     EVpopH <- copy(popH)
-    if(vaccEffEst['p'] <.05 & vaccEffEst['lci']>0) {
+    if(with(tail(weeklyAns,1), stopped & vaccGood)) {
         ## remaining clusters get vaccinated starting delayUnit after endTrialDay or when the last cluster 
         vaccClusters <- EVpopH[vaccDay <= endTrialDay  & vaccDay!=Inf , unique(cluster)]            
         notYetVaccClusters <- EVpopH[vaccDay > endTrialDay & vaccDay!=Inf , unique(cluster)]
@@ -158,7 +158,7 @@ endCRCT <- function(parms) within(parms, {
 
 endFRCT <- endRCT <- function(parms, browse=F) within(parms, {
     EVpopH <- copy(popH)
-    if(vaccEffEst['p'] <.05 & vaccEffEst['lci']>0) {
+    if(with(tail(weeklyAns,1), stopped & vaccGood)) {
         if(browse) browser()
         ## remaining half get vaccinated in each cluster starting delayUnit day decision made to vaccinate controls
         vaccClusters <- EVpopH[vaccDay <= endTrialDay  & vaccDay!=Inf , unique(cluster)]            
