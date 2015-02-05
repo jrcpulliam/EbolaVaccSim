@@ -86,3 +86,17 @@ idat
 ## Equipoise calculations
 
 ## CRCT matched means you have less control groups active early on
+
+## Ring vacc design
+
+##  delay  period
+
+## overlap between rings
+
+## info about liberian trial
+
+## ring is a block, small village. cluster randomized to either immediate or delayed.
+
+## effectivess vs efficacy 
+
+## bled @ enrollmnt
