@@ -77,11 +77,6 @@ hazPerMonth <- rgamma(nGroups, 1, 1)
 idat <- data.table(id = 1:N, group = rep(1:nGroups, each = nPerGroup), vacc = 0, dis = 0, mort = 0)
 idat
 
-## Temporal variation in incidence every week *
-## reording of vaccination sequence in time *
-## Vaccination upon trial finishing in RCT/CRCT*
-## calculate # infected by active & by maxInfectDays*
-## Test false positives
 ## add CFR
 ## Equipoise calculations
 
