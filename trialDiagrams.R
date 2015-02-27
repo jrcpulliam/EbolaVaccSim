@@ -1,5 +1,5 @@
 require(ggplot2); require(data.table); require(gridExtra)
-source('multiplot.R')
+source('multiplot.R'); load('data/createHT.Rdata')
 
 cats <- length(unique(ht$cluster))
 eclipseT <- 3
@@ -14,26 +14,29 @@ catFact <- factor(LETTERS[seq(1,cats)])
 yspacing <- 0.02
 xspacing <- 0
 
-initHaz <- (runif(cats,0,4)+0.5)*4
-declRate <- 0.05
-steadyDecline <- c(1,cumprod(rep(1-declRate, weeks+1)))
-varyingDecline <- function() c(1, cumprod(rep(1-runif(1,max=5)*declRate, weeks + 1)))
-hazHo <- outer(steadyDecline, initHaz)
-dim(hazHo) <- NULL
-hazHe <- sapply(initHaz, function(ih) ih*varyingDecline())
-dim(hazHe) <- NULL
+hazHe <- ht[(day >= -7) & (day <= 7*weeks), clusHaz, by="cluster"]$clusHaz #(runif(cats,0,4)+0.5)*4
+#declRate <- 0.05
+#steadyDecline <- c(1,cumprod(rep(1-declRate, weeks+1)))
+#varyingDecline <- function() c(1, cumprod(rep(1-runif(1,max=5)*declRate, weeks + 1)))
+#hazHo <- outer(steadyDecline, initHaz)
+#dim(hazHo) <- NULL
+#hazHe <- sapply(initHaz, function(ih) ih*varyingDecline())
+#dim(hazHe) <- NULL
 
 states <- c("unvaccinated", "protective delay","vaccinated")
 
 dat <- data.table(
   week=rep(weekFact, times = cats),
   cluster_id = rep(catFact, each = weeks+2),
-  hazHomogeneous = hazHo,
+#  hazHomogeneous = hazHo,
   hazHeterogeneous = hazHe,
   status = factor("unvaccinated", levels=states),
   order_status = factor("unvaccinated", levels=states),
   frct_status = factor("unvaccinated", levels=states)
 )
+
+minhh <- dat[hazHeterogeneous != 0, min(hazHeterogeneous)]
+dat[hazHeterogeneous == 0, hazHeterogeneous := minhh]
 
 stateFact <- factor(states, levels=states)
 
@@ -45,7 +48,7 @@ dat[ week >= as.numeric(cluster_id)/2+eclipseT, frct_status := "vaccinated"]
 
 for (w in 1:cats) {
   excludeclusters <- dat[(week == w) & (order_status != "unvaccinated"), ]$cluster_id
-  markcluster <- dat[(week == (w-2)) & !(cluster_id %in% excludeclusters) & (hazHeterogeneous == dat[(week == (w-2)) & !(cluster_id %in% excludeclusters), max(hazHeterogeneous)]),]$cluster_id
+  markcluster <- dat[(week == (w-2)) & !(cluster_id %in% excludeclusters) & (hazHeterogeneous == dat[(week == (w-2)) & !(cluster_id %in% excludeclusters), max(hazHeterogeneous)]),]$cluster_id[1]
   dat[(week >= w) & cluster_id == markcluster, order_status := "protective delay"]
   dat[(week >= (w+eclipseT)) & cluster_id == markcluster, order_status := "vaccinated"]
 }
@@ -63,7 +66,7 @@ p <- ggplot(dat) +
     lim <- as.numeric(lims)
     del <- 0.05*(lim[2]-lim[1])
     c(lim[1]+del, lim[2]-del)
-  }, labels=c("low","high"), name="infection hazard") +
+  }, name="infection hazard") +
   scale_x_discrete(breaks=1:weeks, labels={ temp <- 1:weeks; temp[temp %% 4 != 0] <- ''; temp }, name="trial week") +
   scale_alpha_manual(values = c(1, 0.7, 0.4), drop = F, name="participant status") +
   theme(
@@ -94,9 +97,9 @@ RCTtu <- p + aes(y=vaxorder, ymin = as.numeric(vaxorder)-0.5+yspacing, ymax = as
     geom_rect(data=dat[order_status != "unvaccinated"], mapping = aes(ymin=as.numeric(vaxorder))) +
     labs(title="RCT") +  labs(alpha="")
 
-SWThom <- p + geom_rect(aes(alpha=status, fill=hazHomogeneous)) +
-    labs(title="SWT, homogeneous hazard shapes")
-SWThom
+# SWThom <- p + geom_rect(aes(alpha=status, fill=hazHomogeneous)) +
+#     labs(title="SWT, homogeneous hazard shapes")
+# SWThom
 
 RCTnone <- p + 
     geom_rect(data=dat[status == "unvaccinated"]) +
