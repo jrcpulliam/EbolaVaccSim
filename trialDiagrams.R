@@ -16,7 +16,9 @@ catFact <- factor(LETTERS[seq(1,cats)])
 yspacing <- 0.02
 xspacing <- 0
 
-makeExampleData <- function(extraWeeks = 24, clusters = 20, conversionWeeks = 3) {
+makeExampleData <- function(
+  extraWeeks = 0, clusters = 20, conversionWeeks = 3, weeks = clusters + conversionWeeks + extraWeeks + 1
+) {
   initHaz <- (runif(clusters,0,4)+0.5)*4
   declRate <- 0.06
   steadyDecline <- c(1,cumprod(rep(1-declRate, weeks+1)))
@@ -29,7 +31,7 @@ makeExampleData <- function(extraWeeks = 24, clusters = 20, conversionWeeks = 3)
   states <- c("unvaccinated", "protective delay","vaccinated")
   
   dat <- data.table(
-    week=rep(weekFact, times = cats),
+    week = rep(weekFact, times = cats),
     cluster_id = rep(catFact, each = weeks+2),
     hazHomogeneous = hazHo,
     hazHeterogeneous = hazHe,
@@ -144,6 +146,35 @@ dat <- merge(dat, vaxord, by="cluster_id")
 dat <- merge(dat, joined[,frct_vaxorder,by=cluster_id], by="cluster_id")
 dat <- dat[week > 0,]
 
+basePlot <- function(dat, xspacing) {
+  weeks <- max(dat$week)
+  ggplot(dat) +
+    aes(x=week, y=cluster_id, xmin = week-0.5+xspacing, xmax = week+0.5-xspacing) +
+    scale_x_discrete(breaks=1:weeks, labels={ temp <- 1:weeks; temp[temp %% 4 != 0] <- ''; temp }, name="") +
+    theme(
+      axis.line = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.ticks.y = element_blank(),
+      plot.margin = unit(c(0, 0, 0, 0), "cm")
+    ) + scale_fill_continuous(low="dodger blue", high=rgb(.5,0,0), breaks=function(lims) {
+      lim <- as.numeric(lims)
+      del <- 0.05*(lim[2]-lim[1])
+      c(lim[1]+del, lim[2]-del)
+    }, labels=c("low","high"), name="infection hazard")
+}
+
+aesByID <- aes(
+  y=cluster_id, 
+  ymin = as.numeric(cluster_id)-0.5+yspacing,
+  ymax = as.numeric(cluster_id)+0.5 - yspacing
+)
+  
+aesByHiHazOrder <- aes(y=vaxorder, ymin = as.numeric(vaxorder)-0.5+yspacing, ymax = as.numeric(vaxorder)+0.5 - yspacing)
+
+aesByFRCTHazOrder <- aes(y=frct_vaxorder, ymin = as.numeric(frct_vaxorder)-0.5+yspacing, ymax = as.numeric(frct_vaxorder)+0.5 - yspacing)
 
 
 p <- ggplot(dat) +
