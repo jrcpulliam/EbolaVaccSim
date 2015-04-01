@@ -4,22 +4,10 @@ if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/
 library(RColorBrewer); library(data.table); library(ggplot2); library(dplyr); library(grid)
 ##load(file=file.path('BigResults','powFin.Rdata'))
 percent <- function(x) paste0(formatC(x*100), '%')
-labs <- c('','log')
 
 load(file=file.path('Results','powFin_All.Rdata'))
-
+source('ggplotTheme.R')
 pf[vaccEff==.5 & trial=='RCT' & propInTrial==.025 & mod=='CoxME']
-gg_color_hue <- function(n) {
-  hues = seq(15, 375, length=n+1)
-  hcl(h=hues, l=65, c=100)[1:n]
-}
-group.colors <- c(RCT = "#333BFF", FRCT = "#CC6600", SWT ="#9633FF")
-group.colors[c(1,3,2)] <- gg_color_hue(3)
-group.colors['SWCT'] <- 'orange'
-pf$trial <- factor(pf$trial, levels=levels(pf$trial)[c(2,1,3)])
-pf[, biasNAR:=biasNAR/vaccEff]
-levels(pf$order)[1] <- 'random'
-levels(pf$order)[2] <- 'risk-prioritized'
 
 ## Set up line types for ease
 pf$analysis <- 1
@@ -36,28 +24,6 @@ pf$modLab2 <- pf$mod
 levels(pf$modLab2)[levels(pf$modLab2) %in% c('CoxME','bootCoxME','relabCoxME')] <- c('(A) CoxPH', '(B) Bootstrap', '(C) Permutation')
 ## Only include SWCT remPD_SF pt
 pf$mainAn <- pf[, trial!='SWCT' | (trial=='SWCT' & as.numeric(analysis)==1) & propInTrial <= .1]
-
-####################################################################################################
-## them for ms
-thax <- element_text(colour = 'black', size = 8)
-thsb <- theme(axis.text.x = thax, axis.text.y = thax, plot.title = element_text(vjust=1),
-              axis.title.y = element_text(vjust = 1), axis.title.x = element_text(vjust = -.5),
-              axis.line = element_line(), axis.ticks = element_line(color='black'),
-              panel.margin = unit(1, "lines"), legend.key.height=unit(2,"line")
-              , strip.background = element_rect(fill = NA)
-              ,legend.position = 'right'
-              , axis.line = element_blank()
-              ,panel.grid.major = element_blank()
-              , panel.grid.minor = element_blank()
-              ,panel.border = element_blank()
-              ,panel.background = element_blank()
-              , legend.background =  element_blank()
-              , legend.key =  element_blank()
-              , legend.key.width=unit(2,"line")
-              ## ,legend.justification=c(1,0), legend.position=c(1,0)
-              )
-theme_set(theme_grey(base_size = 12))
-##thsb <- thsb + theme_bw()#
 
 ####################################################################################################
 ## Figure 4 - Type I errors
@@ -301,4 +267,18 @@ p.tmp <- ggplot(pf[subs], aes(caseTot, vaccGoodNAR, colour=type)) + thsb +
 ##     geom_line(aes(caseTot, vaccGoodNAR), data = pf[subs], linetype=2, size = 1.3, colour=group.colors['SWCT'])
 for(typ in c('.png','.pdf')) ggsave(paste0('Figures/Fig SX - Power by cases',typ), p.tmp, w = 8, h = 4)
 
+####################################################################################################
+## Cases averted by trial type
+subs <- pf[,  propInTrial<=.1 & mainAn==T & immunoDelay==21 & ((trial == 'SWCT' & mod=='relabCoxME') | (trial %in% c('RCT','FRCT') & mod =='CoxME'))]
+arrange(pf[subs, list(caseV, vaccEff, order, trial, pit )], pit)
 
+pf[subs, caseVav := caseV - caseV[vaccEff==0], list(order, trial, pit)]
+
+p.tmp <- ggplot(pf[subs], aes(vaccEff, caseVav, colour=trial, linetype=order)) + thsb +
+    xlab('vaccine efficacy') + ylab('average # cases averted within trial') + 
+    geom_line(size=1.5)  +
+    scale_x_continuous(limits=c(0,.9), minor_breaks=NULL, breaks = c(0,.5,.7,.9)) + 
+    #scale_linetype_manual(breaks=levels(pf$order), values=1:3) +
+    geom_hline(yintercept=.05, color='dark gray', size = 1) +
+    geom_line(size=1) + facet_wrap(~modLab2, scales = "free_y") + scale_color_manual(values=group.colors)
+p.tmp
