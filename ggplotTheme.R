@@ -29,7 +29,7 @@ thsb <- theme(axis.text.x = thax, axis.text.y = thax, plot.title = element_text(
               ,panel.background = element_blank()
             , legend.background =  element_blank()
             , legend.key =  element_blank()
-            , legend.key.width=unit(2,"line")
+            , legend.key.width=unit(2.5,"line")
             #,legend.justification=c(1,1), legend.position=c(1,1)
              ,legend.position='top'
               )

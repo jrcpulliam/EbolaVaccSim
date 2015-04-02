@@ -173,37 +173,6 @@ summTrial <- function(st) list(summarise(group_by(st, cluster), sum(infected))
                                , summarise(group_by(st, immuneGrp), sum(infected))
                                )
 
-## Check whether stopping point has been reached at intervals
-seqStop <- function(parms, start = parms$immunoDelayThink + 14, checkIncrement = 7, minCases = 15,
-                    fullSeq = F, maxDay = parms$maxInfectDay) {
-    trialOngoing <- T
-    checkDay <- start
-    first <- T
-    while(trialOngoing) {
-        if(parms$verbose>1) browser()
-        if(parms$verbose>0) print(checkDay)
-        tmp <- censSurvDat(parms, checkDay)
-        vaccEffEst <- try(doCoxPH(tmp), silent=T) ## converting midDay to days from months
-        ## if cox model has enough info to converge check for stopping criteria
-        if(!inherits(vaccEffEst, 'try-error') & !is.nan(vaccEffEst['p'])) { 
-            newout <- compileStopInfo(checkDay, vaccEffEst, tmp) 
-            if(first) out <- newout else out <- rbind(out, newout)
-            first <- F
-            numCases <- newout['caseCXimmGrpEnd'] + newout['caseVXimmGrpEnd']
-            if(!fullSeq & !is.na(newout['p']) & numCases > minCases)
-                if(newout['p'] < .05)
-                    trialOngoing <- F
-        }
-        checkDay <- checkDay + 7
-        if(checkDay > maxDay) trialOngoing <- F
-    }
-    rownames(out) <- NULL
-    out <- as.data.table(out)
-    parms$weeklyAns <- out
-    parms$endTrialDay <- tail(out$stopDay,1)
-    parms$vaccEffEst <- vaccEffEst
-    return(parms)
-}
 
 testZeros <- function(parmsTmp) {
     tmpCSD <- censSurvDat(parmsTmp)

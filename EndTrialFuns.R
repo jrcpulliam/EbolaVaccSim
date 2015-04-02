@@ -1,7 +1,72 @@
+## Check whether stopping point has been reached at information intervals
+seqStopInfo <- function(parms, start = parms$immunoDelayThink + 14, checkIncrement = 7, minCases = 15,
+                    fullSeq = F, maxDay = parms$maxInfectDay) {
+    if(parms$verbose>36) browser()
+    trialOngoing <- T
+    checkDay <- start
+    first <- T
+    while(trialOngoing) {
+        if(parms$verbose>1) browser()
+        if(parms$verbose>0) print(checkDay)
+        tmp <- censSurvDat(parms, checkDay)
+        vaccEffEst <- try(doCoxPH(tmp), silent=T) ## converting midDay to days from months
+        ## if cox model has enough info to converge check for stopping criteria
+        if(!inherits(vaccEffEst, 'try-error') & !is.nan(vaccEffEst['p'])) { 
+            newout <- compileStopInfo(checkDay, vaccEffEst, tmp) 
+            if(first) out <- newout else out <- rbind(out, newout)
+            first <- F
+            numCases <- newout['caseCXimmGrpEnd'] + newout['caseVXimmGrpEnd']
+            if(!fullSeq & !is.na(newout['p']) & numCases > minCases)
+                if(newout['p'] < .05)
+                    trialOngoing <- F
+        }
+        checkDay <- checkDay + 7
+        if(checkDay > maxDay) trialOngoing <- F
+    }
+    rownames(out) <- NULL
+    out <- as.data.table(out)
+    parms$weeklyAns <- out
+    parms$endTrialDay <- tail(out$stopDay,1)
+    parms$vaccEffEst <- vaccEffEst
+    return(parms)
+}
+
+## Check whether stopping point has been reached at time intervals
+seqStopTime <- function(parms, start = parms$immunoDelayThink + 14, checkIncrement = 7, minCases = 15,
+                    fullSeq = F, maxDay = parms$maxInfectDay) {
+    if(parms$verbose>36) browser()
+    trialOngoing <- T
+    checkDay <- start
+    first <- T
+    while(trialOngoing) {
+        if(parms$verbose>1) browser()
+        if(parms$verbose>0) print(checkDay)
+        tmp <- censSurvDat(parms, checkDay)
+        vaccEffEst <- try(doCoxPH(tmp), silent=T) ## converting midDay to days from months
+        ## if cox model has enough info to converge check for stopping criteria
+        if(!inherits(vaccEffEst, 'try-error') & !is.nan(vaccEffEst['p'])) { 
+            newout <- compileStopInfo(checkDay, vaccEffEst, tmp) 
+            if(first) out <- newout else out <- rbind(out, newout)
+            first <- F
+            numCases <- newout['caseCXimmGrpEnd'] + newout['caseVXimmGrpEnd']
+            if(!fullSeq & !is.na(newout['p']) & numCases > minCases)
+                if(newout['p'] < .05)
+                    trialOngoing <- F
+        }
+        checkDay <- checkDay + 7
+        if(checkDay > maxDay) trialOngoing <- F
+    }
+    rownames(out) <- NULL
+    out <- as.data.table(out)
+    parms$weeklyAns <- out
+    parms$endTrialDay <- tail(out$stopDay,1)
+    parms$vaccEffEst <- vaccEffEst
+    return(parms)
+}
 
 ## Vaccinate control groups once vaccine efficacy identified. Wrapper around below functions
-endT <- function(parms, browse=F) {
-    if(browse) browser()
+endT <- function(parms) {
+    if(parms$verbose>30) browser()
     if(with(parms, delayUnit==0 & with(tail(weeklyAns,1), stopped & vaccGood))) {
         ## instantly vaccinate everyone 1 week after trial ends
         parms <- within(parms, {
@@ -64,8 +129,8 @@ endT <- function(parms, browse=F) {
 
 ## Create summary of # of cases by whether they were currently considered immune or not, & whether
 ## they were assigned to vaccination or control groups at baseline.
-makeCaseSummary <- function(parms, browse=F) within(parms, {
-    if(browse) browser()
+makeCaseSummary <- function(parms) within(parms, {
+    if(parms$verbose>32) browser()
     stNms <- c('st','EVst','stActive','EVstActive')
     ## Create final survival tables for all of these censoring at trial's completion (not end day, but final time planned)
     ## ##################################################
@@ -121,6 +186,7 @@ endSWCT <- function(parms) within(parms, {
 })
 
 endCRCT <- function(parms) within(parms, {
+    if(verbose>33) browser()
     EVpopH <- copy(popH)
     if(with(tail(weeklyAns,1), stopped & vaccGood)) {
         ## remaining clusters get vaccinated starting delayUnit after endTrialDay or when the last cluster 
@@ -156,8 +222,9 @@ endCRCT <- function(parms) within(parms, {
 
 
 
-endFRCT <- endRCT <- function(parms, browse=F) within(parms, {
+endFRCT <- endRCT <- function(parms) within(parms, {
     EVpopH <- copy(popH)
+    if(verbose>34) browser()
     if(with(tail(weeklyAns,1), stopped & vaccGood)) {
         if(browse) browser()
         ## remaining half get vaccinated in each cluster starting delayUnit day decision made to vaccinate controls

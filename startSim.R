@@ -12,7 +12,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-seed=120;trial="SWCT";ord="none";propInTrial=0.3;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.9;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/SLSimsFinalPTCorr";saveNm="simSL-bigPit-";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"
+seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.9;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/SLSimsFinalPTCorr";saveNm="simSL-bigPit-";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"
 }
 
 verbose <- 1

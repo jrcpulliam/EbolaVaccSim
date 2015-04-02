@@ -24,6 +24,8 @@ pf$modLab2 <- pf$mod
 levels(pf$modLab2)[levels(pf$modLab2) %in% c('CoxME','bootCoxME','relabCoxME')] <- c('(A) CoxPH', '(B) Bootstrap', '(C) Permutation')
 ## Only include SWCT remPD_SF pt
 pf$mainAn <- pf[, trial!='SWCT' | (trial=='SWCT' & as.numeric(analysis)==1) & propInTrial <= .1]
+pf$type <- pf[, paste(order,trial)]
+pf[grepl('SWCT',type), type:='SWCT']
 
 ####################################################################################################
 ## Figure 4 - Type I errors
@@ -33,7 +35,7 @@ p.tmp <- ggplot(pf[subs],
                 aes(propInTrial, stoppedNAR, colour=trial, linetype=order)) + thsb +
     scale_x_continuous(labels = percent, limits=c(.025,.1), minor_breaks=NULL, breaks = c(.025,.05,.075,.1)) +  
     xlab('% of district-level cases in trial population') + ylab('False Positive Rate') + 
-    #scale_linetype_manual(breaks=levels(pf$order), values=1:3) +
+    scale_linetype_manual(breaks=levels(pf$order), values=1:3) +
     geom_hline(yintercept=.05, color='dark gray', size = 1) +
     geom_line(size=1) + facet_wrap(~modLab2, scales = "free_y") + scale_color_manual(values=group.colors)
 p.tmpunt <- p.tmp + scale_y_continuous(labels = formatC, limits=c(0,.15))
@@ -252,8 +254,6 @@ write.csv(tab1, file='Results/biasCoverage.csv')
 ####################################################################################################
 ## Show power by # of cases
 subs <- pf[,  propInTrial<=.1 & mainAn==T & vaccEff==.9 & immunoDelay==21 & ((trial == 'SWCT' & mod=='relabCoxME') | (trial %in% c('RCT') & mod =='CoxME'))]
-pf$type <- pf[, paste(order,trial)]
-pf[grepl('SWCT',type), type:='SWCT']
 group.colors2 <- c("orange", 'purple','blue', "#F8766D")
 names(group.colors2) <- pf[subs,unique(type)]
 p.tmp <- ggplot(pf[subs], aes(caseTot, vaccGoodNAR, colour=type)) + thsb +
@@ -272,13 +272,16 @@ for(typ in c('.png','.pdf')) ggsave(paste0('Figures/Fig SX - Power by cases',typ
 subs <- pf[,  propInTrial<=.1 & mainAn==T & immunoDelay==21 & ((trial == 'SWCT' & mod=='relabCoxME') | (trial %in% c('RCT','FRCT') & mod =='CoxME'))]
 arrange(pf[subs, list(caseV, vaccEff, order, trial, pit )], pit)
 
-pf[subs, caseVav := caseV - caseV[vaccEff==0], list(order, trial, pit)]
+pf[subs, caseVav := caseV[vaccEff==0] - caseV, list(order, trial, pit)]
 
 p.tmp <- ggplot(pf[subs], aes(vaccEff, caseVav, colour=trial, linetype=order)) + thsb +
     xlab('vaccine efficacy') + ylab('average # cases averted within trial') + 
     geom_line(size=1.5)  +
-    scale_x_continuous(limits=c(0,.9), minor_breaks=NULL, breaks = c(0,.5,.7,.9)) + 
-    #scale_linetype_manual(breaks=levels(pf$order), values=1:3) +
-    geom_hline(yintercept=.05, color='dark gray', size = 1) +
-    geom_line(size=1) + facet_wrap(~modLab2, scales = "free_y") + scale_color_manual(values=group.colors)
+    scale_x_continuous(labels = formatC, limits=c(0,.9), minor_breaks=NULL, breaks = c(0,.5,.7,.9)) +
+    scale_y_continuous(limits=c(0,32)) + #, minor_breaks=NULL, breaks = c(0,.5,.7,.9)) + 
+    scale_linetype_manual(breaks=levels(pf$order), values=1:3) +
+ facet_wrap(~pit, scales = "free_y", nrow=1) + scale_color_manual(values=group.colors)
 p.tmp
+for(typ in c('.png','.pdf')) ggsave(paste0('Figures/Fig SX - cases averted by trial & proportion in trial',typ), p.tmp, w = 8, h = 4)
+
+pf[trial=='RCT' & vaccEff==.5 & ord=='TU' & subs, ]
