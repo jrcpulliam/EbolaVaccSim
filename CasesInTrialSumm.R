@@ -67,6 +67,7 @@ back <- c('nbatch','sim')
 setcolorder(finTrials, c(setdiff(names(finTrials), back), back))
 
 save(finTrials, file=file.path('BigResults', paste0(thing, '.Rdata')))
+save(finTrials, file=file.path('Results', paste0(thing, '.Rdata')))
 
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 
