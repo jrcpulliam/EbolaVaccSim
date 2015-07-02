@@ -211,27 +211,29 @@ getEndResults <- function(parms, bump = T) {
         vaccEE_ME <- doCoxME(parmsE, tmpCSDE, bump = bump)
         ## vaccEE_GEEclusAR1 <- doGEEclusAR1(clusDat, csd=tmpCSDE, bump = bump)
         ## vaccEE_GLMMclus <- doGLMMclus(parmsE,, csd=tmpCSDE, bump = bump)
-        vaccEE_GLMclus <- doGLMclus(parmsE, csd=tmpCSDE, bump = bump)
+        ## vaccEE_GLMclus <- doGLMclus(parmsE, csd=tmpCSDE, bump = bump)
         vaccEE_GLMFclus <- doGLMFclus(parmsE, csd=tmpCSDE, bump = bump)
-        vaccEE_MErelab <- doRelabel(parms, csd=tmpCSD, bump=F, nboot=nboot, verbFreqRelab=10)
-        vaccEE_MEboot <- doBoot(parms, csd=tmpCSD, bump=F, nboot=nboot, verbFreqBoot=10)
+        ## vaccEE_MErelab <- doRelabel(parms, csd=tmpCSD, bump=F, nboot=nboot, verbFreqRelab=10)
+        ## vaccEE_MEboot <- doBoot(parms, csd=tmpCSD, bump=F, nboot=nboot, verbFreqBoot=10)
         vEEs <- list(vaccEE_ME
                      ## , vaccEE_GLMMclus
-                     , vaccEE_GLMclus
+                     ## , vaccEE_GLMclus
                      , vaccEE_GLMFclus
                      ## , vaccEE_GEEclusAR1
-                     , vaccEE_MEboot
-                     , vaccEE_MErelab
+                     ## , vaccEE_MEboot
+                     ## , vaccEE_MErelab
                      )
         finMods <- rbindlist(vEEs)
         finInfo <- compileStopInfo(tmp = tmpCSD, minDay=maxInfectDay,  verbose=verbose) ## active person-time only
         names(finInfo)[-1] <- paste0(names(finInfo)[-1],'_Active')
         finInfo <- data.frame(finInfo,  ## all person-time, not just active
                               compileStopInfo(tmp = tmpASD, minDay=maxInfectDay,  verbose=verbose)[-1])
-        rm(vaccEE_ME, vaccEE_MEboot, vaccEE_MErelab
+        rm(vaccEE_ME
+           ## , vaccEE_MEboot, vaccEE_MErelab
            ## , vaccEE_GEEclusAR1
            ## , vaccEE_GLMMclus 
-           , vaccEE_GLMFclus , vaccEE_GLMclus
+           , vaccEE_GLMFclus
+           ## , vaccEE_GLMclus
            , vEEs
            )
         return(list(finInfo=finInfo, finMods=finMods))
