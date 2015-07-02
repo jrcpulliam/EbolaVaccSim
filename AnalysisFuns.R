@@ -204,6 +204,7 @@ getEndResults <- function(parms, bump = T) {
         parmsE$bump <- T
     }
     tmpCSDE <- tmpCSD <- censSurvDat(parms)
+    tmpASD <- censSurvDat(parms, whichDo='st') ## all survival data (not just actively analyzeable person-time), censored by trial end date
     if(testZeros(parms))  tmpCSDE <- censSurvDat(parmsE)
     within(parmsE, {
         if(verbose==2.9) browser()
@@ -223,7 +224,10 @@ getEndResults <- function(parms, bump = T) {
                      , vaccEE_MErelab
                      )
         finMods <- rbindlist(vEEs)
-        finInfo <- compileStopInfo(tmp = tmpCSD, minDay=maxInfectDay,  verbose=verbose)
+        finInfo <- compileStopInfo(tmp = tmpCSD, minDay=maxInfectDay,  verbose=verbose) ## active person-time only
+        names(finInfo)[-1] <- paste0(names(finInfo)[-1],'_Active')
+        finInfo <- data.frame(finInfo,  ## all person-time, not just active
+                              compileStopInfo(tmp = tmpASD, minDay=maxInfectDay,  verbose=verbose)[-1])
         rm(vaccEE_ME, vaccEE_MEboot, vaccEE_MErelab
            ## , vaccEE_GEEclusAR1
            ## , vaccEE_GLMMclus 
