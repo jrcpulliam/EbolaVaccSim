@@ -1,4 +1,4 @@
-library(blme); library(survival); library(coxme); library(data.table); library(parallel); library(dplyr); 
+require(blme); require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); 
 load('data/createHT.Rdata')
 
 yearToDays <- 1/365.25
@@ -19,6 +19,10 @@ makeParms <- function(
     , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
     , vaccEff = .8
     , maxInfectDay = 7*24 ## end of trial (24 weeks default; 6 months)
+    ## Sequential Design info
+  , gs=FALSE
+    , gsDesArgs = list(k=3, test.type=2, alpha=0.025, beta=0.1) ## total number of analyses
+    ## , seqType='MaxDur' ## MaxDur or MaxInfo, i.em. spend alpha based on # events up until endtime, then spend rest of alpha
     , immunoDelay = 21 ## delay from vaccination to immunity
     , immunoDelayThink = immunoDelay ## delay from vaccination to immunity used in analysis (realistically would be unknown)
     , weeklyDecay=.9, cvWeeklyDecay=1 ## log-normally distributed incidence decay rates (set var = 0 for constant)
@@ -43,6 +47,7 @@ makeParms <- function(
     trialStartDate <- as.Date(trialStartDate)
     if(maxInfectDay < delayUnit*numClus) stop('maxInfectDay too short. Need enough time to rollout vaccines to all clusters')
     if(trial=='FRCT') delayUnit <- delayUnit/2 ## rolling out vaccines as quickly as you would if you were vaccinating whole clusters
+    if(gs) gsBounds <- do.call(gsDesign, gsDesArgs)
     return(as.list(environment()))
 }
 

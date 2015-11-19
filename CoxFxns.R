@@ -1,5 +1,5 @@
-
-library(geepack)
+require(gsDesign)
+require(geepack)
 
 ## make the highest hazard uninfected individuals in a vacc and control group be infected to allow
 ## for conservative CI calculation when 0 infections in certain groups
@@ -140,16 +140,16 @@ doBoot <- function(parms, csd, nboot=200, bump=F, doMods=modsToDo, verbFreqBoot=
         }
 
         bootVee <- data.frame(mean = as.numeric(veeBoot[1])
-                              , lci = apply(veeBoot[-1], 2, function(x) quantile(x,.025,na.rm=T)) ## [-1] exclude real estimate
-                              , uci = apply(veeBoot[-1], 2, function(x) quantile(x,.975,na.rm=T)) 
-                              , p = NA
-                              , mod = paste0('boot',unlist(doMods)), bump = F, err = colSums(is.na(veeBoot)))
+                            , lci = apply(veeBoot[-1], 2, function(x) quantile(x,.025,na.rm=T)) ## [-1] exclude real estimate
+                            , uci = apply(veeBoot[-1], 2, function(x) quantile(x,.975,na.rm=T)) 
+                            , p = NA
+                            , mod = paste0('boot',unlist(doMods)), bump = F, err = colSums(is.na(veeBoot)))
     }else{
         bootVee <- data.frame(mean = as.numeric(veeBoot[1])
-                              , lci = NA
-                              , uci = NA
-                              , p = NA
-                              , mod = paste0('boot',unlist(doMods)), bump = F, err = NA)
+                            , lci = NA
+                            , uci = NA
+                            , p = NA
+                            , mod = paste0('boot',unlist(doMods)), bump = F, err = NA)
     }
     return(bootVee)
 }
@@ -175,13 +175,20 @@ bumpAdjust <- function(vee, csd, bump, nonpar=F) {
     return(vee)
 }
 
+require(gsDesign)
+gsDesign(k=3, test.type = 1, alpha = 0.025, beta = .1, delta = 0, timing=1,
+         sfu =sfHSD, sfupar=-4 ## Hwang-Shih-DeCani alpha-spending functions with O'Brien Fleming-type parameters
+         )
+
 doCoxME <- function(parms, csd, bump = F) { ## take censored survival object and return vacc effectiveness estimates
     if(parms$verbose==3.1) browser()
     if(parms$verbose>0) print('fitting vanilla coxME')
+    if(grep('gs', parms$trial)) 
     mod <- try(coxme(Surv(startDay, endDay, infected) ~ immuneGrp + (1|cluster), data = csd), silent=T)
     if(!inherits(mod, 'try-error')) {
         vaccEffEst <- 1-exp(mod$coef + c(0, 1.96, -1.96)*sqrt(vcov(mod)))
-        pval <- pnorm(mod$coef/sqrt(vcov(mod)), lower.tail = vaccEffEst[1]>0)*2
+        zval <- mod$coef/sqrt(vcov(mod))
+        pval <- pnorm(zval, lower.tail = vaccEffEst[1]>0)*2
         vaccEffEst <- signif(c(vaccEffEst, pval), 3)
         if(is.na(vcov(mod)) | vcov(mod)==0) 
             vaccEffEst[2:4] <- NA ## if failing to converge on effect estimate (i.e. 0 variance in beta coefficient)
@@ -193,6 +200,14 @@ doCoxME <- function(parms, csd, bump = F) { ## take censored survival object and
     }
     return(vaccEffEst)
 }
+
+
+doCoxME_GS <- function(parms, csd, bump = F, gsDesObj=NULL) { ## take censored survival object and return vacc effectiveness estimates
+    if(parms$verbose==3.15) browser()
+
+    return(vaccEffEst)
+}
+
 
 ## Cluster level data with one observation per time unit (not for RCTs bc two different covariates
 ## classes within cluster level, would need individual approach for that)
