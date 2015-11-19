@@ -84,6 +84,7 @@ getEndResults <- function(parms, bump = T) {
             ## (usually CoxME), could vectorize this later but confusing to have different vaccination rollout
             ## strategies for one simulation due to different stopping times by different analyses
             intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
+            intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), intTab[analysisNum])
             vaccGood <-  intTab[analysisNum, obsZ > upperZ] 
             vaccBad <-  intTab[analysisNum, obsZ < lowerZ] 
         })
@@ -136,8 +137,7 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         ## plotSTA(res$stActive) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
-browser()
-        finTmp <- data.frame(sim = ss, res$finMods)
+        finTmp <- data.frame(sim = ss, res$intStats[[length(res$intStats)]][1,])
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.frame(sim = ss, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
