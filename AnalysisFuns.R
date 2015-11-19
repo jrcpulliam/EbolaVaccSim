@@ -1,9 +1,3 @@
-testZeros <- function(parmsTmp) {
-    tmpCSD <- censSurvDat(parmsTmp)
-    casesXgroup <- tmpCSD[,list(cases = sum(infected)), immuneGrp]
-    return(0 %in% casesXgroup[,cases])
-}
-
 compileStopInfo <- function(minDay, tmp, verbose=0) {
     if(verbose==4) browser()
     out <- data.table(stopDay=minDay
@@ -17,9 +11,10 @@ compileStopInfo <- function(minDay, tmp, verbose=0) {
     return(out)
 }
 
-prepDat <- function(parms, bump=T) {
-    if(gs) { ## prepare group sequential analysis times
-        parms <- within(parms, {
+gsTimeCalc <- function(parms) {
+    parms <- within(parms, {
+        if(gs) { ## prepare group sequential analysis times
+            if(verbose==2.89) browser()
             maxInfo <- 35 ## number of events considered for sufficient power
             ## # events at which analyses occur
             intTab <- data.table(events = round(gsBounds$timing * maxInfo))
@@ -27,11 +22,11 @@ prepDat <- function(parms, bump=T) {
             infDays <- stActive$infectDay[stActive$infectDay!=Inf]
             infDays <- infDays[order(infDays)]
             ## Calculate interim analyses times
-            intTab[, interimTimes:= ceiling(infDays[infoT])]
-            intTab <- intTab[!is.na(interimTimes)]
+            intTab[, tcal:= ceiling(infDays[events])] ## calendar time (as opposed to information time)
+            intTab <- intTab[!is.na(tcal)]
             intTab$trigger <- 'events'
             ## If don't do all analyses, add one more at maximum trial duration
-            if(nrow(intTab) < gsBounds$k) intTab <- rbind(intTab, data.table(events=NA, interimTimes=maxInfectDay, trigger='end time'))
+            if(nrow(intTab) < gsBounds$k) intTab <- rbind(intTab, data.table(events=NA, tcal=maxInfectDay, trigger='end time'))
             intTab
             if(nrow(intTab) < gsBounds$k) { ## if don't have full # of analyses, must readjust design to spend all remaining alpha at maximum trial duration
                 gsDesArgsAdj <- within(gsDesArgs, {
@@ -44,22 +39,44 @@ prepDat <- function(parms, bump=T) {
                 gsBoundsAdj <- gsBounds
                 intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
             }
-            print(intTab)
-            if(verbose==2.89) browser()
-        })
-    }
-    
-    for(tc in 1:length(timing)) {
+        }else{ ## non-sequential design
+            parms <- within(parms, {
+                intTab <- data.table(events = NA, tcal = maxInfectDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
+            })
+        }
+        print(intTab)
+        rm(maxInfo, infDays)
+    })
+    return(parms)
+}
+
+testZeros <- function(parmsTmp, censorDay) {
+    tmpCSD <- censSurvDat(parmsTmp, censorDay = censorDay)
+    casesXgroup <- tmpCSD[,list(cases = sum(infected)), immuneGrp]
+    return(0 %in% casesXgroup[,cases])
+}
+
+getEndResults2 <- function(parms, bump = T) {
+    if(verbose==2.93) browser()
+
+    trialStopped <- F
+    analysisNum <- 0
+    while(!trialStopped) { ## loop over sequential analyses (only do loop once for non-sequential analysis)
+        analysisNum <- analysisNum+1
+        analysisDay <- parms$intTab[analysisNum, tcal]
+        if(!testZeros(parms, )) {
+            parmsE <- parms
+            parmsE$bump <- F
+        }else{
+            parmsE <- infBump(parms)
+            parmsE$bump <- T
+        }
 
 
+        if(!gs) trialStopped <- T
+
     }
-    if(!testZeros(parms)) { ## zero events in either arm?
-        parmsE <- parms
-        parmsE$bump <- F
-    }else{
-        parmsE <- infBump(parms)
-        parmsE$bump <- T
-    }
+
     tmpCSDE <- tmpCSD <- censSurvDat(parms)
     tmpASD <- censSurvDat(parms, whichDo='st') ## all survival data (not just actively analyzeable person-time), censored by trial end date
     if(testZeros(parms))  tmpCSDE <- censSurvDat(parmsE)
@@ -126,10 +143,10 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         res <- makeSurvDat(res)
         res <- makeGEEDat(res)
         res <- activeFXN(res)
+        res <- gsTimeCalc(res)
         ## plotSTA(res$stActive) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
-        res <- prepDat(res)
-        res <- getEndResults(res)
+        res <- getEndResults2(res)
         finTmp <- data.frame(sim = ss, res$finMods)
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.frame(sim = ss, res$finInfo)
