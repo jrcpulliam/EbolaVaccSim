@@ -11,11 +11,12 @@ compileStopInfo <- function(minDay, tmp, verbose=0) {
     return(out)
 }
 
+
+
 gsTimeCalc <- function(parms) {
     parms <- within(parms, {
         if(gs) { ## prepare group sequential analysis times
             if(verbose==2.89) browser()
-            maxInfo <- 35 ## number of events considered for sufficient power
             ## # events at which analyses occur
             intTab <- data.table(events = round(gsBounds$timing * maxInfo))
             ## Get vector of event (infection) timings
@@ -30,21 +31,26 @@ gsTimeCalc <- function(parms) {
             intTab
             if(nrow(intTab) < gsBounds$k) { ## if don't have full # of analyses, must readjust design to spend all remaining alpha at maximum trial duration
                 gsDesArgsAdj <- within(gsDesArgs, {
-                    k <- numInterims
+                    k <- nrow(intTab)
                     timing <- c(timing[k-1],1)
                 })
-                gsBoundsAdj <- do.call(gsDesign, gsDesArgsAdj)
-                intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
-            }else{
+                if(gsDesArgsAdj$k>1) { ## if any interims
+                    gsBoundsAdj <- do.call(gsDesign, gsDesArgsAdj)
+                    intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
+                }else{ ## otherwise non-sequential
+                    intTab <- data.table(events = NA, tcal = maxInfectDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
+                }
+            }else{ ## use original boundsQ
                 gsBoundsAdj <- gsBounds
                 intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
             }
-        rm(maxInfo, infDays)
+            rm(maxInfo, infDays)
         }else{ ## non-sequential design
             intTab <- data.table(events = NA, tcal = maxInfectDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
         }
-        intTab$obsZ <- as.numeric(NA)
-        print(intTab)
+        intTab$contCases <- intTab$vaccCases <- intTab$obsZ <- as.numeric(NA)
+        intTab$vaccGood <- intTab$vaccBad <- as.logical(NA)
+        if(verbose>3) print(intTab)
     })
     return(parms)
 }
@@ -62,6 +68,7 @@ getEndResults <- function(parms, bump = T) {
     parms$intStats <- list()
     ## loop over sequential analyses (only do loop once for non-sequential analysis)
     while(!trialStopped) { 
+
         analysisNum <- analysisNum+1 ## iterate
         analysisDay <- parms$intTab[analysisNum, tcal]
         tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
@@ -85,11 +92,14 @@ getEndResults <- function(parms, bump = T) {
             ## strategies for one simulation due to different stopping times by different analyses
             intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
             intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), intTab[analysisNum])
-            vaccGood <-  intTab[analysisNum, obsZ > upperZ] 
-            vaccBad <-  intTab[analysisNum, obsZ < lowerZ] 
+            intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
+            intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
+            intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]
+            intStats[[analysisNum]][, vaccCases := tmpCSD[immuneGrp==1,sum(infected)]]
         })
+            earlyStop <- parms$intStats[[analysisNum]][, vaccGood | vaccBad]
         ## Determine whether trial stopped for boundary crossing or last analysis
-        if(parms$vaccGood|parms$vaccBad | analysisNum==nrow(parms$intTab)) trialStopped <- T
+        if(earlyStop | analysisNum==nrow(parms$intTab)) trialStopped <- T
     }
     tmpASD <- censSurvDat(parms, censorDay=analysisDay, whichDo='st') ## all survival data (not just actively analyzeable person-time), censored by trial end date
     parms <- within(parms, {

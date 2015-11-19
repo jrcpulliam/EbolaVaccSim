@@ -6,41 +6,42 @@ monthToDays <- 1/30
 trialTypes <- c('RCT','FRCT','SWCT','CRCT')
 makeParms <- function(
     trial='RCT'
-    , trialStartDate = '2015-02-01' ## converted to date below    
-    , numClus=20, clusSize=300
-    , delayUnit = 7 ## logistically imposed interval in between each new cluster receiving vaccination
-    , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
-    , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
-    , nbsize = .8 ## for above
-    , propInTrial = .03 ## for above
-    , mu=.03 * yearToDays ## mean hazard in all participants at baseline
-    , cvClus=1 ##  variance in cluster-level hazards for gamma distribution
-    , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
-    , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
-    , vaccEff = .8
-    , maxInfectDay = 7*24 ## end of trial (24 weeks default; 6 months)
+  , trialStartDate = '2015-02-01' ## converted to date below    
+  , numClus=20, clusSize=300
+  , delayUnit = 7 ## logistically imposed interval in between each new cluster receiving vaccination
+  , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
+  , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
+  , nbsize = .8 ## for above
+  , propInTrial = .03 ## for above
+  , mu=.03 * yearToDays ## mean hazard in all participants at baseline
+  , cvClus=1 ##  variance in cluster-level hazards for gamma distribution
+  , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
+  , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
+  , vaccEff = .8
+  , maxInfectDay = 7*24 ## end of trial (24 weeks default; 6 months)
     ## Sequential Design info
   , gs=FALSE
-    , gsDesArgs = list(k=3, test.type=2, alpha=0.025, beta=0.1) ## total number of analyses
+  , gsDesArgs = list(k=3, test.type=2, alpha=0.025, beta=0.1, timing = seq(0,1, l = 4)[-1]) ## total number of analyses
+  , infoCalcArgs = list(assumedVaccEff = vaccEff, assumedCumHazard = 10^-4, beta = .1) ## number of events to power trial asymptotes at low cumulative hazards (e.g. 36 for vaccEff=.7)
     ## , seqType='MaxDur' ## MaxDur or MaxInfo, i.em. spend alpha based on # events up until endtime, then spend rest of alpha
-    , immunoDelay = 21 ## delay from vaccination to immunity
-    , immunoDelayThink = immunoDelay ## delay from vaccination to immunity used in analysis (realistically would be unknown)
-    , weeklyDecay=.9, cvWeeklyDecay=1 ## log-normally distributed incidence decay rates (set var = 0 for constant)
-    , hazIntUnit = 7 ## interval between discrete changes in hazard
-    , reordLag = 14 ## how long ago's hazard to use when deciding this week's time-updated vaccination sequence
-    , includeAllControlPT = F ## include person-time from controlled trials before end of
-                              ## vaccination refractory period? in SWCT also only includes
-                              ## person-time when trial has both protected & unprotected individuals
-    , remProtDel = T## remove protective delay PT from SWCT
-    , remStartFin = F ## remove start
-    , RCTendOption = 2        ## order to vaccinate unvaccinated invididuals when an RCT ends, see EndTrialFuns.R
-    , instVaccDelay = 7 ## delay til instant vacc of everyone after trial ends in trials where delayUnit=0 otherwise
-    , small=F ## do a small trial for illustration
-    , StatsFxns = c('doCoxME')##,'doGLMFclus','doGMMclus','doGLMclus','doRelabel','doBoot')
-    , nboot = 200 ## bootstrap samples
-    , verbose = 0
-    , dontReordForPlot = F
-    ){
+  , immunoDelay = 21 ## delay from vaccination to immunity
+  , immunoDelayThink = immunoDelay ## delay from vaccination to immunity used in analysis (realistically would be unknown)
+  , weeklyDecay=.9, cvWeeklyDecay=1 ## log-normally distributed incidence decay rates (set var = 0 for constant)
+  , hazIntUnit = 7 ## interval between discrete changes in hazard
+  , reordLag = 14 ## how long ago's hazard to use when deciding this week's time-updated vaccination sequence
+  , includeAllControlPT = F ## include person-time from controlled trials before end of
+    ## vaccination refractory period? in SWCT also only includes
+    ## person-time when trial has both protected & unprotected individuals
+  , remProtDel = T## remove protective delay PT from SWCT
+  , remStartFin = F ## remove start
+  , RCTendOption = 2        ## order to vaccinate unvaccinated invididuals when an RCT ends, see EndTrialFuns.R
+  , instVaccDelay = 7 ## delay til instant vacc of everyone after trial ends in trials where delayUnit=0 otherwise
+  , small=F ## do a small trial for illustration
+  , StatsFxns = c('doCoxME')##,'doGLMFclus','doGMMclus','doGLMclus','doRelabel','doBoot')
+  , nboot = 200 ## bootstrap samples
+  , verbose = 0
+  , dontReordForPlot = F
+){
     if(small) {
         numClus <- 4
         clusSize <- 4
@@ -48,7 +49,14 @@ makeParms <- function(
     trialStartDate <- as.Date(trialStartDate)
     if(maxInfectDay < delayUnit*numClus) stop('maxInfectDay too short. Need enough time to rollout vaccines to all clusters')
     if(trial=='FRCT') delayUnit <- delayUnit/2 ## rolling out vaccines as quickly as you would if you were vaccinating whole clusters
-    if(gs) gsBounds <- do.call(gsDesign, gsDesArgs)
+    if(gs) {
+        gsBounds <- do.call(gsDesign, gsDesArgs)
+        maxInfo <- with(infoCalcArgs, { ## total number of events expected need to power the trial with 1-beta power for an assumedVaccEff 
+            cumHazs <- assumedCumHazard*c(1, (1-assumedVaccEff))
+            sampSizes <- nBinomial(p1 = cumHazs[1], p2 = cumHazs[2], outtype=2, beta = beta)
+            return(sum(sampSizes*cumHazs))
+        })
+    }
     return(as.list(environment()))
 }
 
