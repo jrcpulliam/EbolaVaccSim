@@ -68,8 +68,8 @@ getEndResults <- function(parms, bump = T) {
     parms$intStats <- list()
     ## loop over sequential analyses (only do loop once for non-sequential analysis)
     while(!trialStopped) { 
-
         analysisNum <- analysisNum+1 ## iterate
+        if(verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
         analysisDay <- parms$intTab[analysisNum, tcal]
         tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
         if(verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
@@ -92,6 +92,7 @@ getEndResults <- function(parms, bump = T) {
             ## strategies for one simulation due to different stopping times by different analyses
             intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
             intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), intTab[analysisNum])
+            ## Even for non-GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
             intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
             intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
             intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]

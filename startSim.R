@@ -16,15 +16,15 @@ seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDel
 }
 
 hazType='Phenom'
-mu <- .01
+mu <- .02*yearToDays
 weeklyDecay <- .9
 cvWeeklyDecay <- .01
 cvClus <- .01
 cvClusTime <- .01
 gs <- T
-nsims <- 2
+nsims <- 100
 
-verbose <- 2.935
+verbose <- 1#2.935
 parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)
