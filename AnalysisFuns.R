@@ -162,7 +162,7 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         ## plotSTA(res$stActive) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
-        res$verbose <- 35
+##        res$verbose <- 35
         res$endTrialDay <- 100
 endT(res)
 browser()

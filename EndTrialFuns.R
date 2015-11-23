@@ -32,6 +32,12 @@ endT <- function(parms) {
     return(parms)
 }
 
+badVaccEndT <- function(parms) {
+    if(tail(intStats$vaccBad,1)) { ## Vaccine doesn't work
+
+    }
+}
+
 ##         pop[infectDay!=Inf, list(indiv, infectDay)]
 ##         arrange(popH[infectDay!=Inf, list(indiv, infectDay)], indiv)
 ## with(parms, {
@@ -168,15 +174,20 @@ endFRCT <- endRCT <- function(parms) within(parms, {
         ## ##################################################
         ## OPTION 1: Continue with cluster sequence, but vaccinate full clusters. Then go back and vacc partially vacc clusters.
         if(RCTendOption==1) {
+
+            ## ##############################
             ## vaccinate everyone (not just half) in those clusters that haven't yet had anyone vaccinated moving forward
             lastPreassignedVaccDay <- popH[vaccDay!=Inf, max(vaccDay)]
             startVaccContDay <- max(lastPreassignedVaccDay, endTrialDay)
             vaccDaysLeft <- seq(min(daySeqLong[daySeqLong > startVaccContDay]), 700, by = delayUnit) ## remaining vaccination days (delayUnit apart)
             EVpopH[cluster %in% notYetVaccClusters & vaccDay==Inf,
-                   vaccDay := delayUnit*(cluster-1)] ## same as those pre-assigned to be vaccinated
+                   vaccDay := delayUnit*(cluster-1)] ## same as those pre-assigned to be vaccinated 
+            ## EVpopH[cluster %in% notYetVaccClusters & idByClus%in%c(1,151), list(cluster, vaccDay)]
+
+            ## ##############################
             ## Vaccinate the rest of partially vaccinated clusters afterwards. First get order in which to do it, if necessary.
             if(ord == 'BL') ## reorder vaccination sequence by vaccinating highest hazard clusters as determined when trial ended
-                EVclusIncRank <- EVpopH[cluster %in% vaccClusters & vaccDay == Inf & idByClus==1 & day == endTrialDay,
+                EVclusIncRank <- EVpopH[cluster %in% vaccClusters & vaccDay == Inf & idByClus==1 & day == firstVaccDayAfterTrialEnd-reordLag,
                                         rev(order(clusHaz))]
             if(ord == 'TU') {  ## reorder vaccination sequence by vaccinating highest hazard partially vacc clusters as vaccination happens
                 EVclusIncRank <- NULL
@@ -188,10 +199,12 @@ endFRCT <- endRCT <- function(parms) within(parms, {
                     EVclusIncRank <- c(EVclusIncRank, tmpRank[1])
                 }
             }
+browser()
+
             ## Then update the vaccination days based on the order
             if(ord == 'none')
                 EVpopH[cluster %in% vaccClusters & vaccDay==Inf, 
-                       vaccDay := vaccDaysLeft[1] + delayUnit*(cluster-1)]
+                       vaccDay := vaccDaysLeft[1] + delayUnit*(cluster-min(vaccClusters))]
             if(ord %in% c('BL','TU')) { 
                 for(ii in 1:length(EVclusIncRank))
                     EVpopH[cluster==EVclusIncRank[ii] & vaccDay==Inf, vaccDay := vaccDaysLeft[ii]]
@@ -207,7 +220,7 @@ endFRCT <- endRCT <- function(parms) within(parms, {
             vaccDaysLeft <- seq(min(daySeqLong[daySeqLong > endTrialDay]), 700, by = delayUnit) ## remaining vaccination days (delayUnit apart)
             ## 700 ensures that everyone eventually gets vaccinated, even if after trial stops keeping track
             if(ord == 'BL') ## reorder vaccination sequence by vaccinating highest hazard clusters as determined when trial ended
-                EVclusIncRank <- EVpopH[cluster %in% vaccClusters & idByClus==1 & day == firstVaccDayAfterTrialEnd,
+                EVclusIncRank <- EVpopH[cluster %in% vaccClusters & idByClus==1 & day == firstVaccDayAfterTrialEnd-reordLag,
                                         rev(order(clusHaz))]
             if(ord == 'TU') {  ## reorder vaccination sequence by vaccinating highest hazard partially vacc clusters as vaccination happens
                 EVclusIncRank <- NULL
@@ -219,11 +232,15 @@ endFRCT <- endRCT <- function(parms) within(parms, {
                     EVclusIncRank <- c(EVclusIncRank, tmpRank[1])
                 }
             }
-            ## Then update the vaccination days for unvaccinated individuals in partially vaccinated clusters based on these orders
+            ## Look at how this actually works
+            ## popHearly[cluster %in% vaccClusters & idByClus==1 & day == dd - reordLag,
+            ##                                       list(cluster, clusHaz, order(clusHaz), rev(order(clusHaz)))]
 
+            ## ##############################
+            ## Then update the vaccination days for unvaccinated individuals in partially vaccinated clusters based on these orders
             if(ord == 'none')
                 EVpopH[cluster %in% vaccClusters & vaccDay==Inf, 
-                       vaccDay := vaccDaysLeft[1] + delayUnit*(cluster-1)]
+                       vaccDay := vaccDaysLeft[1] + delayUnit*(cluster-min(vaccClusters))]
             if(ord == 'BL') { 
                 for(ii in 1:length(EVclusIncRank))
                     EVpopH[cluster==vaccClusters[EVclusIncRank[ii]] & vaccDay==Inf, vaccDay := vaccDaysLeft[ii]]
@@ -232,21 +249,17 @@ endFRCT <- endRCT <- function(parms) within(parms, {
                 for(ii in 1:length(EVclusIncRank))
                     EVpopH[cluster==vaccClusters[EVclusIncRank[ii]] & vaccDay==Inf, vaccDay := vaccDaysLeft[ii]]
             }
-            ## EVpopH[cluster %in% vaccClusters & idByClus %in% c(1,clusSize/2+1) & day == 0, ] ## check ordering works
 
-            ## print(EVpopH[idByClus %in% 1 & day == endTrialDay + (0-1)*delayUnit,  ## control group w/in each cluster
-            ##        list(cluster, vaccDay, day, clusHaz, ord = order(rev(order(clusHaz))))])
-
-            ##    EVpopH[cluster%in% vaccClusters & idByClus==1, ]
-
+            ## ##############################
             ## Then go back and vaccinate unvaccinated clusters
             if(length(notYetVaccClusters)>0) {
+                ## Vacc days left after vaccinated control individuals in clusters that already had people vaccinted
                 vaccDaysLeft <- seq(min(daySeqLong[daySeqLong > EVpopH[cluster %in% vaccClusters, max(vaccDay)]]), 700, by = delayUnit)
                 ## Again get order first, for totally unvaccinated clusters
                 if(ord == 'BL') ## reorder vaccination sequence by vaccinating highest hazard clusters as determined when *trial ended*
-                    EVclusIncRank <- EVpopH[cluster %in% notYetVaccClusters & vaccDay == Inf & idByClus==1 & day == endTrialDay,
-                                            rev(order(clusHaz))]
-                if(ord == 'TU') {  ## reorder vaccination sequence by vaccinating highest hazard partially vacc clusters as vaccination happens
+                    EVclusIncRank <- EVpopH[cluster %in% notYetVaccClusters & vaccDay == Inf & idByClus==1 & 
+                                                day == firstVaccDayAfterTrialEnd-reordLag, rev(order(clusHaz))]
+                if(ord == 'TU') { ## reorder vaccination sequence by vaccinating highest hazard remaining clusters as vaccination happens
                     EVclusIncRank <- NULL
                     for(ii in 1:length(notYetVaccClusters)) {
                         dd <- vaccDaysLeft[ii]
@@ -260,22 +273,28 @@ endFRCT <- endRCT <- function(parms) within(parms, {
                 ## haven't been already assigned, i.e. don't require vaccDay==Inf)
                 if(ord == 'none')
                     EVpopH[cluster %in% notYetVaccClusters,
-                           vaccDay := vaccDaysLeft[1] + delayUnit*(cluster-1)]
+                           vaccDay := vaccDaysLeft[1] + delayUnit*(cluster-min(notYetVaccClusters))] 
                 if(ord %in% c('BL','TU')) { 
                     for(ii in 1:length(EVclusIncRank))
                         EVpopH[cluster==notYetVaccClusters[EVclusIncRank[ii]],
                                vaccDay := vaccDaysLeft[ii]]
                     rm(ii) }
             }
+
             
         }
 
-        ## ##################################################
-        ## Option 3. Continue with cluster sequence, but vaccinate full clusters. *Simultaneously* begin going
-        ## back and vacc partially vacc clusters.
-        if(F) {# RCTendOption==3) {
+    ## ##################################################
+    ## Option 3. (Incidence minimizing) Procede to vaccinate all unvaccinated individuals in order
+    ## of their cluster hazard, ignoring whether half of the cluster has already been vaccinated or
+    ## not in the ordering decision
+    if(F) {# RCTendOption==3) {
 
-        }
     }
+    }
+    ## check ordering works
+    ## EVpopH[cluster %in% notYetVaccClusters & idByClus %in% c(1,clusSize/2+1) & day == 0, list(cluster, idByClus, clusHaz, vaccDay)]
+    ## EVpopH[cluster %in% vaccClusters & idByClus %in% c(1,clusSize/2+1) & day == 0, list(cluster, idByClus, clusHaz, vaccDay)]
+
 })
 

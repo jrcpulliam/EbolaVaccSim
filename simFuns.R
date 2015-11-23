@@ -111,7 +111,7 @@ createHazTraj_SL <- function(parms) within(parms, {
 
 setClusHaz <- function(parms) {
     parms <- within(parms, { ## add daySeq
-        daySeq <- seq(-hazIntUnit*ceiling(reordLag/hazIntUnit),maxDurationDay,by=hazIntUnit) })
+        daySeq <- seq(-hazIntUnit*ceiling(reordLag/hazIntUnit),trackUntilDay,by=hazIntUnit) })
     tempCHTfxn <- get(paste0('createHazTraj_', parms$hazType)) ## get chosen function
     return(tempCHTfxn(parms))
 }
@@ -130,7 +130,7 @@ setIndHaz <- function(parms=makePop()) within(parms, {
     popH <- arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day)
     popH$indivHaz <- popH[, clusHaz*indivRR]
     daySeq <- daySeq[daySeq>=0] ## don't do anything before zero, just stored hazard in popHearly for ordering
-    daySeqLong <- seq(0,maxDurationDay+1000,by=hazIntUnit) ## to avoid problems later
+    daySeqLong <- seq(0,trackUntilDay+1000,by=hazIntUnit) ## to avoid problems later
     popHearly <- copy(popH)
     popH <- popH[day >= 0]
     rm(hazT)
