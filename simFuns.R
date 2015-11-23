@@ -18,7 +18,8 @@ makeParms <- function(
   , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
   , vaccEff = .8
-  , maxInfectDay = 7*24 ## end of trial (24 weeks default; 6 months)
+  , maxDurationDay = 7*24 ## maximum duration end of trial (24 weeks default; 6 months) (trial can stop early though; e.g. endTrialDay)
+  , trackUntilDay = 2*maxDurationDay ## how long to track infections for calculating incidence averted & equipoise
     ## Sequential Design info
   , gs=FALSE
   , gsDesArgs = list(k=3, test.type=2, alpha=0.025, beta=0.1, timing = seq(0,1, l = 4)[-1]) ## total number of analyses
@@ -47,7 +48,8 @@ makeParms <- function(
         clusSize <- 4
     }
     trialStartDate <- as.Date(trialStartDate)
-    if(maxInfectDay < delayUnit*numClus) stop('maxInfectDay too short. Need enough time to rollout vaccines to all clusters')
+    if(maxDurationDay < delayUnit*numClus) stop('maxDurationDay too short. Need enough time to rollout vaccines to all clusters')
+    if(gsDesArgs$k>1 & length(StatsFxns)>1) stop('Cannot apply multiple statistical functions for simulations of sequential designs since trial progression is conditional on analysis')
     if(trial=='FRCT') delayUnit <- delayUnit/2 ## rolling out vaccines as quickly as you would if you were vaccinating whole clusters
     if(gs) {
         gsBounds <- do.call(gsDesign, gsDesArgs)
@@ -57,15 +59,15 @@ makeParms <- function(
             return(sum(sampSizes*cumHazs))
         })
     }
-    return(as.list(environment()))
+        return(as.list(environment()))
 }
 
 ## Make a trial population with a given number of clusters of a given size. Put the people in
 ## clusters, give them individual IDs and also id # within cluster
 makePop <- function(parms=makeParms()) within(parms, {
     pop <- data.table(indiv=as.factor(1:(numClus*clusSize))
-                      , cluster=as.numeric(gl(n=numClus, k=clusSize))
-                      , idByClus = rep(1:clusSize, numClus)
+                    , cluster=as.numeric(gl(n=numClus, k=clusSize))
+                    , idByClus = rep(1:clusSize, numClus)
                       )
 })
 
@@ -109,7 +111,7 @@ createHazTraj_SL <- function(parms) within(parms, {
 
 setClusHaz <- function(parms) {
     parms <- within(parms, { ## add daySeq
-        daySeq <- seq(-hazIntUnit*ceiling(reordLag/hazIntUnit),maxInfectDay,by=hazIntUnit) })
+        daySeq <- seq(-hazIntUnit*ceiling(reordLag/hazIntUnit),maxDurationDay,by=hazIntUnit) })
     tempCHTfxn <- get(paste0('createHazTraj_', parms$hazType)) ## get chosen function
     return(tempCHTfxn(parms))
 }
@@ -128,7 +130,7 @@ setIndHaz <- function(parms=makePop()) within(parms, {
     popH <- arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day)
     popH$indivHaz <- popH[, clusHaz*indivRR]
     daySeq <- daySeq[daySeq>=0] ## don't do anything before zero, just stored hazard in popHearly for ordering
-    daySeqLong <- seq(0,maxInfectDay+1000,by=hazIntUnit) ## to avoid problems later
+    daySeqLong <- seq(0,maxDurationDay+1000,by=hazIntUnit) ## to avoid problems later
     popHearly <- copy(popH)
     popH <- popH[day >= 0]
     rm(hazT)

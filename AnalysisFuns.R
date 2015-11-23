@@ -27,7 +27,7 @@ gsTimeCalc <- function(parms) {
             intTab <- intTab[!is.na(tcal)]
             intTab$trigger <- 'events'
             ## If don't do all analyses, add one more at maximum trial duration
-            if(nrow(intTab) < gsBounds$k) intTab <- rbind(intTab, data.table(events=NA, tcal=maxInfectDay, trigger='end time'))
+            if(nrow(intTab) < gsBounds$k) intTab <- rbind(intTab, data.table(events=NA, tcal=maxDurationDay, trigger='end time'))
             intTab
             if(nrow(intTab) < gsBounds$k) { ## if don't have full # of analyses, must readjust design to spend all remaining alpha at maximum trial duration
                 gsDesArgsAdj <- within(gsDesArgs, {
@@ -38,7 +38,7 @@ gsTimeCalc <- function(parms) {
                     gsBoundsAdj <- do.call(gsDesign, gsDesArgsAdj)
                     intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
                 }else{ ## otherwise non-sequential
-                    intTab <- data.table(events = NA, tcal = maxInfectDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
+                    intTab <- data.table(events = NA, tcal = maxDurationDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
                 }
             }else{ ## use original boundsQ
                 gsBoundsAdj <- gsBounds
@@ -46,7 +46,7 @@ gsTimeCalc <- function(parms) {
             }
             rm(maxInfo, infDays)
         }else{ ## non-sequential design
-            intTab <- data.table(events = NA, tcal = maxInfectDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
+            intTab <- data.table(events = NA, tcal = maxDurationDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
         }
         intTab$contCases <- intTab$vaccCases <- intTab$obsZ <- as.numeric(NA)
         intTab$vaccGood <- intTab$vaccBad <- as.logical(NA)
@@ -98,16 +98,30 @@ getEndResults <- function(parms, bump = T) {
             intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]
             intStats[[analysisNum]][, vaccCases := tmpCSD[immuneGrp==1,sum(infected)]]
         })
-            earlyStop <- parms$intStats[[analysisNum]][, vaccGood | vaccBad]
+        earlyStop <- parms$intStats[[analysisNum]][, vaccGood | vaccBad]
         ## Determine whether trial stopped for boundary crossing or last analysis
         if(earlyStop | analysisNum==nrow(parms$intTab)) trialStopped <- T
     }
     tmpASD <- censSurvDat(parms, censorDay=analysisDay, whichDo='st') ## all survival data (not just actively analyzeable person-time), censored by trial end date
     parms <- within(parms, {
-        finInfo <- compileStopInfo(tmp = tmpCSD, minDay=maxInfectDay,  verbose=verbose) ## active person-time only
+        ## Make intStats into one data table
+        if(gsDesArgs$k>1) {
+            intStats <- rbindlist(intStats)
+        }else{
+            intStats <- intStats[[1]]
+        }
+        if(tail(intStats[, vaccGood | vaccBad],1)) {
+            endTrialDay <- tail(intStats$tcal, 1) ## when trial stopped (two-sided)
+            firstVaccDayAfterTrialEnd <- min(daySeqLong[daySeqLong>endTrialDay])
+        }else{
+            endTrialDay <- maxDurationDay ## or maximum duration
+        }
+        ## Compile info on cases,  person-time & hazard at trial stopday
+        finInfo <- compileStopInfo(tmp = tmpCSD, minDay=endTrialDay,  verbose=verbose) ## active person-time only
         names(finInfo)[-1] <- paste0(names(finInfo)[-1],'_Active')
         finInfo <- data.frame(finInfo,  ## all person-time, not just active
-                              compileStopInfo(tmp = tmpASD, minDay=maxInfectDay,  verbose=verbose)[-1])
+                              compileStopInfo(tmp = tmpASD, minDay=maxDurationDay,  verbose=verbose)[-1])
+
     })
     return(parms)
 }
@@ -148,6 +162,12 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         ## plotSTA(res$stActive) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
+        res$verbose <- 35
+        res$endTrialDay <- 100
+endT(res)
+browser()
+
+
         finTmp <- data.frame(sim = ss, res$intStats[[length(res$intStats)]][1,])
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.frame(sim = ss, res$finInfo)

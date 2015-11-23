@@ -157,7 +157,7 @@ plotClusD <- function(clusD) {
 }
 
 ## Take a survival data from above function and censor it by a specified time in months
-censSurvDat <- function(parms, censorDay = parms$maxInfectDay, whichDo = 'stActive') with(parms, {
+censSurvDat <- function(parms, censorDay = parms$maxDurationDay, whichDo = 'stActive') with(parms, {
     if(verbose==2.7) browser()
     stTmp <- copy(get(whichDo))
     intervalNotStarted <- stTmp[,startDay] > censorDay

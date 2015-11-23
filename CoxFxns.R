@@ -3,7 +3,7 @@ require(geepack)
 
 ## make the highest hazard uninfected individuals in a vacc and control group be infected to allow
 ## for conservative CI calculation when 0 infections in certain groups
-infBump <- function(parms, censorDay=parms$maxInfectDay) {
+infBump <- function(parms, censorDay=parms$maxDurationDay) {
     if(parms$verbose>0) print('bumping infections to deal with divergence')
     parmsE <- copy(parms)
     parmsE <- within(parmsE, {
