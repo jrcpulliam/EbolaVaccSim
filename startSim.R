@@ -16,13 +16,14 @@ seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDel
 }
 
 hazType='Phenom'
-mu <- .02*yearToDays
+mu <- .09*yearToDays
 weeklyDecay <- .9
 cvWeeklyDecay <- .01
 cvClus <- .01
 cvClusTime <- .01
 gs <- T
-nsims <- 100
+nsims <- 1
+RCTendOption <- 3
 
 verbose <- 1#2.935
 parmArgs <- subsArgs(as.list(environment()), makeParms)
@@ -31,6 +32,7 @@ parms <- do.call(makeParms, parmArgs)
 saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", simNum),'.Rdata'))
 modsToDo <- list('CoxME','GLMclus','GLMFclus') ##,'GLMMclusBy') #'GLMMclusFr')
 
+sapply(c('simFuns.R','AnalysisFuns.R', 'MungeFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R'), source)
 system.time(sim <- simNtrials(seed=seed, parms=parms, N=nsims, flnm=saveFl, verbFreq=10))
 sim <- list(sim=sim, parms=parms, seed=seed, simNum=simNum)
 save(sim, file = saveFl)
