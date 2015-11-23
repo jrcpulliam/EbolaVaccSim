@@ -10,7 +10,8 @@ endT <- function(parms) {
         })
     }else{ ## run one of the below functions on them
         endFXN <- get(paste0('end', parms$trial))
-        parms <- endFXN(parms)
+        parms <- endFXN(parms) ## if vaccGood (if statements internal)
+        parms <- badVaccEndT(parms) ## if vaccBad (if statements internal)
     }
     parms <- within(parms, {
         ## Reset immune indices
@@ -23,102 +24,19 @@ endT <- function(parms) {
         EVpop[, immuneDay := EVpopH[day==0, immuneDay]]
     })
     ## do infection process again post-end of trial if not SWCT (which proceeds as normal)
-    if(with(parms, trial != 'SWCT' & with(tail(weeklyAns,1), stopped & vaccGood))) { 
+    if(with(parms, tail(intStats[, vaccGood | vaccBad],1))) { 
         parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
     }
     ## calculate # infected for various permutations
-    parms <- makeSurvDat(parms, whichDo='EVpop')
-    parms <- activeFXN(parms, whichDo = 'EVst')
+    parms <- makeSurvDat(parms, whichDo='EVpop') ## don't make stActiveEV because not analyzing (just vacc rollout data)ss
     return(parms)
 }
 
-badVaccEndT <- function(parms) {
+badVaccEndT <- function(parms) within(parms, {
     if(tail(intStats$vaccBad,1)) { ## Vaccine doesn't work
-
+        EVpopH <- copy(popH)
+        EVpopH[vaccDay > endTrialDay, vaccDay := Inf] ## no more vaccinating after the trial is over
     }
-}
-
-##         pop[infectDay!=Inf, list(indiv, infectDay)]
-##         arrange(popH[infectDay!=Inf, list(indiv, infectDay)], indiv)
-## with(parms, {
-## browser()
-
-##         EVpop[infectDay!=Inf, list(indiv, infectDay)]
-##         arrange(EVpopH[infectDay!=Inf, list(indiv, infectDay)], indiv)
-
-## nms <- colnames(pop)
-## tst <- setcolorder(copy(popH[infectDay!=Inf])[,nms, with=F], nms)
-## identical(pop[,1,with=F], tst[,1,with=F])
-## identical(pop,tst)
-## pop[which(pop[,infectDay]!=tst[,infectDay])]
-## })
-
-## identical(pop, EVpop)
-## nms <- colnames(pop)
-## tst <- setcolorder(copy(popH[day==0])[,nms, with=F], nms)
-## identical(pop[,1,with=F], tst[,1,with=F])
-## identical(pop,tst)
-## pop[which(pop[,infectDay]!=tst[,infectDay])]
-
-## for(ii in 1:ncol(pop)) print(setdiff(pop[,ii,with=F], tst[,ii,with=F]))
-
-## identical(popH, EVpopH)
-
-## tmp <- censSurvDat(parms, 259,'EVstActive')
-## tmp[immuneGrp==1, sum(infected)]
-## tmp[immuneGrp==0, sum(infected)]
-
-## Create summary of # of cases by whether they were currently considered immune or not, & whether
-## they were assigned to vaccination or control groups at baseline.
-makeCaseSummary <- function(parms) within(parms, {
-    if(parms$verbose>32) browser()
-    stNms <- c('st','EVst','stActive','EVstActive')
-    ## Create final survival tables for all of these censoring at trial's completion (not end day, but final time planned)
-    ## ##################################################
-    ## by person time spent in immune category (not omnitient immune but thought post vacc eclispe period)
-    ptByPTImmune <- data.table(immuneGrp = 0:1)
-    casesByPTImmune <- data.table(immuneGrp = 0:1)
-    for(stI in stNms) {
-        tmp <- censSurvDat(parms, whichDo = stI)
-        casesTmp <- summarise(group_by(tmp, immuneGrp), sum(infected), sum(perstime))
-        ptTmp <- arrange(casesTmp, immuneGrp)[,3, with=F]
-        casesTmp <- arrange(casesTmp, immuneGrp)[,2, with=F]
-        casesByPTImmune[,(stI) := casesTmp]
-        nmTmp <- paste0(stI,'_pt')
-        ptByPTImmune[,(nmTmp) := ptTmp]
-    }
-    casesXPT_Immune <- data.table(type = stNms) 
-    casesXPT_Immune[, susCases := t(casesByPTImmune)[-1,1]]
-    casesXPT_Immune[, immCases := t(casesByPTImmune)[-1,2]]
-    casesXPT_Immune[, susPT := t(ptByPTImmune)[-1,1]]
-    casesXPT_Immune[, immPT := t(ptByPTImmune)[-1,2]]
-    ## ##################################################
-    ## by randomization group
-    ptByVaccRand <- data.table(vaccRandGrp = 0:1)
-    casesByVaccRand <- data.table(vaccRandGrp = 0:1)
-    vaccRandIndiv <- pop[vaccDay!=Inf, unique(indiv)]
-    for(stI in stNms) {
-        tmp <- censSurvDat(parms, whichDo = stI)
-        tmp$vaccRandGrp <- tmp[, indiv %in% vaccRandIndiv]
-        casesTmp <- summarise(group_by(tmp, vaccRandGrp), sum(infected), sum(perstime))
-        ptTmp <- arrange(casesTmp, vaccRandGrp)[,3, with=F]
-        casesTmp <- arrange(casesTmp, vaccRandGrp)[,2, with=F]
-        casesByVaccRand[,(stI) := casesTmp]
-        nmTmp <- paste0(stI,'_pt')
-        ptByVaccRand[,(nmTmp) := ptTmp]
-    }
-    casesXVaccRandGrp <- data.table(type = stNms) 
-    if(trial=='SWCT') { ## no one randomized to control group in SWCT
-        casesXVaccRandGrp[, contCases := 0]
-        casesXVaccRandGrp[, contPT := 0]
-    }
-    if(!trial=='SWCT') {
-        casesXVaccRandGrp[, contCases := t(casesByVaccRand)[-1,1]]
-        casesXVaccRandGrp[, contPT := t(ptByVaccRand)[-1,1]]
-    }
-    casesXVaccRandGrp[, vaccCases := t(casesByVaccRand)[-1,2]]
-    casesXVaccRandGrp[, vaccPT := t(ptByVaccRand)[-1,2]]
-    rm(nmTmp, tmp, casesTmp, ptTmp, stI, casesByPTImmune, ptByVaccRand,casesByVaccRand, ptByPTImmune, stNms, vaccRandIndiv)
 })
 
 ## SWCT is fastest possible vaccination already, so no change
@@ -319,3 +237,56 @@ endFRCT <- endRCT <- function(parms) within(parms, {
     ## EVpopH[cluster %in% vaccClusters & idByClus %in% c(1,clusSize/2+1) & day == 0, list(cluster, idByClus, clusHaz, vaccDay)]
 })
 
+
+## Create summary of # of cases by whether they were currently considered immune or not, & whether
+## they were assigned to vaccination or control groups at baseline.
+makeCaseSummary <- function(parms) within(parms, {
+    if(parms$verbose>32) browser()
+    stNms <- c('st','EVst','stActive','EVstActive')
+    ## Create final survival tables for all of these censoring at trial's completion (not end day, but final time planned)
+    ## ##################################################
+    ## by person time spent in immune category (not omnitient immune but thought post vacc eclispe period)
+    ptByPTImmune <- data.table(immuneGrp = 0:1)
+    casesByPTImmune <- data.table(immuneGrp = 0:1)
+    for(stI in stNms) {
+        tmp <- censSurvDat(parms, whichDo = stI)
+        casesTmp <- summarise(group_by(tmp, immuneGrp), sum(infected), sum(perstime))
+        ptTmp <- arrange(casesTmp, immuneGrp)[,3, with=F]
+        casesTmp <- arrange(casesTmp, immuneGrp)[,2, with=F]
+        casesByPTImmune[,(stI) := casesTmp]
+        nmTmp <- paste0(stI,'_pt')
+        ptByPTImmune[,(nmTmp) := ptTmp]
+    }
+    casesXPT_Immune <- data.table(type = stNms) 
+    casesXPT_Immune[, susCases := t(casesByPTImmune)[-1,1]]
+    casesXPT_Immune[, immCases := t(casesByPTImmune)[-1,2]]
+    casesXPT_Immune[, susPT := t(ptByPTImmune)[-1,1]]
+    casesXPT_Immune[, immPT := t(ptByPTImmune)[-1,2]]
+    ## ##################################################
+    ## by randomization group
+    ptByVaccRand <- data.table(vaccRandGrp = 0:1)
+    casesByVaccRand <- data.table(vaccRandGrp = 0:1)
+    vaccRandIndiv <- pop[vaccDay!=Inf, unique(indiv)]
+    for(stI in stNms) {
+        tmp <- censSurvDat(parms, whichDo = stI)
+        tmp$vaccRandGrp <- tmp[, indiv %in% vaccRandIndiv]
+        casesTmp <- summarise(group_by(tmp, vaccRandGrp), sum(infected), sum(perstime))
+        ptTmp <- arrange(casesTmp, vaccRandGrp)[,3, with=F]
+        casesTmp <- arrange(casesTmp, vaccRandGrp)[,2, with=F]
+        casesByVaccRand[,(stI) := casesTmp]
+        nmTmp <- paste0(stI,'_pt')
+        ptByVaccRand[,(nmTmp) := ptTmp]
+    }
+    casesXVaccRandGrp <- data.table(type = stNms) 
+    if(trial=='SWCT') { ## no one randomized to control group in SWCT
+        casesXVaccRandGrp[, contCases := 0]
+        casesXVaccRandGrp[, contPT := 0]
+    }
+    if(!trial=='SWCT') {
+        casesXVaccRandGrp[, contCases := t(casesByVaccRand)[-1,1]]
+        casesXVaccRandGrp[, contPT := t(ptByVaccRand)[-1,1]]
+    }
+    casesXVaccRandGrp[, vaccCases := t(casesByVaccRand)[-1,2]]
+    casesXVaccRandGrp[, vaccPT := t(ptByVaccRand)[-1,2]]
+    rm(nmTmp, tmp, casesTmp, ptTmp, stI, casesByPTImmune, ptByVaccRand,casesByVaccRand, ptByPTImmune, stNms, vaccRandIndiv)
+})

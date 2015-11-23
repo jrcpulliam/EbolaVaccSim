@@ -1,17 +1,3 @@
-compileStopInfo <- function(minDay, tmp, verbose=0) {
-    if(verbose==4) browser()
-    out <- data.table(stopDay=minDay
-                    , caseCXimmGrpEnd = tmp[immuneGrp==0, sum(infected)]
-                    , caseVXimmGrpEnd = tmp[immuneGrp==1, sum(infected)]
-                    , hazCXimmGrpEnd = tmp[immuneGrp==0, sum(infected)/sum(perstime)]
-                    , hazVXimmGrpEnd = tmp[immuneGrp==1, sum(infected)/sum(perstime)]
-                    , ptRatioCVXimmGrpEnd = tmp[immuneGrp==0, sum(perstime)] / tmp[immuneGrp==1, sum(perstime)]
-                      )
-    out <- as.data.frame(out)
-    return(out)
-}
-
-
 
 gsTimeCalc <- function(parms) {
     parms <- within(parms, {
@@ -102,7 +88,6 @@ getEndResults <- function(parms, bump = T) {
         ## Determine whether trial stopped for boundary crossing or last analysis
         if(earlyStop | analysisNum==nrow(parms$intTab)) trialStopped <- T
     }
-    tmpASD <- censSurvDat(parms, censorDay=analysisDay, whichDo='st') ## all survival data (not just actively analyzeable person-time), censored by trial end date
     parms <- within(parms, {
         ## Make intStats into one data table
         if(gsDesArgs$k>1) {
@@ -116,15 +101,41 @@ getEndResults <- function(parms, bump = T) {
         }else{
             endTrialDay <- maxDurationDay ## or maximum duration
         }
-        ## Compile info on cases,  person-time & hazard at trial stopday
-        finInfo <- compileStopInfo(tmp = tmpCSD, minDay=endTrialDay,  verbose=verbose) ## active person-time only
-        names(finInfo)[-1] <- paste0(names(finInfo)[-1],'_Active')
-        finInfo <- data.frame(finInfo,  ## all person-time, not just active
-                              compileStopInfo(tmp = tmpASD, minDay=maxDurationDay,  verbose=verbose)[-1])
-
     })
     return(parms)
 }
+
+compileStopInfo <- function(atDay, tmp, verbose=0) {
+    if(verbose==4) browser()
+    out <- data.table(atDay=atDay
+                    , caseC = tmp[immuneGrp==0, sum(infected)]
+                    , caseV = tmp[immuneGrp==1, sum(infected)]
+                    , hazC = tmp[immuneGrp==0, sum(infected)/sum(perstime)]
+                    , hazV = tmp[immuneGrp==1, sum(infected)/sum(perstime)]
+                    , ptRatioCV = tmp[immuneGrp==0, sum(perstime)] / tmp[immuneGrp==1, sum(perstime)]
+                      )
+    out <- as.data.frame(out)
+    return(out)
+}
+
+finInfoFxn <- function(parms) {
+    tempFXN <- function(parms, atDay, whichDo, verbose=parms$verbose)
+        compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
+                        atDay=atDay, verbose=verbose)
+    tmpActive <- tempFXN(parms, parms$endTrialDay, 'stActive') ## active/analyzed
+    tmpAll <- tempFXN(parms, parms$endTrialDay, 'st') ## all by time trial is over
+    tmpAllEV <- tempFXN(parms, parms$trackUntilDay, 'stEV') ## all by trackuntilday counting vacc rollout (if applicable)
+    tmpAllnoEV <- tempFXN(parms, parms$trackUntilDay, 'st') ## all by trackuntilday counterfactual w/o vacc rollout
+    finInfo <- as.data.table(rbind(tmpActive, tmpAll, tmpAllEV, tmpAllnoEV))
+    finInfo$analyzed <- c(T,F,F,F)
+    finInfo$postrial <- c(F,F,T,T)
+    finInfo$postrialEV <- c(F,F,T,F)
+    ## vaccEff estimate should roughly equate to 
+    ## 1-finInfo[1,hazV/hazC]
+    parms$finInfo <- finInfo
+    return(parms)
+}
+
 
 doStats <- function(parmsE, tmpCSDE, analysisNum=1) {
     with(parmsE, {
@@ -162,34 +173,18 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         ## plotSTA(res$stActive) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
-##        res$verbose <- 35
-        res$endTrialDay <- 100
-endT(res)
-browser()
-
-
-        finTmp <- data.frame(sim = ss, res$intStats[[length(res$intStats)]][1,])
+        res <- endT(res)
+        res <- finInfoFxn(res)
+        ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
+        finTmp <- data.frame(sim = ss, res$intStats[analysis==max(res$intStats$analysis)]) 
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.frame(sim = ss, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
-        if(returnAll) {
-            weeklyAnsList[[ss]] <- as.data.frame(res$weeklyAns)
-            caseXVaccRandGrpList[[ss]] <- as.data.frame(res$casesXVaccRandGrp)
-            caseXPT_ImmuneList[[ss]] <- as.data.frame(res$casesXPT_Immune)
-        }
         rm(res)
         gc()
     }
-    if(returnAll)
-        return(list(
-            stopPoints = stopPoints
-            , weeklyAnsList = weeklyAnsList
-            , caseXVaccRandGrpList = caseXVaccRandGrpList
-            , caseXPT_ImmuneList = caseXPT_ImmuneList
-            , finPoint=finPoint
-            ))
     if(!returnAll)
-        return(list(stopPoints=stopPoints, finMods=finMods, finInfo=finInfo))
+        return(list(finMods=finMods, finInfo=finInfo))
 }
 
 
