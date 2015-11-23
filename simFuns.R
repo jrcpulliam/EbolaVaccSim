@@ -23,7 +23,8 @@ makeParms <- function(
     ## Sequential Design info
   , gs=FALSE
   , gsDesArgs = list(k=3, test.type=2, alpha=0.025, beta=0.1, timing = seq(0,1, l = 4)[-1]) ## total number of analyses
-  , infoCalcArgs = list(assumedVaccEff = vaccEff, assumedCumHazard = 10^-4, beta = .1) ## number of events to power trial asymptotes at low cumulative hazards (e.g. 36 for vaccEff=.7)
+  , infoCalcArgs = list(assumedVaccEff = .7, assumedCumHazard = 10^-4, beta = .1) ## number of events to power trial asymptotes at low cumulative hazards (e.g. 36 for vaccEff=.7)
+  , doCFs=F ## do coutnerfactual simulations
     ## , seqType='MaxDur' ## MaxDur or MaxInfo, i.em. spend alpha based on # events up until endtime, then spend rest of alpha
   , immunoDelay = 21 ## delay from vaccination to immunity
   , immunoDelayThink = immunoDelay ## delay from vaccination to immunity used in analysis (realistically would be unknown)
@@ -59,7 +60,7 @@ makeParms <- function(
             return(sum(sampSizes*cumHazs))
         })
     }
-        return(as.list(environment()))
+    return(as.list(environment()))
 }
 
 ## Make a trial population with a given number of clusters of a given size. Put the people in
@@ -224,8 +225,12 @@ setVaccDays <- function(parms) { ## wrapper around other functions below
     parms <- setVaccFXN(parms)
     return(parms)
 }
-setSWCTvaccDays <- function(parms) within(parms, {
-    popH$vaccDay <- delayUnit*(popH[,cluster]-1)
+setSWCTvaccDays <- function(parms, whichDo='pop') within(parms, {
+    tmpstrg <- paste0(whichDo, 'H')
+    tmpH <- copy(get(tmpstrg))
+    tmpH$vaccDay <- delayUnit*(tmpH[,cluster]-1)
+    assign(tmpstrg, tmpH)
+    rm(tmpH, tmpstrg)
 })
 setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming same speed rollout as SWCT (unless FRCT)
     popH$vaccDay <- Inf ## unvaccinated
@@ -240,12 +245,17 @@ setCRCTvaccDays <- function(parms) within(parms, {
 ## setVaccDays(p1)$popH[,list(cluster,clusHaz, day,vacc,immune)]
 ## p1 <- setVaccDays(p1)
 ## p1$popH[idByClus==1,list(cluster,clusHaz, day,vacc,immune)]
-setImmuneDays <- function(parms) within(parms, {
-    popH$immuneDay <- popH[,vaccDay] + immunoDelay ## vaccine refractory period
-    popH$vacc <- popH[, day>=vaccDay]
-    popH$immune <- popH[, day>=immuneDay]
+setImmuneDays <- function(parms, whichDo='pop') within(parms, {
+    tmpstrgH <- paste0(whichDo, 'H')
+    tmpH <- copy(get(tmpstrgH))
+    tmpH$immuneDay <- tmpH[,vaccDay] + immunoDelay ## vaccine refractory period
+    tmpH$vacc <- tmpH[, day>=vaccDay]
+    tmpH$immune <- tmpH[, day>=immuneDay]
     ## reset pop to refrence data table after reordering and then assignment of vaccday stuff
-    pop <- select(popH[day==0], indiv, cluster, pair, idByClus, indivRR, vaccDay, immuneDay) 
+    tmp <- select(tmpH[day==0], indiv, cluster, pair, idByClus, indivRR, vaccDay, immuneDay) 
+    assign(tmpstrgH, tmpH)
+    assign(whichDo, tmp)
+    rm(tmpH, tmpstrgH)
 })
 
 ## Simulate infections. Takes popH for initial simulation, or EVpopH for end trial vaccination version (requires startInf)
@@ -258,10 +268,15 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0) ## startIn
         tmpH[infectDay > startInfectingDay, infectDay := Inf] ## redoing post endDay stuff with additional folks vacc
         tmp[infectDay > startInfectingDay, infectDay := Inf] ## redoing post endDay stuff with additional folks vacc
         alreadyInfected <- NULL
-        for(dd in daySeq[daySeq>=startInfectingDay]) { ## infection day is beginning of each hazard interval + exponential waiting time
+        ## RNG seed control
+        if(whichDo=='pop') simInfSeed <- .GlobalEnv$.Random.seed ## saved for counterfactuals
+        if(whichDo %in% c('NTpop','VRpop')) .GlobalEnv$.Random.seed <- simInfSeed 
+        ## Loop thru infections: infection day is beginning of each hazard interval + exponential waiting time
+        for(dd in daySeq[daySeq>=startInfectingDay]) { 
             alreadyInfected <- tmpH[infectDay!=Inf, indiv] ## don't reinfect those already infected
             tmpH[day==dd & !indiv %in% alreadyInfected, 
                  infectDay := dd + rexp(length(indiv), rate = indivHaz*ifelse(immune, 1-vaccEff, 1))] 
+
             tmpH[day==dd & !indiv %in% alreadyInfected & infectDay > dd + hazIntUnit, 
                  infectDay := Inf] ## reset if it goes into next hazard interval
         }

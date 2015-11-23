@@ -138,20 +138,20 @@ compileStopInfo <- function(atDay, tmp, verbose=0) {
 }
 
 finInfoFxn <- function(parms) {
-    tempFXN <- function(parms, atDay, whichDo, verbose=parms$verbose)
+    tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
-    tmpActive <- tempFXN(parms, parms$endTrialDay, 'stActive') ## active/analyzed
-    tmpAll <- tempFXN(parms, parms$endTrialDay, 'st') ## all by time trial is over
-    tmpAllFinal_EV <- tempFXN(parms, parms$trackUntilDay, 'stEV') ## all by trackuntilday counting vacc rollout (if applicable)
-    tmpAllFinal_noEV <- tempFXN(parms, parms$trackUntilDay, 'st') ## all by trackuntilday counterfactual w/o vacc rollout
-    tmpAll_NT <- tempFXN(parms, parms$endTrialDay, 'stNT') ## all by trackuntilday counterfactual w/o vacc rollout
-    tmpAllFinal_NT <- tempFXN(parms, parms$trackUntilDay, 'stNT') ## all by trackuntilday counterfactual w/o vacc rollout
-    finInfo <- as.data.table(rbind(tmpActive, tmpAll, tmpAllFinal_EV, tmpAllFinal_noEV, tmpAll_NT, tmpAllFinal_NT))
-    finInfo$analyzed <- c(T,F,F,F,F,F)
-    finInfo$postrial <- c(F,F,T,T,F,T)
-    finInfo$postrialEV <- c(F,F,T,F,F,F)
-    finInfo$notrial <- c(F,F,F,F,T,T)
+    compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2,1,2,1,2)]
+                        , whichDo = c('stActive', 'st','stEV', 'st', 'stNT', 'stNT', 'stVR', 'stVR')
+                        , lab = c('analyzed','all','allFinalEV','allFinal_noEV', 'all_NT','allFinal_NT', 'all_VR', 'allFinal_VR')
+                          )
+    if(!doCFs) compTab <- compTab[!grepl('NT', lab) & !grepl('VR', lab)]
+    for(ii in 1:nrow(compTab)) {
+        finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
+        if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+    }
+    finInfo$cat <- compTab$lab
+    finInfo <- as.data.table(finInfo)[order(atDay)]
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
     parms$finInfo <- finInfo
@@ -177,15 +177,18 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
         res <- endT(res)
+        res <- cfSims(res)
         res <- finInfoFxn(res)
         ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
-        finTmp <- data.frame(sim = ss, res$intStats[analysis==max(res$intStats$analysis)]) 
+        finTmp <- data.table(sim = ss, res$intStats[analysis==max(res$intStats$analysis)]) 
         finMods <- rbind(finMods, finTmp)
-        finITmp <- data.frame(sim = ss, res$finInfo)
+        finITmp <- data.table(sim = ss, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
         rm(res)
         gc()
     }
+    finInfo$caseTot <- finInfo[,caseC+caseV]
+    setcolorder(finInfo, c('sim','cat','atDay','caseTot','caseC','caseV','hazC','hazV','ptRatioCV'))
     if(!returnAll)
         return(list(finMods=finMods, finInfo=finInfo))
 }

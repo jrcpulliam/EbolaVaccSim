@@ -29,23 +29,43 @@ endT <- function(parms) {
     }
     ## calculate # infected for various permutations
     parms <- makeSurvDat(parms, whichDo='EVpop') ## don't make stActiveEV because not analyzing (just vacc rollout data)
-    ## No trial counter-factual simulation
-    parms <- within(parms, {
-        NTpopH <- copy(popH)
-        NTpopH <- within(NTpopH, {
-            infectDay <- vaccDay <- immuneDay <- Inf
-            vacc <- immune <- F
-        })
-        NTpop <- copy(pop)
-        NTpop <- within(NTpop, {
-            infectDay <- vaccDay <- immuneDay <- Inf
-        })
-    })
-    parms <- simInfection(parms, whichDo = 'NTpop', startInfectingDay = 0)
-    parms <- makeSurvDat(parms, whichDo='NTpop')
-    ## ##############################
     return(parms)
 }
+
+cfSims <- function(parms) {
+    if(parms$doCFs) {
+        ## *V*accine *r*ollout simulation; *N*o *t*rial counter-factual simulation
+        parms <- within(parms, {
+            NTpopH <- copy(popH)
+            NTpopH <- within(NTpopH, {
+                infectDay <- vaccDay <- immuneDay <- Inf
+                vacc <- immune <- F
+            })
+            VRpop <- NTpop <- copy(pop)
+            NTpop <- within(NTpop, {
+                infectDay <- vaccDay <- immuneDay <- Inf
+            })
+        })
+        ## ##############################
+        ## risk-prioritized roll-out, i.e. no randomization
+        ## force order to be that of TU-risk-prioritized-RCT
+        parmsVR <- copy(parms)
+        if(parmsVR$ord!='TU') {
+            parmsVR$ord <- 'TU'
+            parmsVR <- reordRCT(parmsVR)
+        }
+        parms$VRpopH <- parmsVR$popH ## to avoid rewriting reordFxns with whichDo
+        rm(parmsVR)
+        parms <- setSWCTvaccDays(parms, whichDo='VRpop') ## set vaccination days
+        parms <- setImmuneDays(parms, whichDo='VRpop')   ## set immune days
+        for(cf in c('NTpop','VRpop')) {
+            parms <- simInfection(parms, whichDo = cf, startInfectingDay = 0)
+            parms <- makeSurvDat(parms, whichDo=cf)
+        }
+    }
+    return(parms)
+}
+## parms$VRpopH[idByClus %in% c(1,151)]
 
 badVaccEndT <- function(parms) within(parms, {
     if(tail(intStats$vaccBad,1)) { ## Vaccine doesn't work

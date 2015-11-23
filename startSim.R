@@ -12,25 +12,25 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/SLSimsFinalPTCorr";saveNm="simSL-bigPit-";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T
+seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T
 }
 
 hazType='Phenom'
-mu <- .09*yearToDays
+mu <- .13*yearToDays
 weeklyDecay <- .9
 cvWeeklyDecay <- .01
 cvClus <- .01
 cvClusTime <- .01
 gs <- T
-nsims <- 1
+nsims <- 1#2000
 RCTendOption <- 3
+vaccEff <- 0
 
-verbose <- 1#2.935
+verbose <- 1
 parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)
 saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", simNum),'.Rdata'))
-modsToDo <- list('CoxME','GLMclus','GLMFclus') ##,'GLMMclusBy') #'GLMMclusFr')
 
 sapply(c('simFuns.R','AnalysisFuns.R', 'MungeFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R'), source)
 system.time(sim <- simNtrials(seed=seed, parms=parms, N=nsims, flnm=saveFl, verbFreq=10))
