@@ -28,7 +28,22 @@ endT <- function(parms) {
         parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
     }
     ## calculate # infected for various permutations
-    parms <- makeSurvDat(parms, whichDo='EVpop') ## don't make stActiveEV because not analyzing (just vacc rollout data)ss
+    parms <- makeSurvDat(parms, whichDo='EVpop') ## don't make stActiveEV because not analyzing (just vacc rollout data)
+    ## No trial counter-factual simulation
+    parms <- within(parms, {
+        NTpopH <- copy(popH)
+        NTpopH <- within(NTpopH, {
+            infectDay <- vaccDay <- immuneDay <- Inf
+            vacc <- immune <- F
+        })
+        NTpop <- copy(pop)
+        NTpop <- within(NTpop, {
+            infectDay <- vaccDay <- immuneDay <- Inf
+        })
+    })
+    parms <- simInfection(parms, whichDo = 'NTpop', startInfectingDay = 0)
+    parms <- makeSurvDat(parms, whichDo='NTpop')
+    ## ##############################
     return(parms)
 }
 

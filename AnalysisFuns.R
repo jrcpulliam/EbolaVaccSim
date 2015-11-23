@@ -105,6 +105,25 @@ getEndResults <- function(parms, bump = T) {
     return(parms)
 }
 
+
+doStats <- function(parmsE, tmpCSDE, analysisNum=1) {
+    with(parmsE, {
+        if(verbose==2.94) browser()
+        vEEs <- list()
+        length(vEEs) <- length(StatsFxns)
+        for(sf.ind in 1:length(StatsFxns)) {
+            tempsf <- get(StatsFxns[sf.ind])
+            argList <- list(parms=parmsE, csd=tmpCSDE, bump=parmsE$bump, nboot=parmsE$nboot)
+            argList <- subsArgs(argList, tempsf)
+            vEEs[[sf.ind]] <- do.call(tempsf, args = argList)
+        }
+        tmpStat <- rbindlist(vEEs)
+        tmpStat$sf <- StatsFxns
+        return(tmpStat)
+    })
+}
+## StatsFxns <- c('doCoxMe','doGLMFclus','doGMMclus','doGLMclus','doRelabel','doBoot')
+
 compileStopInfo <- function(atDay, tmp, verbose=0) {
     if(verbose==4) browser()
     out <- data.table(atDay=atDay
@@ -124,36 +143,20 @@ finInfoFxn <- function(parms) {
                         atDay=atDay, verbose=verbose)
     tmpActive <- tempFXN(parms, parms$endTrialDay, 'stActive') ## active/analyzed
     tmpAll <- tempFXN(parms, parms$endTrialDay, 'st') ## all by time trial is over
-    tmpAllEV <- tempFXN(parms, parms$trackUntilDay, 'stEV') ## all by trackuntilday counting vacc rollout (if applicable)
-    tmpAllnoEV <- tempFXN(parms, parms$trackUntilDay, 'st') ## all by trackuntilday counterfactual w/o vacc rollout
-    finInfo <- as.data.table(rbind(tmpActive, tmpAll, tmpAllEV, tmpAllnoEV))
-    finInfo$analyzed <- c(T,F,F,F)
-    finInfo$postrial <- c(F,F,T,T)
-    finInfo$postrialEV <- c(F,F,T,F)
+    tmpAllFinal_EV <- tempFXN(parms, parms$trackUntilDay, 'stEV') ## all by trackuntilday counting vacc rollout (if applicable)
+    tmpAllFinal_noEV <- tempFXN(parms, parms$trackUntilDay, 'st') ## all by trackuntilday counterfactual w/o vacc rollout
+    tmpAll_NT <- tempFXN(parms, parms$endTrialDay, 'stNT') ## all by trackuntilday counterfactual w/o vacc rollout
+    tmpAllFinal_NT <- tempFXN(parms, parms$trackUntilDay, 'stNT') ## all by trackuntilday counterfactual w/o vacc rollout
+    finInfo <- as.data.table(rbind(tmpActive, tmpAll, tmpAllFinal_EV, tmpAllFinal_noEV, tmpAll_NT, tmpAllFinal_NT))
+    finInfo$analyzed <- c(T,F,F,F,F,F)
+    finInfo$postrial <- c(F,F,T,T,F,T)
+    finInfo$postrialEV <- c(F,F,T,F,F,F)
+    finInfo$notrial <- c(F,F,F,F,T,T)
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
     parms$finInfo <- finInfo
     return(parms)
 }
-
-
-doStats <- function(parmsE, tmpCSDE, analysisNum=1) {
-    with(parmsE, {
-        if(verbose==2.94) browser()
-        vEEs <- list()
-        length(vEEs) <- length(StatsFxns)
-        for(sf.ind in 1:length(StatsFxns)) {
-            tempsf <- get(StatsFxns[sf.ind])
-            argList <- list(parms=parmsE, csd=tmpCSDE, bump=parmsE$bump, nboot=parmsE$nboot)
-            argList <- subsArgs(argList, tempsf)
-            vEEs[[sf.ind]] <- do.call(tempsf, args = argList)
-        }
-        tmpStat <- rbindlist(vEEs)
-        tmpStat$sf <- StatsFxns
-        return(tmpStat)
-    })
-}
-## StatsFxns <- c('doCoxMe','doGLMFclus','doGMMclus','doGLMclus','doRelabel','doBoot')
 
 simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
                        doSeqStops = F, showSeqStops = F, flnm='test', verbFreq=10) {
