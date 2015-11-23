@@ -16,7 +16,7 @@ seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDel
 }
 
 hazType='Phenom'
-mu <- .13*yearToDays
+mu <- .15*yearToDays
 weeklyDecay <- .9
 cvWeeklyDecay <- .01
 cvClus <- .01
@@ -25,6 +25,7 @@ gs <- T
 nsims <- 1#2000
 RCTendOption <- 3
 vaccEff <- 0
+doCFs <- T
 
 verbose <- 1
 parmArgs <- subsArgs(as.list(environment()), makeParms)

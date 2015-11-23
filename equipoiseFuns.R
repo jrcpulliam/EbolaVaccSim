@@ -17,3 +17,8 @@ equipFxn <- function(N=1
 }
 
 equipFxn(100)
+
+equiCalc <- function(parms) within(parms, {
+
+
+})
