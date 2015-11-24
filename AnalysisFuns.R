@@ -71,11 +71,14 @@ getEndResults <- function(parms, bump = T) {
         }
         parms <- within(parms, {
             ## Call analysis functions
+
+browser()
             intStats[[analysisNum]] <- doStats(parmsE, tmpCSDE, analysisNum=analysisNum)
             ## Use negative z, since we think about crossing upper Z threshold as identifying
             ## positive vaccine, yet HR < 1 is equivaleynt.  use first StatsFxns item to determine stopping
             ## (usually CoxME), could vectorize this later but confusing to have different vaccination rollout
             ## strategies for one simulation due to different stopping times by different analyses
+
             intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
             intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), intTab[analysisNum])
             ## Even for non-GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
@@ -141,11 +144,14 @@ finInfoFxn <- function(parms) {
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
+    if(!exists('endTrialDay')) endTrialDay <- NA
     compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2,1,2,1,2)]
-                        , whichDo = c('stActive', 'st','stEV', 'st', 'stNT', 'stNT', 'stVR', 'stVR')
-                        , lab = c('analyzed','all','allFinalEV','allFinal_noEV', 'all_NT','allFinal_NT', 'all_VR', 'allFinal_VR')
+                        , whichDo = c('stActive', 'st','stEV', 'st', 'stNT', 'stVR') 
+                        , lab = c('analyzed','all','allFinalEV','allFinal_noEV', 'allFinal_NT','allFinal_VR')
+                        , cf = rep(c(F,T), each = 4)
                           )
-    if(!doCFs) compTab <- compTab[!grepl('NT', lab) & !grepl('VR', lab)]
+    compTab <- compTab[cf==doCFs]
+    browser()
     for(ii in 1:nrow(compTab)) {
         finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
         if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
@@ -154,16 +160,15 @@ finInfoFxn <- function(parms) {
     finInfo <- as.data.table(finInfo)[order(atDay)]
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
+    finInfo$caseTot <- finInfo[,caseC+caseV]
+    setcolorder(finInfo, c('cat','atDay','caseTot','caseC','caseV','hazC','hazV','ptRatioCV'))
     parms$finInfo <- finInfo
     return(parms)
 }
 
-simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
-                       doSeqStops = F, showSeqStops = F, flnm='test', verbFreq=10) {
+simNtrials <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
     set.seed(seed)
-    caseXVaccRandGrpList <- caseXPT_ImmuneList <- weeklyAnsList <- list()
-    length(caseXVaccRandGrpList) <- length(caseXPT_ImmuneList) <- length(weeklyAnsList) <- N
-    finInfo <- finMods <- stopPoints <- data.frame(NULL)
+    finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
@@ -176,8 +181,6 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
         ## plotSTA(res$stActive) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
-res$intStats$vaccGood <- T
-
         res <- endT(res)
         res <- cfSims(res)
         res <- finInfoFxn(res)
@@ -186,12 +189,10 @@ res$intStats$vaccGood <- T
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.table(sim = ss, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
+        ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-    finInfo$caseTot <- finInfo[,caseC+caseV]
-    setcolorder(finInfo, c('sim','cat','atDay','caseTot','caseC','caseV','hazC','hazV','ptRatioCV'))
-    if(!returnAll)
         return(list(finMods=finMods, finInfo=finInfo))
 }
 

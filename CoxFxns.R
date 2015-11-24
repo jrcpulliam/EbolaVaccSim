@@ -195,7 +195,25 @@ doCoxME <- function(parms, csd, bump = F) { ## take censored survival object and
         names(vaccEffEst) <- c('mean','lci','uci','p','z','mod', 'bump', 'err')
         vaccEffEst <- bumpAdjust(vaccEffEst, csd, bump)
     }else{
-        vaccEffEst <- data.frame(mean=NA, lci=NA, uci=NA, p=NA,  mod='coxME', bump = bump, err = 1)
+        ## ####################################################################################################
+        ## If can't fit coxme &  IFF there is randomization within each cluster (RCT), then
+        ## ignore cluster-effect, using coxph model
+        if(parms$trial %in% c('RCT','FRCT')) {
+            mod <- try(coxph(Surv(startDay, endDay, infected) ~ immuneGrp, data = csd), silent=T)
+            if(!inherits(mod, 'try-error')) {
+                mcoef <- summary(mod)$coef['immuneGrp',]
+                vaccEffEst <- 1-exp(mcoef['coef'] + c(0, 1.96, -1.96)*mcoef['se(coef)'])
+                vaccEffEst <- signif(c(vaccEffEst, mcoef[c('Pr(>|z|)','z')]), 3)
+                vaccEffEst <- data.frame(t(vaccEffEst), 'coxME', bump = bump, err = -1) ## -1 signals no cluster effect
+                names(vaccEffEst) <- c('mean','lci','uci','p','z','mod', 'bump', 'err')
+                vaccEffEst <- bumpAdjust(vaccEffEst, csd, bump)
+                ## ####################################################################################################
+            }else{ ## can't fit either
+                vaccEffEst <- data.frame(mean=NA, lci=NA, uci=NA, p=NA, z = NA, mod='coxME', bump = bump, err = 1)
+            }
+        }else{ ## not randomized w/in cluster & can't use coxph
+            vaccEffEst <- data.frame(mean=NA, lci=NA, uci=NA, p=NA, z = NA, mod='coxME', bump = bump, err = 1)
+        }
     }
     return(vaccEffEst)
 }
