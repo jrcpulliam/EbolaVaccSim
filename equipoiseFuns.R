@@ -31,7 +31,6 @@ equiCalc <- function(parms) within(parms, {
 ## Build counterfactual simulation sets for comparison with factual simulations
 ## Important to make sure that they match the seeds (can use indivHaz at end to do a check)
 cfSims <- function(parms) {
-    if(parms$doCFs) {
         ## *V*accine *r*ollout simulation; *N*o *t*rial counter-factual simulation
         parms <- within(parms, {
             NTpopH <- copy(popH)
@@ -60,7 +59,6 @@ cfSims <- function(parms) {
             parms <- simInfection(parms, whichDo = cf, startInfectingDay = 0)
             parms <- makeSurvDat(parms, whichDo=cf)
         }
-    }
     return(parms)
 }
 ## parms$VRpopH[idByClus %in% c(1,151)]
@@ -74,7 +72,8 @@ simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
         if(parms$verbose==2) browser()
         res <- simTrial(parms)
         res <- cfSims(res)
-        res <- finInfoFxn(within(res, {doCFs <- T}))
+        res$doCFs <- T
+        res <- finInfoFxn(res)
         ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
         finITmp <- data.table(sim = ss, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
@@ -82,7 +81,7 @@ simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
         rm(res)
         gc()
     }
-        return(list(finMods=finMods, finInfo=finInfo))
+        return(list(finInfo=finInfo))
 }
 
-## simN_CFs(1, makeParms(verbose=2))
+## simN_CFs(1, makeParms(verbose=1))

@@ -71,8 +71,6 @@ getEndResults <- function(parms, bump = T) {
         }
         parms <- within(parms, {
             ## Call analysis functions
-
-browser()
             intStats[[analysisNum]] <- doStats(parmsE, tmpCSDE, analysisNum=analysisNum)
             ## Use negative z, since we think about crossing upper Z threshold as identifying
             ## positive vaccine, yet HR < 1 is equivaleynt.  use first StatsFxns item to determine stopping
@@ -144,19 +142,29 @@ finInfoFxn <- function(parms) {
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
-    if(!exists('endTrialDay')) endTrialDay <- NA
-    compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2,1,2,1,2)]
-                        , whichDo = c('stActive', 'st','stEV', 'st', 'stNT', 'stVR') 
-                        , lab = c('analyzed','all','allFinalEV','allFinal_noEV', 'allFinal_NT','allFinal_VR')
-                        , cf = rep(c(F,T), each = 4)
-                          )
-    compTab <- compTab[cf==doCFs]
-    browser()
-    for(ii in 1:nrow(compTab)) {
-        finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
-        if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+    if(!parms$doCFs) { ## factuals
+        compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
+                            , whichDo = c('stActive', 'st','stEV', 'st')
+                            , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
+                            , cf = F
+                              )
+        for(ii in 1:nrow(compTab)) {
+            finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
+            if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+        }
+        finInfo$cat <- compTab$lab
+    }else{ ## for counterfactuals
+        compTab <- data.table(atDay = parms$trackUntilDay
+                            , whichDo = c('stNT', 'stVR')
+                            , lab = c('allFinal_NT', 'allFinal_VR')
+                            , cf = T
+                              )
+        for(ii in 1:nrow(compTab)) {
+            finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
+            if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+        }
+        finInfo$cat <- compTab$lab
     }
-    finInfo$cat <- compTab$lab
     finInfo <- as.data.table(finInfo)[order(atDay)]
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
@@ -182,7 +190,7 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
         res <- endT(res)
-        res <- cfSims(res)
+##      res <- cfSims(res)
         res <- finInfoFxn(res)
         ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
         finTmp <- data.table(sim = ss, res$intStats[analysis==max(res$intStats$analysis)]) 
