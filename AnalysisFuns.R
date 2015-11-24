@@ -12,6 +12,7 @@ gsTimeCalc <- function(parms) {
             intTab[, tcal:= ceiling(infDays[events])] ## calendar time (as opposed to information time)
             intTab <- intTab[!is.na(tcal)]
             intTab$trigger <- 'events'
+            intTab <- intTab[tcal <= maxDurationDay]
             ## If don't do all analyses, add one more at maximum trial duration
             if(nrow(intTab) < gsBounds$k) intTab <- rbind(intTab, data.table(events=NA, tcal=maxDurationDay, trigger='end time'))
             intTab
@@ -204,4 +205,46 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
         return(list(finMods=finMods, finInfo=finInfo))
 }
 
+## Simulate counterfactuals, similar to above but no analyses. Only
+## tracking infections for No Trial & Vaccine Rollout
+## coutnerfactuals. Do more than one simInfection for each population.
+simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, returnInfTimes = T, verbFreq=10) {
+    set.seed(seed)
+    finInfo <- data.frame(NULL)
+    InfTimesLs <- NULL
+    for(ss in 1:N) {
+        if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
+        if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
+        if(parms$verbose==2) browser()
+        res <- simTrial(parms)
+        res <- cfSims(res, seed=seed)
+        browser()
+        res$doCFs <- T
+        res <- finInfoFxn(res)
+        ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
+        finITmp <- data.table(sim = ss, res$finInfo)
+        finInfo <- rbind(finInfo, finITmp)
+        ## Infection time list (in case we want to compare # of infections by certain time,
+        ## i.e. endTrialDay, which differs across simulations)
+        if(returnInfTimes) {
+            res <- compInfTimes(res)
+            InfTimesLs <- c(InfTimesLs, res$InfTimes)
+        }
+        rm(res); gc()
+    }
+    names(InfTimesLs) <- 1:N
+    return(list(finInfo=finInfo, InfTimesLs=InfTimesLs))
+}
 
+## Wrapper to determine whether simulating factuals with analyses, or counterfactuals with only infection times
+simNtrialsWRP <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
+    if(parms$doCFs) {
+        simN_CFs(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
+    }else{
+        simNtrials(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
+    }
+}
+
+system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
+
+res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]

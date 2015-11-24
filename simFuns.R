@@ -25,6 +25,7 @@ makeParms <- function(
   , gsDesArgs = list(k=3, test.type=2, alpha=0.025, beta=0.1, timing = seq(0,1, l = 4)[-1]) ## total number of analyses
   , infoCalcArgs = list(assumedVaccEff = .7, assumedCumHazard = 10^-4, beta = .1) ## number of events to power trial asymptotes at low cumulative hazards (e.g. 36 for vaccEff=.7)
   , doCFs=F ## do coutnerfactual simulations
+  , numCFs = 1
     ## , seqType='MaxDur' ## MaxDur or MaxInfo, i.em. spend alpha based on # events up until endtime, then spend rest of alpha
   , immunoDelay = 21 ## delay from vaccination to immunity
   , immunoDelayThink = immunoDelay ## delay from vaccination to immunity used in analysis (realistically would be unknown)
@@ -259,7 +260,7 @@ setImmuneDays <- function(parms, whichDo='pop') within(parms, {
 })
 
 ## Simulate infections. Takes popH for initial simulation, or EVpopH for end trial vaccination version (requires startInf)
-simInfection <- function(parms, whichDo='pop', startInfectingDay = 0) ## startInf can be set to endTrialDay
+simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1) ## startInf can be set to endTrialDay
     within(parms, { 
         if(verbose>10) browser()
         tmp <- get(whichDo)
@@ -270,23 +271,23 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0) ## startIn
         alreadyInfected <- NULL
         ## RNG seed control
         if(whichDo=='pop') simInfSeed <- .GlobalEnv$.Random.seed ## saved for counterfactuals
-        if(whichDo %in% c('NTpop','VRpop')) .GlobalEnv$.Random.seed <- simInfSeed 
+        if(doCFs & cfNum==1 & whichDo %in% c('NTpop','VRpop')) .GlobalEnv$.Random.seed <- simInfSeed ## only copy for first cfNum
         ## Loop thru infections: infection day is beginning of each hazard interval + exponential waiting time
         for(dd in daySeq[daySeq>=startInfectingDay]) { 
             alreadyInfected <- tmpH[infectDay!=Inf, indiv] ## don't reinfect those already infected
             tmpH[day==dd & !indiv %in% alreadyInfected, 
                  infectDay := dd + rexp(length(indiv), rate = indivHaz*ifelse(immune, 1-vaccEff, 1))] 
-
             tmpH[day==dd & !indiv %in% alreadyInfected & infectDay > dd + hazIntUnit, 
                  infectDay := Inf] ## reset if it goes into next hazard interval
         }
         ## copy infection days to pop, to use in analysis
-        indivInfDays <- tmpH[infectDay!=Inf & infectDay > startInfectingDay, list(indiv,infectDay)]
+        indivInfDays <- tmpH[infectDay!=Inf & infectDay > startInfectingDay, list(indiv,infectDay, indivHaz)]
         indivInfDays <- arrange(indivInfDays, indiv)
         tmp[indiv %in% indivInfDays[,indiv], infectDay:= indivInfDays[,infectDay]]
         assign(whichDo, tmp)
         assign(paste0(whichDo,'H'), tmpH)
-        rm(tmp, tmpH, dd,alreadyInfected,indivInfDays)
+        rm(tmp, tmpH, dd,alreadyInfected)
+        if(!doCFs) rm(indivInfDays)
     })
 
 ## p1 <- setHazs(makePop(makeParms(clusSize=300, numClus=20, weeklyDecay=.9, weeklyDecayVar=0, ord='BL')))

@@ -30,58 +30,73 @@ equiCalc <- function(parms) within(parms, {
 ####################################################################################################
 ## Build counterfactual simulation sets for comparison with factual simulations
 ## Important to make sure that they match the seeds (can use indivHaz at end to do a check)
-cfSims <- function(parms) {
-        ## *V*accine *r*ollout simulation; *N*o *t*rial counter-factual simulation
-        parms <- within(parms, {
-            NTpopH <- copy(popH)
-            NTpopH <- within(NTpopH, {
-                infectDay <- vaccDay <- immuneDay <- Inf
-                vacc <- immune <- F
-            })
-            VRpop <- NTpop <- copy(pop)
-            NTpop <- within(NTpop, {
-                infectDay <- vaccDay <- immuneDay <- Inf
-            })
+cfSims <- function(parms, seed=1) {
+    ## *V*accine *r*ollout simulation; *N*o *t*rial counter-factual simulation
+    parms <- within(parms, {
+        NTpopH <- copy(popH)
+        NTpopH <- within(NTpopH, {
+            infectDay <- vaccDay <- immuneDay <- Inf
+            vacc <- immune <- F
         })
-        ## ##############################
-        ## risk-prioritized roll-out, i.e. no randomization
-        ## force order to be that of TU-risk-prioritized-RCT
-        parmsVR <- copy(parms)
-        if(parmsVR$ord!='TU') {
-            parmsVR$ord <- 'TU'
-            parmsVR <- reordRCT(parmsVR)
+        VRpop <- NTpop <- copy(pop)
+        NTpop <- within(NTpop, {
+            infectDay <- vaccDay <- immuneDay <- Inf
+        })
+    })
+    ## ##############################
+    ## risk-prioritized roll-out, i.e. no randomization
+    ## force order to be that of TU-risk-prioritized-RCT
+    parmsVR <- copy(parms)
+    if(parmsVR$ord!='TU') {
+        parmsVR$ord <- 'TU'
+        parmsVR <- reordRCT(parmsVR)
+    }
+    parms$VRpopH <- parmsVR$popH ## to avoid rewriting reordFxns with whichDo
+    rm(parmsVR)
+    parms <- setSWCTvaccDays(parms, whichDo='VRpop') ## set vaccination days
+    parms <- setImmuneDays(parms, whichDo='VRpop')   ## set immune days
+    parms$InfTimesLs <- list()
+    for(cf in c('NTpop','VRpop')) {
+        ## CONTROL SEEDS HERE
+        parms$InfTimesLs[[cf]] <- list()
+        length(parms$InfTimesLs[[cf]]) <- parms$numCFs
+        for(cc in 1:parms$numCFs) {
+            parms$InfTimesLs[[cf]][[cc]] <- data.table(seed = seed, cf=cf, cc=cc, simInfection(parms, cfNum=cc)$indivInfDays) ## simulate infection
         }
-        parms$VRpopH <- parmsVR$popH ## to avoid rewriting reordFxns with whichDo
-        rm(parmsVR)
-        parms <- setSWCTvaccDays(parms, whichDo='VRpop') ## set vaccination days
-        parms <- setImmuneDays(parms, whichDo='VRpop')   ## set immune days
-        for(cf in c('NTpop','VRpop')) {
-            parms <- simInfection(parms, whichDo = cf, startInfectingDay = 0)
-            parms <- makeSurvDat(parms, whichDo=cf)
-        }
+        parms$InfTimesLs[[cf]] <- rbindlist(parms$InfTimesLs[[cf]])
+    }
+    parms$InfTimesLs <- rbindlist(parms$InfTimesLs)
     return(parms)
 }
 ## parms$VRpopH[idByClus %in% c(1,151)]
 
-simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
-    set.seed(seed)
-    finInfo <- data.frame(NULL)
-    for(ss in 1:N) {
-        if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
-        if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
-        if(parms$verbose==2) browser()
-        res <- simTrial(parms)
-        res <- cfSims(res)
-        res$doCFs <- T
-        res <- finInfoFxn(res)
-        ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
-        finITmp <- data.table(sim = ss, res$finInfo)
-        finInfo <- rbind(finInfo, finITmp)
-        ## res <- equiCalc(res)
-        rm(res)
-        gc()
+## Compress infection time information since we may want to track how
+compInfTimes <- function(parms, whichDo = c('NTpop','VRpop')) within(parms, {
+    InfTimes <- list()
+    for(ww in whichDo) {
+        tmp <- get(ww)
+        InfTimes[[ww]] <- tmp[infectDay!=Inf, list(indiv, infectDay, indivRR)]
     }
-        return(list(finInfo=finInfo))
-}
+    rm(tmp,ww)
+})
 
-## simN_CFs(1, makeParms(verbose=1))
+## Need distinct set of counterfactuals for these parameters only (which determine population,
+## hazard, & maximum rollout speed ). Others excluded here only affect trial design.
+CFparms <- c('trialStartDate'
+           , 'numClus'
+           , 'clusSize'
+           , 'delayUnit'
+           , 'hazType'
+           , 'nbsize'
+           , 'propInTrial'
+           , 'mu'
+           , 'cvClus'
+           , 'cvClusTime'
+           , 'sdLogIndiv'
+           , 'vaccEff'
+           , 'trackUntilDay'
+           , 'immunoDelay'
+           , 'weeklyDecay'
+           , 'cvWeeklyDecay'
+           , 'hazIntUnit'
+           , 'reordLag')
