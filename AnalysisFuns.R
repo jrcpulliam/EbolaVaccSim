@@ -245,6 +245,5 @@ simNtrialsWRP <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
     }
 }
 
-system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
-
-res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]
+## system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
+## res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]
