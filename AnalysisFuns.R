@@ -239,19 +239,19 @@ simNtrialsWRP <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
 ## system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
 ## res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]
 
-####################################################################################################
-## To show that RNGs line up between counterfactuals & factuals for first simulation & with same vaccProps
-seed=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T
 
-verbose <- 1
-parmArgs <- subsArgs(as.list(environment()), makeParms)
-print(parmArgs)
-parms <- do.call(makeParms, parmArgs)
-saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", simNum),'.Rdata'))
-vaccProp1 <- get(vaccPropStrg)
 
-system.time(simCF <- simN_CFs(seed=seed, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=vaccProp))
-system.time(sim <- simNtrials(seed=seed, parms=parms, N = nsims, verbFreq=10, vaccProp=vaccProp))
-sim$finInfo[cat=='allFinal_noEV']
-simCF$EventTimes[order(cc,simNum), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
-####################################################################################################
+## ####################################################################################################
+## ## To show that RNGs line up between counterfactuals & factuals for first simulation & with
+## ## vaccEff=0 Otherwise, individuals' infection patterns differ necessarily. Even with a single
+## ## piece-wise exponential RNG (rather than the current for loop across pieces), we couldn't maintain
+## ## individuals having the same infection status up until their hazard changes between
+## ## counterfactuals because waiting times for the same seeds would differ for different piece-wise
+## ## exponential hazard functions even if the first few pieces were identical & the waiting time was
+## ## likely in those first few pieces.
+## parms$vaccEff <- 0
+## system.time(simCF <- simN_CFs(seed=seed, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=NULL))
+## system.time(sim <- simNtrials(seed=seed, parms=parms, N = nsims, verbFreq=10, vaccProp=NULL))
+## sim$finInfo[cat=='allFinal_noEV']
+## simCF$EventTimes[order(cc,simNum), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+## ####################################################################################################
