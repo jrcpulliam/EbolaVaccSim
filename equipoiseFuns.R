@@ -36,7 +36,7 @@ equiCalc <- function(parms) within(parms, {
 ####################################################################################################
 ## Build counterfactual simulation sets for comparison with factual simulations
 ## Important to make sure that they match the seeds (can use indivHaz at end to do a check)
-cfSims <- function(parms, seed=1) {
+cfSims <- function(parms, batch=1) {
     ## *V*accine *r*ollout simulation; *N*o *t*rial counter-factual simulation
     parms <- within(parms, {
         NTpopH <- copy(popH)
@@ -72,7 +72,7 @@ cfSims <- function(parms, seed=1) {
                 tmpSeed <- parms$simInfSeedpop
             }
             tmp <- simInfection(parms, whichDo=cf, cfNum=cc, RNGseed = tmpSeed) ## simulate infection again
-            parms$EventTimesLs[[cf]][[cc]] <- data.table(seed = seed, cf=cf, cc=cc, tmp$indivEventDays )
+            parms$EventTimesLs[[cf]][[cc]] <- data.table(batch = batch, cf=cf, cc=cc, tmp$indivEventDays )
             ## CONTROL SEEDS HERE TOO
             if(cf=='NTpop') ## use seed for VRpop to minimize variation b/w counterfactuals
                 tmpSeed <- tmp$simInfSeedNTpop else tmpSeed = NULL ## NULL triggers a new seed for next step of cc

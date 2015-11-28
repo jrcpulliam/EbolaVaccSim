@@ -16,7 +16,7 @@ numEach <- 40
 ves <- c(0,.7)
 pits <- c(.05)
 parmsMat <- as.data.table(expand.grid(
-    seed =  1:numEach
+    batch =  1:numEach
     , trial = tnms
   , gs = c(F, T)
   , ord = c('none','TU')
@@ -36,7 +36,7 @@ parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must
 parmsMat <- parmsMat[!(trial=='SWCT' & gs)] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(delayUnit==0 & ord=='TU')] ## ordering is meaningless with simultaneous instant vacc
 parmsMat <- parmsMat[ !(delayUnit==0 & trial=='FRCT')]  ## FRCT = RCT when delayUnit=0
-parmsMat$simNum <- 1:nrow(parmsMat)
+parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 nmtmp <- thing
 parmsMat$saveNm <- nmtmp
@@ -46,8 +46,8 @@ parmsMat$nboot <- 0
 parmsMat$trialStartDate <- '2015-02-18'
 nrow(parmsMat)
 
-parmsMat[, simNumStart:=(seed-1)*nsims+1]
-parmsMat[, simNumEnd:=(seed-1)*nsims+nsims]
+parmsMat[, simNumStart:=(batch-1)*nsims+1]
+parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 
 parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff)]
 nrow(parmsMat)

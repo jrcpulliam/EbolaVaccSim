@@ -162,8 +162,8 @@ finInfoFxn <- function(parms) {
     return(parms)
 }
 
-simNtrials <- function(seed = 1, parms=makeParms(), N = 2, 
-                       simNums = ((seed-1)*nsims + 1):((seed-1)*nsims + N),
+simNtrials <- function(batch = 1, parms=makeParms(), N = 2, 
+                       simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
                        verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
@@ -203,8 +203,8 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2,
 ## Simulate counterfactuals, similar to above but no analyses. Only
 ## tracking infections for No Trial & Vaccine Rollout
 ## coutnerfactuals. Do more than one simInfection for each population.
-simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, 
-                     simNums = ((seed-1)*nsims + 1):((seed-1)*nsims + N),
+simN_CFs <- function(batch = 1, parms=makeParms(), N = 2, 
+                     simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
                      returnEventTimes = T, verbFreq=10, vaccProp=NA) {
     finInfo <- data.frame(NULL)
     EventTimes <- NULL
@@ -219,11 +219,11 @@ simN_CFs <- function(seed = 1, parms=makeParms(), N = 2,
             parms$pSAE <- vaccProp[simNum, pSAE]
         }
         res <- simTrial(parms)
-        res <- cfSims(res, seed=seed)
+        res <- cfSims(res, batch=batch)
         EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
         rm(res); gc()
     }
-    finInfo <- EventTimes[order(ss,seed,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+    finInfo <- EventTimes[order(ss,batch,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, batch, cc, cf)]
     if(!returnEventTimes) EventTimes <- NULL
     return(list(finInfo=finInfo, EventTimes=EventTimes))
 }
@@ -250,8 +250,8 @@ simNtrialsWRP <- function(input) {
 ## ## exponential hazard functions even if the first few pieces were identical & the waiting time was
 ## ## likely in those first few pieces.
 ## parms$vaccEff <- 0
-## system.time(simCF <- simN_CFs(seed=seed, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=NULL))
-## system.time(sim <- simNtrials(seed=seed, parms=parms, N = nsims, verbFreq=10, vaccProp=NULL))
+## system.time(simCF <- simN_CFs(batch=batch, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=NULL))
+## system.time(sim <- simNtrials(batch=batch, parms=parms, N = nsims, verbFreq=10, vaccProp=NULL))
 ## sim$finInfo[cat=='allFinal_noEV']
-## simCF$EventTimes[order(cc,simNum), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+## simCF$EventTimes[order(cc,simNum), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, batch, cc, cf)]
 ## ####################################################################################################
