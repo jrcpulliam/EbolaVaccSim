@@ -19,8 +19,6 @@ makeParms <- function(
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
   , vaccEff = .8
   , pSAE = 10^-4
-  ## , vaccProp = NULL ## data table of vaccine properties, use seed-th row
-  ## , numInBatch = NULL ## which row in the above table to use
   , maxDurationDay = 7*24 ## maximum duration end of trial (24 weeks default; 6 months) (trial can stop early though; e.g. endTrialDay)
   , trackUntilDay = 2*maxDurationDay ## how long to track infections for calculating incidence averted & equipoise
     ## Sequential Design info

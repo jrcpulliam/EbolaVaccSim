@@ -1,6 +1,7 @@
 if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
-if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
  
 batchdirnm <- file.path('BigResults','Equip1')
@@ -9,7 +10,7 @@ if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- 'RCT'
-numEach <- 12
+numEach <- 16
 
 ves <- c(0,.7)
 pits <- c(.05)
@@ -22,6 +23,8 @@ parmsMat <- as.data.table(expand.grid(
   , delayUnit = c(0,7)
   , immunoDelay = c(21)
   , vaccEff = ves
+  , randVaccProperties = F
+  , vaccPropStrg=NA
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
@@ -33,7 +36,7 @@ parmsMat$simNum <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 nmtmp <- 'simSL-Equip-'
 parmsMat$saveNm <- nmtmp
-parmsMat$nsims <- 170 ## 17*12 is ~ 2000 simulations each (2040 but we'll round)
+parmsMat$nsims <- 13 ## 130*16 is ~ 2000 simulations each (2080 but we'll round)
 parmsMat$reordLag <- 14
 parmsMat$nboot <- 0
 parmsMat$trialStartDate <- '2015-02-18'

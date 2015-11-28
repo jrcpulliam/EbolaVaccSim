@@ -13,20 +13,19 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-seed=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T; vaccPropStrg=NULL
+seed=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T;randVaccProperties=F;vaccPropStrg=NA
 }
 load('data/vaccProp1.Rdata')
 
 ## vaccPropStrg <- 'vaccProp1'
-if(!is.null(vaccPropStrg) 
-   vaccProp <- get(vaccPropStrg)
+if(randVaccProperties)
+   vaccProp <- get(vaccPropStrg) else vaccProp <- NA
 
 verbose <- 1
 parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)
 saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", simNum),'.Rdata'))
-
 
 system.time(sim <- simNtrials(seed=seed, parms=parms, N=nsims, verbFreq=10, vaccProp=vaccProp))
 sim <- list(sim=sim, parms=parms, seed=seed, simNum=simNum)

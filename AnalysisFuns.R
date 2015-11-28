@@ -164,7 +164,7 @@ finInfoFxn <- function(parms) {
 
 simNtrials <- function(seed = 1, parms=makeParms(), N = 2, 
                        simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
-                       verbFreq=10, vaccProp=NULL) {
+                       verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
         simNum <- simNums[ss]
@@ -172,7 +172,7 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2,
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
-        if(!is.null(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
+        if(!is.na(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
             parms$pSAE <- vaccProp[simNum, pSAE]
         }
@@ -205,7 +205,7 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2,
 ## coutnerfactuals. Do more than one simInfection for each population.
 simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, 
                      simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
-                     returnInfTimes = T, verbFreq=10, vaccProp=NULL) {
+                     returnInfTimes = T, verbFreq=10, vaccProp=NA) {
     finInfo <- data.frame(NULL)
     EventTimes <- NULL
     for(ss in 1:N) {
@@ -214,7 +214,7 @@ simN_CFs <- function(seed = 1, parms=makeParms(), N = 2,
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
-        if(!is.null(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
+        if(!is.na(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
             parms$pSAE <- vaccProp[simNum, pSAE]
         }
