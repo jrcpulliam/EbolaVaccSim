@@ -11,7 +11,7 @@ if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- 'RCT'
-numEach <- 64
+numEach <- 40
 
 ves <- c(0,.7)
 pits <- c(.05)
@@ -30,7 +30,7 @@ parmsMat <- as.data.table(expand.grid(
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
-parms$returnEventTimes
+parmsMat$returnEventTimes <- TRUE
 parmsMat[,doCFs:= numCFs>0]
 parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(trial=='SWCT' & gs)] ## SWCT must have delay and cannot be ordered
@@ -40,7 +40,7 @@ parmsMat$simNum <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 nmtmp <- thing
 parmsMat$saveNm <- nmtmp
-parmsMat$nsims <- 33 ## 85*24 is ~ 2000 simulations each (2040 but we'll round)
+parmsMat$nsims <- 25 ## 85*24 is ~ 2000 simulations each (2040 but we'll round)
 parmsMat$reordLag <- 14
 parmsMat$nboot <- 0
 parmsMat$trialStartDate <- '2015-02-18'
