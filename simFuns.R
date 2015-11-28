@@ -1,4 +1,4 @@
-require(blme); require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); 
+require(blme); require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); require(msm)
 load('data/createHT.Rdata')
 
 yearToDays <- 1/365.25
@@ -18,6 +18,9 @@ makeParms <- function(
   , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
   , vaccEff = .8
+  , pSAE = 10^-4
+  ## , vaccProp = NULL ## data table of vaccine properties, use seed-th row
+  ## , numInBatch = NULL ## which row in the above table to use
   , maxDurationDay = 7*24 ## maximum duration end of trial (24 weeks default; 6 months) (trial can stop early though; e.g. endTrialDay)
   , trackUntilDay = 2*maxDurationDay ## how long to track infections for calculating incidence averted & equipoise
     ## Sequential Design info
@@ -61,6 +64,10 @@ makeParms <- function(
             return(sum(sampSizes*cumHazs))
         })
     }
+    ## if(!is.null(vaccProp)) {
+    ##     vaccEff <- vaccProp[numInBatch, vaccEff]
+    ##     pSAE <- vaccProp[numInBatch, pSAE]
+    ## }
     return(as.list(environment()))
 }
 
@@ -260,9 +267,9 @@ setImmuneDays <- function(parms, whichDo='pop') within(parms, {
 })
 
 ## Simulate infections. Takes popH for initial simulation, or EVpopH for end trial vaccination version (requires startInf)
-simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1) ## startInf can be set to endTrialDay
+simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1, RNGseed = NULL) ## startInf can be set to endTrialDay
     within(parms, { 
-        if(verbose>10) browser()
+        if(verbose>10 | verbose == 9.89) browser()
         tmp <- get(whichDo)
         tmpH <- get(paste0(whichDo,'H'))
         if(startInfectingDay==0) tmp$infectDay <- tmpH$infectDay <- Inf ## otherwise it's already got some infection data in it
@@ -270,8 +277,10 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1) #
         tmp[infectDay > startInfectingDay, infectDay := Inf] ## redoing post endDay stuff with additional folks vacc
         alreadyInfected <- NULL
         ## RNG seed control
-        if(whichDo=='pop') simInfSeed <- .GlobalEnv$.Random.seed ## saved for counterfactuals
-        if(doCFs & cfNum==1 & whichDo %in% c('NTpop','VRpop')) .GlobalEnv$.Random.seed <- simInfSeed ## only copy for first cfNum
+        if(whichDo %in% c('pop','NTpop','VRpop')) 
+            assign(paste0('simInfSeed',whichDo), .GlobalEnv$.Random.seed) ## saved for use elsewhere later
+        if(!is.null(RNGseed))
+            .GlobalEnv$.Random.seed <- RNGseed 
         ## Loop thru infections: infection day is beginning of each hazard interval + exponential waiting time
         for(dd in daySeq[daySeq>=startInfectingDay]) { 
             alreadyInfected <- tmpH[infectDay!=Inf, indiv] ## don't reinfect those already infected
@@ -281,13 +290,22 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1) #
                  infectDay := Inf] ## reset if it goes into next hazard interval
         }
         ## copy infection days to pop, to use in analysis
-        indivInfDays <- tmpH[infectDay!=Inf & infectDay > startInfectingDay, list(indiv,infectDay, indivHaz)]
+        indivInfDays <- tmpH[infectDay!=Inf & infectDay > startInfectingDay, list(indiv,infectDay, vaccDay, indivRR)]
         indivInfDays <- arrange(indivInfDays, indiv)
         tmp[indiv %in% indivInfDays[,indiv], infectDay:= indivInfDays[,infectDay]]
+        ## SAEs
+        tmp[, SAE:= as.integer(rbinom(length(indiv), 1, pSAE))]
+        tmp[vaccDay==Inf, SAE:=0] ## can't have SAE if was not vaccinated
+        tmp[infectDay<vaccDay, SAE:=0] ## can't have SAE if got Ebola before vaccination (excluded from vaccination in any case)
+        tmpH$SAE <- 0
+        setkey(tmpH, indiv, day) ## fastest way to index by multiple columns
+        tmpH[tmp[SAE==1, list(indiv, vaccDay)], SAE:=1]
+        if(whichDo %in% c('NTpop','VRpop')) ## output summary of the population's infections & SAEs
+            indivEventDays <- tmp[infectDay!=Inf | SAE==1, list(indiv,infectDay, vaccDay, SAE, indivRR)]
+        ## Assign back to global variables
         assign(whichDo, tmp)
         assign(paste0(whichDo,'H'), tmpH)
-        rm(tmp, tmpH, dd,alreadyInfected)
-        if(!doCFs) rm(indivInfDays)
+        rm(tmp, tmpH, dd,alreadyInfected, indivInfDays)
     })
 
 ## p1 <- setHazs(makePop(makeParms(clusSize=300, numClus=20, weeklyDecay=.9, weeklyDecayVar=0, ord='BL')))
@@ -323,3 +341,5 @@ addParm <- function(x, parmsMat,ii) {
     }
     return(x)
 }
+
+

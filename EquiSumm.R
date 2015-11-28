@@ -54,7 +54,8 @@ save(finTrials, file=file.path('Results', paste0(thing, '.Rdata')))
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 
 finTrials[, table(err)] ## 18 times couldn't fit coxme, so fit coxph instead
-finTrials[, list(tcalMean = mean(tcal), power = mean(vaccGood)), list(vaccEff, trial, gs, ord, delayUnit)]
+finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood)), list(vaccEff, trial, gs, ord, delayUnit)]
+finTrials[tcal<168, list(nsim=length(tcal), tcalMean = mean(tcal), power = mean(vaccGood)), list(vaccEff, trial, gs, ord, delayUnit)]
 finTrials[, stopped:=vaccGood|vaccBad]
 
 powFin <- finTrials[, list(

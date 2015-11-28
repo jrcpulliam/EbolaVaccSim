@@ -175,13 +175,20 @@ finInfoFxn <- function(parms) {
     return(parms)
 }
 
-simNtrials <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
+simNtrials <- function(seed = 1, parms=makeParms(), N = 2, 
+                       simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
+                       verbFreq=10, vaccProp=NULL) {
     set.seed(seed)
     finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
+        simNum <- simNums[ss]
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
+        if(!is.null(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
+            parms$vaccEff <- vaccProp[simNum, vaccEff]
+            parms$pSAE <- vaccProp[simNum, pSAE]
+        }
         res <- simTrial(parms)
         res <- makeSurvDat(res)
         res <- makeGEEDat(res)
@@ -191,49 +198,46 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
         res <- endT(res)
-##      res <- cfSims(res)
+        ##      res <- cfSims(res)
         res <- finInfoFxn(res)
         ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
-        finTmp <- data.table(sim = ss, res$intStats[analysis==max(res$intStats$analysis)]) 
+        finTmp <- data.table(sim = ss, simNum = simNum, 
+                             vaccEff=parms$vaccEff, pSAE=parms$pSAE, res$intStats[analysis==max(res$intStats$analysis)]) 
         finMods <- rbind(finMods, finTmp)
-        finITmp <- data.table(sim = ss, res$finInfo)
+        finITmp <- data.table(sim = ss, simNum = simNum, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
         ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-        return(list(finMods=finMods, finInfo=finInfo))
+    return(list(finMods=finMods, finInfo=finInfo))
 }
-
+ 
 ## Simulate counterfactuals, similar to above but no analyses. Only
 ## tracking infections for No Trial & Vaccine Rollout
 ## coutnerfactuals. Do more than one simInfection for each population.
-simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, returnInfTimes = T, verbFreq=10) {
+simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, 
+                     simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
+                     returnInfTimes = T, verbFreq=10, vaccProp=NULL) {
     set.seed(seed)
     finInfo <- data.frame(NULL)
-    InfTimesLs <- NULL
+    EventTimes <- NULL
     for(ss in 1:N) {
+        simNum <- simNums[ss]
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
+        if(!is.null(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
+            parms$vaccEff <- vaccProp[simNum, vaccEff]
+            parms$pSAE <- vaccProp[simNum, pSAE]
+        }
         res <- simTrial(parms)
         res <- cfSims(res, seed=seed)
-        browser()
-        res$doCFs <- T
-        res <- finInfoFxn(res)
-        ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
-        finITmp <- data.table(sim = ss, res$finInfo)
-        finInfo <- rbind(finInfo, finITmp)
-        ## Infection time list (in case we want to compare # of infections by certain time,
-        ## i.e. endTrialDay, which differs across simulations)
-        if(returnInfTimes) {
-            res <- compInfTimes(res)
-            InfTimesLs <- c(InfTimesLs, res$InfTimes)
-        }
+        EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
         rm(res); gc()
     }
-    names(InfTimesLs) <- 1:N
-    return(list(finInfo=finInfo, InfTimesLs=InfTimesLs))
+    EventTimes[order(ss,seed,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+    return(list(finInfo=finInfo, EventTimes=EventTimes))
 }
 
 ## Wrapper to determine whether simulating factuals with analyses, or counterfactuals with only infection times

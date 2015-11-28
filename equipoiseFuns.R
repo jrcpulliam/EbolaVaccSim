@@ -3,20 +3,26 @@
 equipFxn <- function(N=1
                      , seed=1
                      , probVaccWorks = .7
-                     , efficacyRange = c(.5,.9)
-                     , SAERange = c(10^-5, 10^-4) ## serious advers effect
-                     , probVaccIncreasesCFR = .1 ## probablity a vaccine is not efficacious AND increases the case fatality rate
+                     , EfficacyRNG = function(N) runif(N, .5, .9) ## pdf of efficacy give any efficacy
+                     , saeRNG = function(N) runif(N, 10^-5, 10^-4) ## serious adverse effect
+                     , probVaccIncreasesCFR = 0 ## probablity a vaccine is not efficacious AND increases the case fatality rate
                      , badVaccCFR_OR = 2 ## odds ratio of dying given EVD if vaccinted versus if not, if above true                     
                      ) {
     vaccWorks <- rbinom(N, 1, probVaccWorks)
-    vaccEff <- runif(N, efficacyRange[1], efficacyRange[2]) * vaccWorks
-    vaccBad <- rbinom(N, 1, probVaccIncreasesCFR / (1-probVaccWorks)) * (1 - vaccWorks)
-    SAE <- runif(N, SAERange[1], SAERange[2])
+    vaccEff <-  EfficacyRNG(N) * vaccWorks
+    vaccBad <- rbinom(N, 1, probVaccIncreasesCFR / (1-probVaccWorks)) * (1 - vaccWorks) ## if vaccine doesn't work
+    pSAE <- saeRNG(N)
     cfrOR <- badVaccCFR_OR * vaccBad
-    return(data.table(vaccEff, SAE, cfrOR))
+    return(data.table(vaccEff, pSAE, cfrOR))
 }
 
-## equipFxn(100)
+
+## set.seed(1)
+## vaccProp1 <- equipFxn(5000)
+## save(vaccProp1, file='data/vaccProp1.Rdata')
+
+## equipFxn(10)
+
 
 equiCalc <- function(parms) within(parms, {
     browser()
@@ -26,7 +32,7 @@ equiCalc <- function(parms) within(parms, {
     finInfo[cat=='allFinal_VR', caseTot] - finInfo[cat=='allFinal_EV', caseTot]
 
 })
-
+ 
 ####################################################################################################
 ## Build counterfactual simulation sets for comparison with factual simulations
 ## Important to make sure that they match the seeds (can use indivHaz at end to do a check)
@@ -55,17 +61,24 @@ cfSims <- function(parms, seed=1) {
     rm(parmsVR)
     parms <- setSWCTvaccDays(parms, whichDo='VRpop') ## set vaccination days
     parms <- setImmuneDays(parms, whichDo='VRpop')   ## set immune days
-    parms$InfTimesLs <- list()
-    for(cf in c('NTpop','VRpop')) {
-        ## CONTROL SEEDS HERE
-        parms$InfTimesLs[[cf]] <- list()
-        length(parms$InfTimesLs[[cf]]) <- parms$numCFs
-        for(cc in 1:parms$numCFs) {
-            parms$InfTimesLs[[cf]][[cc]] <- data.table(seed = seed, cf=cf, cc=cc, simInfection(parms, cfNum=cc)$indivInfDays) ## simulate infection
+    parms$EventTimesLs <- list()
+    ## CONTROL SEEDS HERE
+    for(cc in 1:parms$numCFs) {
+        for(cf in c('NTpop','VRpop')) {
+            if(cc==1)  {
+                parms$EventTimesLs[[cf]] <- list()
+                length(parms$EventTimesLs[[cf]]) <- parms$numCFs
+                tmpSeed <- parms$simInfSeedpop
+            }
+            tmp <- simInfection(parms, whichDo=cf, cfNum=cc, RNGseed = tmpSeed) ## simulate infection again
+            parms$EventTimesLs[[cf]][[cc]] <- data.table(seed = seed, cf=cf, cc=cc, tmp$indivEventDays )
+            ## CONTROL SEEDS HERE TOO
+            if(cf=='NTpop') ## use seed for VRpop to minimize variation b/w counterfactuals
+                tmpSeed <- tmp$simInfSeedNTpop else tmpSeed = NULL ## NULL triggers a new seed for next step of cc
         }
-        parms$InfTimesLs[[cf]] <- rbindlist(parms$InfTimesLs[[cf]])
     }
-    parms$InfTimesLs <- rbindlist(parms$InfTimesLs)
+    for(cf in c('NTpop','VRpop')) parms$EventTimesLs[[cf]] <- rbindlist(parms$EventTimesLs[[cf]])
+    parms$EventTimesLs <- rbindlist(parms$EventTimesLs)
     return(parms)
 }
 ## parms$VRpopH[idByClus %in% c(1,151)]
