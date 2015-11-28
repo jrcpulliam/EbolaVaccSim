@@ -64,6 +64,7 @@ cfSims <- function(parms, seed=1) {
     parms$EventTimesLs <- list()
     ## CONTROL SEEDS HERE
     for(cc in 1:parms$numCFs) {
+        if(parms$verbose>0 & (cc %% 20 == 0)) print(paste('on',cc,'of',parms$numCFs))
         for(cf in c('NTpop','VRpop')) {
             if(cc==1)  {
                 parms$EventTimesLs[[cf]] <- list()

@@ -163,7 +163,7 @@ finInfoFxn <- function(parms) {
 }
 
 simNtrials <- function(seed = 1, parms=makeParms(), N = 2, 
-                       simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
+                       simNums = ((seed-1)*nsims + 1):((seed-1)*nsims + N),
                        verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
@@ -204,8 +204,8 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2,
 ## tracking infections for No Trial & Vaccine Rollout
 ## coutnerfactuals. Do more than one simInfection for each population.
 simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, 
-                     simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
-                     returnInfTimes = T, verbFreq=10, vaccProp=NA) {
+                     simNums = ((seed-1)*nsims + 1):((seed-1)*nsims + N),
+                     returnEventTimes = T, verbFreq=10, vaccProp=NA) {
     finInfo <- data.frame(NULL)
     EventTimes <- NULL
     for(ss in 1:N) {
@@ -224,20 +224,20 @@ simN_CFs <- function(seed = 1, parms=makeParms(), N = 2,
         rm(res); gc()
     }
     finInfo <- EventTimes[order(ss,seed,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
-    if(!returnInfTimes) EventTimes <- NULL
+    if(!returnEventTimes) EventTimes <- NULL
     return(list(finInfo=finInfo, EventTimes=EventTimes))
 }
 
 ## Wrapper to determine whether simulating factuals with analyses, or counterfactuals with only infection times
-simNtrialsWRP <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
+simNtrialsWRP <- function(input) {
     if(parms$doCFs) {
-        simN_CFs(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
+        do.call(simN_CFs, args = input)
     }else{
-        simNtrials(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
+        do.call(simNtrials, args = within(input, {returnEventTimes <- NULL}))
     }
 }
 ## system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
-## res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]
+
 
 
 

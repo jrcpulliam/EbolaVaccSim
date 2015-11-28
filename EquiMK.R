@@ -4,13 +4,14 @@ if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/'
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
  
-batchdirnm <- file.path('BigResults','Equip1')
+thing <- 'Equip-randCFs'
+batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- 'RCT'
-numEach <- 16
+numEach <- 64
 
 ves <- c(0,.7)
 pits <- c(.05)
@@ -23,26 +24,32 @@ parmsMat <- as.data.table(expand.grid(
   , delayUnit = c(0,7)
   , immunoDelay = c(21)
   , vaccEff = ves
-  , randVaccProperties = F
-  , vaccPropStrg=NA
+  , randVaccProperties = T
+  , vaccPropStrg='vaccProp1'
+  , numCFs = 500
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
+parms$returnEventTimes
+parmsMat[,doCFs:= numCFs>0]
 parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(trial=='SWCT' & gs)] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(delayUnit==0 & ord=='TU')] ## ordering is meaningless with simultaneous instant vacc
 parmsMat <- parmsMat[ !(delayUnit==0 & trial=='FRCT')]  ## FRCT = RCT when delayUnit=0
 parmsMat$simNum <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
-nmtmp <- 'simSL-Equip-'
+nmtmp <- thing
 parmsMat$saveNm <- nmtmp
-parmsMat$nsims <- 13 ## 130*16 is ~ 2000 simulations each (2080 but we'll round)
+parmsMat$nsims <- 33 ## 85*24 is ~ 2000 simulations each (2040 but we'll round)
 parmsMat$reordLag <- 14
 parmsMat$nboot <- 0
 parmsMat$trialStartDate <- '2015-02-18'
 nrow(parmsMat)
 
-parmsMat[, length(nboot), list(trial, ord, delayUnit, gs)]
+parmsMat[, simNumStart:=(seed-1)*nsims+1]
+parmsMat[, simNumEnd:=(seed-1)*nsims+nsims]
+
+parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff)]
 nrow(parmsMat)
 jbs <- NULL
 jn <- 0
