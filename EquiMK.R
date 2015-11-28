@@ -26,7 +26,7 @@ parmsMat <- as.data.table(expand.grid(
   , vaccEff = ves
   , randVaccProperties = T
   , vaccPropStrg='vaccProp1'
-  , numCFs = 500
+  , numCFs = 250
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
@@ -56,7 +56,7 @@ jn <- 0
 
 parmsMatDo <- parmsMat
 sink(paste0('SLsims.txt'))
-for(ii in parmsMatDo$simNum) {
+for(ii in parmsMatDo$rcmdbatch) {
     cmd <- "R CMD BATCH '--no-restore --no-save --args"
     cmd <- addParm(cmd, parmsMatDo, ii)
     cmd <- paste0(cmd, " ' startSim.R ", file.path(batchdirnm,'Routs', paste0(nmtmp, sprintf("%06d", ii),'.Rout')), 

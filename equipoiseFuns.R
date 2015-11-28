@@ -16,22 +16,12 @@ equipFxn <- function(N=1
     return(data.table(vaccEff, pSAE, cfrOR))
 }
 
-
 ## set.seed(1)
 ## vaccProp1 <- equipFxn(5000)
 ## save(vaccProp1, file='data/vaccProp1.Rdata')
 
 ## equipFxn(10)
 
-
-equiCalc <- function(parms) within(parms, {
-    browser()
-
-    ls()
-    ## Difference between trial & TU vacc rollout
-    finInfo[cat=='allFinal_VR', caseTot] - finInfo[cat=='allFinal_EV', caseTot]
-
-})
  
 ####################################################################################################
 ## Build counterfactual simulation sets for comparison with factual simulations
@@ -72,7 +62,8 @@ cfSims <- function(parms, batch=1) {
                 tmpSeed <- parms$simInfSeedpop
             }
             tmp <- simInfection(parms, whichDo=cf, cfNum=cc, RNGseed = tmpSeed) ## simulate infection again
-            parms$EventTimesLs[[cf]][[cc]] <- data.table(batch = batch, cf=cf, cc=cc, tmp$indivEventDays )
+            if(nrow(tmp$indivEventDays)>0) ## if there are any rows don't do this, causes error
+                parms$EventTimesLs[[cf]][[cc]] <- data.table(batch = batch, cf=cf, cc=cc, tmp$indivEventDays )
             ## CONTROL SEEDS HERE TOO
             if(cf=='NTpop') ## use seed for VRpop to minimize variation b/w counterfactuals
                 tmpSeed <- tmp$simInfSeedNTpop else tmpSeed = NULL ## NULL triggers a new seed for next step of cc
@@ -80,19 +71,12 @@ cfSims <- function(parms, batch=1) {
     }
     for(cf in c('NTpop','VRpop')) parms$EventTimesLs[[cf]] <- rbindlist(parms$EventTimesLs[[cf]])
     parms$EventTimesLs <- rbindlist(parms$EventTimesLs)
+    parms$EventTimesLs[,cc:=factor(cc, levels=1:parms$numCFs)]
+    ## parms$EventTimesLs[, sum(infectDay<Inf), list(cf,cc)] ## be careful with 0's if there are some
+    ## with(parms$EventTimesLs, xtabs( ~cc + cf))
     return(parms)
 }
 ## parms$VRpopH[idByClus %in% c(1,151)]
-
-## Compress infection time information since we may want to track how
-compInfTimes <- function(parms, whichDo = c('NTpop','VRpop')) within(parms, {
-    InfTimes <- list()
-    for(ww in whichDo) {
-        tmp <- get(ww)
-        InfTimes[[ww]] <- tmp[infectDay!=Inf, list(indiv, infectDay, indivRR)]
-    }
-    rm(tmp,ww)
-})
 
 ## Need distinct set of counterfactuals for these parameters only (which determine population,
 ## hazard, & maximum rollout speed ). Others excluded here only affect trial design.

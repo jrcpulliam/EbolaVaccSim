@@ -143,16 +143,16 @@ finInfoFxn <- function(parms) {
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
-        compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
-                            , whichDo = c('stActive', 'st','stEV', 'st')
-                            , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
-                            , cf = F
-                              )
-        for(ii in 1:nrow(compTab)) {
-            finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
-            if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
-        }
-        finInfo$cat <- compTab$lab
+    compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
+                        , whichDo = c('stActive', 'st','stEV', 'st')
+                        , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
+                        , cf = F
+                          )
+    for(ii in 1:nrow(compTab)) {
+        finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
+        if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+    }
+    finInfo$cat <- compTab$lab
     finInfo <- as.data.table(finInfo)[order(atDay)]
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
@@ -172,7 +172,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
-        if(!is.na(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
+        if(!is.na(vaccProp)[1]) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
             parms$pSAE <- vaccProp[simNum, pSAE]
         }
@@ -199,7 +199,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
     }
     return(list(finMods=finMods, finInfo=finInfo))
 }
- 
+
 ## Simulate counterfactuals, similar to above but no analyses. Only
 ## tracking infections for No Trial & Vaccine Rollout
 ## coutnerfactuals. Do more than one simInfection for each population.
@@ -214,7 +214,7 @@ simN_CFs <- function(batch = 1, parms=makeParms(), N = 2,
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
-        if(!is.na(vaccProp)) { ## set vaccine properties to value from pre-determined bayesian prior deviate
+        if(!is.na(vaccProp)[1]) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
             parms$pSAE <- vaccProp[simNum, pSAE]
         }
@@ -224,7 +224,7 @@ simN_CFs <- function(batch = 1, parms=makeParms(), N = 2,
         rm(res); gc()
     }
     finInfo <- EventTimes[order(ss,batch,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, batch, cc, cf)]
-    if(!returnEventTimes) EventTimes <- NULL
+    if(!as.logical(returnEventTimes)) EventTimes <- NULL
     return(list(finInfo=finInfo, EventTimes=EventTimes))
 }
 

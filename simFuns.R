@@ -329,11 +329,11 @@ simTrial <- function(parms=makeParms(), seed = NULL) {
 subsArgs <- function(parms, fxn) parms[names(parms) %in% names(formals(fxn))] ## get parameters necessary for a fxn
 
 ## For setting up batch runs (see *MK.R files)
-addParm <- function(x, parmsMat,ii) {
+addParm <- function(x, parmsMat,ii, index='rcmdbatch') {
     for(pp in 1:length(parmsMat)) {
         tempP <- as.data.frame(parmsMat)[,pp]
         isch <- !is.numeric(tempP[1])
-        parmAdd <- tempP[parmsMat$simNum==ii]
+        parmAdd <- tempP[parmsMat[,get(index)]==ii]
         addStrg <- paste0(" ", names(parmsMat)[pp], "=", "\""[isch], parmAdd, "\""[isch])
         x <- paste0(x, addStrg)
     }
