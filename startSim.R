@@ -42,7 +42,3 @@ parms$verbose <- 1
 parms$doCFs <- T
 parms$numCFs <- 3
 system.time(sim <- simN_CFs(seed=seed, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=vaccProp))
-
-parms$vaccEff <- 0
-parms$pSAE <- 10^-3
-system.time(sim <- simN_CFs(seed=seed, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=NULL))

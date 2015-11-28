@@ -277,8 +277,8 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1, R
         tmp[infectDay > startInfectingDay, infectDay := Inf] ## redoing post endDay stuff with additional folks vacc
         alreadyInfected <- NULL
         ## RNG seed control
-        if(whichDo %in% c('pop','NTpop','VRpop')) 
-            assign(paste0('simInfSeed',whichDo), .GlobalEnv$.Random.seed) ## saved for use elsewhere later
+        ## if(whichDo %in% c('pop','NTpop','VRpop')) 
+        ##     assign(paste0('simInfSeed',whichDo), .GlobalEnv$.Random.seed) ## saved for use elsewhere later
         if(!is.null(RNGseed))
             .GlobalEnv$.Random.seed <- RNGseed 
         ## Loop thru infections: infection day is beginning of each hazard interval + exponential waiting time

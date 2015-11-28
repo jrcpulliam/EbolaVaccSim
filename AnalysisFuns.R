@@ -143,7 +143,6 @@ finInfoFxn <- function(parms) {
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
-    if(!parms$doCFs) { ## factuals
         compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
                             , whichDo = c('stActive', 'st','stEV', 'st')
                             , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
@@ -154,18 +153,6 @@ finInfoFxn <- function(parms) {
             if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
         }
         finInfo$cat <- compTab$lab
-    }else{ ## for counterfactuals
-        compTab <- data.table(atDay = parms$trackUntilDay
-                            , whichDo = c('stNT', 'stVR')
-                            , lab = c('allFinal_NT', 'allFinal_VR')
-                            , cf = T
-                              )
-        for(ii in 1:nrow(compTab)) {
-            finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
-            if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
-        }
-        finInfo$cat <- compTab$lab
-    }
     finInfo <- as.data.table(finInfo)[order(atDay)]
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
@@ -178,10 +165,10 @@ finInfoFxn <- function(parms) {
 simNtrials <- function(seed = 1, parms=makeParms(), N = 2, 
                        simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
                        verbFreq=10, vaccProp=NULL) {
-    set.seed(seed)
     finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
         simNum <- simNums[ss]
+        set.seed(simNum)
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
@@ -219,11 +206,11 @@ simNtrials <- function(seed = 1, parms=makeParms(), N = 2,
 simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, 
                      simNums = ((seed-1)*170 + 1):((seed-1)*170 + N),
                      returnInfTimes = T, verbFreq=10, vaccProp=NULL) {
-    set.seed(seed)
     finInfo <- data.frame(NULL)
     EventTimes <- NULL
     for(ss in 1:N) {
         simNum <- simNums[ss]
+        set.seed(simNum)
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
@@ -236,7 +223,8 @@ simN_CFs <- function(seed = 1, parms=makeParms(), N = 2,
         EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
         rm(res); gc()
     }
-    EventTimes[order(ss,seed,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+    finInfo <- EventTimes[order(ss,seed,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+    if(!returnInfTimes) EventTimes <- NULL
     return(list(finInfo=finInfo, EventTimes=EventTimes))
 }
 
@@ -248,6 +236,22 @@ simNtrialsWRP <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
         simNtrials(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
     }
 }
-
 ## system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
 ## res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]
+
+####################################################################################################
+## To show that RNGs line up between counterfactuals & factuals for first simulation & with same vaccProps
+seed=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T
+
+verbose <- 1
+parmArgs <- subsArgs(as.list(environment()), makeParms)
+print(parmArgs)
+parms <- do.call(makeParms, parmArgs)
+saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", simNum),'.Rdata'))
+vaccProp1 <- get(vaccPropStrg)
+
+system.time(simCF <- simN_CFs(seed=seed, parms=parms, N = nsims, returnInfTimes = T, verbFreq=10, vaccProp=vaccProp))
+system.time(sim <- simNtrials(seed=seed, parms=parms, N = nsims, verbFreq=10, vaccProp=vaccProp))
+sim$finInfo[cat=='allFinal_noEV']
+simCF$EventTimes[order(cc,simNum), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, seed, cc, cf)]
+####################################################################################################
