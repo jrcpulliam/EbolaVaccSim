@@ -1,7 +1,7 @@
 if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
-library(RColorBrewer); library(data.table); library(ggplot2); library(dplyr); library(grid); library(scales)
+require(RColorBrewer); require(data.table); require(ggplot2); require(dplyr); require(grid); require(scales)
 ##load(file=file.path('BigResults','powFin.Rdata'))
 percent <- function(x) paste0(formatC(x*100), '%')
 labs <- c('','log')

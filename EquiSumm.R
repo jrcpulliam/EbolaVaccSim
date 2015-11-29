@@ -26,6 +26,7 @@ vaccProp[, simNum:=1:length(vaccEff)]
 thing <- 'Equip-randCFs'
 fincfs <- extractCFs(thing, verb=0)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
+fincfs <- finInfo
 fincfs <- fincfs[nbatch<161] ## next 160-320 are redundant
 fincfs <- merge(fincfs, vaccProp, by = 'simNum', all.y=F) ## copy vaccProp in there (should do this in analysisFuns.R later
 
@@ -35,7 +36,7 @@ fincfs <- merge(fincfs, vaccProp, by = 'simNum', all.y=F) ## copy vaccProp in th
 ## fincfs[cf=='VRpop', list(caseTot= mean(caseTot), caseTotmin= min(caseTot), caseTotmax= max(caseTot), n=length(caseTot), vaccEff= unique(vaccEff)) , list(simNum)]
 ## summary(lm(caseTot ~ vaccEff, data = fincfs[cf=='VRpop']))
 ## ## 
-## jpeg('Figures/test.jpg')
+## 
 ## p <- ggplot(fincfs[cf=='VRpop'], aes(vaccEff, caseTot, group=simNum, color=simNum))
 ## ## p + geom_point(aes(color=simNum))
 ## p + geom_boxplot()
@@ -55,16 +56,31 @@ fincfs[, length(vaccEff), list(simNum,cf)]
 finTrials[, length(vaccEff), simNum] ## 4 types of simulations
 finTrials[, list(numSim = length(vaccEff)), list(simNum, gs, ord)] ## these are the groupings
 finInfo[cat=='allFinalEV', length(caseTot), list(simNum, gs, ord)] ## 4 types of simulations
+
 setkey(finInfo, gs, ord, simNum, cat)
+setkey(finTrials, gs, ord, simNum)
+
+## merge them so we have power & speed info here too
+finIT <- finInfo[finTrials[, list(gs, ord, simNum, vaccGood, vaccBad, tcal, vaccEff, PHU)]]
 
 class(fincfs$cc) <- 'numeric'
 setkey(fincfs,  simNum, cc)
 names(fincfs)
 
 ## Merge (big merger but worth it in speed later)
-fin <- merge(finInfo, fincfs, by ='simNum', all.y=F, allow.cartesian = T)
+fin <- merge(finIT, fincfs, by ='simNum', all.y=F, allow.cartesian = T)
 setkey(fin, gs, ord.x, simNum, cf, cat)
 
 ## Get difference between caseTot
-ctot <- fin[cat=='allFinalEV', list(caseTotvsCF = caseTot.x - caseTot.y), list(gs, ord.x, simNum, cf)]
-ctot[, mean(caseTotvsCF), list(gs, ord.x, simNum, cf)]
+ctot <- fin[cat %in% c('allFinalEV', 'allFinal_noEV'), 
+            list(cc, vaccGood, vaccBad, tcal, caseTotvsCF = caseTot.x - caseTot.y, caseTotF = caseTot.x, caseTotCF = caseTot.y), 
+            list(gs, ord.x, simNum, cf, cat)]
+ctot
+
+ctot[, list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF)), list(gs, ord.x, simNum, cf, cat)]
+
+cs <- ctot[order(cat), list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF), 
+                            power = mean(vaccGood), tcal = mean(tcal)), 
+           list(gs, ord.x, cf, cat)]
+save(cs, file = file.path('BigResults','cs.Rdata'))
+
