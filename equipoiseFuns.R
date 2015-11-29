@@ -62,8 +62,7 @@ cfSims <- function(parms, batch=1) {
                 tmpSeed <- parms$simInfSeedpop
             }
             tmp <- simInfection(parms, whichDo=cf, cfNum=cc, RNGseed = tmpSeed) ## simulate infection again
-            if(nrow(tmp$indivEventDays)>0) ## if there are any rows don't do this, causes error
-                parms$EventTimesLs[[cf]][[cc]] <- data.table(batch = batch, cf=cf, cc=cc, tmp$indivEventDays )
+            parms$EventTimesLs[[cf]][[cc]] <- data.table(batch = batch, cf=cf, cc=cc, tmp$indivEventDays )
             ## CONTROL SEEDS HERE TOO
             if(cf=='NTpop') ## use seed for VRpop to minimize variation b/w counterfactuals
                 tmpSeed <- tmp$simInfSeedNTpop else tmpSeed = NULL ## NULL triggers a new seed for next step of cc

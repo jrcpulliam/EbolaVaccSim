@@ -153,9 +153,10 @@ extractCFs <- function(thing
     }
     if(verbose==2) browser()
     parmsDT <- rbindlist(parmsList, use.names = T, fill = T)
-    finInfo <- merge(rbindlist(finInfoList), parmsDT, by = c('nbatch'))
+    fincfs <- merge(rbindlist(finInfoList), parmsDT, by = c('nbatch'))
+    class(fincfs$cc) <- 'numeric'
     if(doSave) {
-        save(finInfo, file=file.path('BigResults', paste0(thing, '.Rdata')))
+        save(fincfs, file=file.path('BigResults', paste0(thing, '.Rdata')))
     }
-    return(finInfo)
+    return(fincfs)
 }
