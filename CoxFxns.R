@@ -184,7 +184,7 @@ doCoxME <- function(parms, csd, bump = F) { ## take censored survival object and
     if(parms$verbose==3.1) browser()
     if(parms$verbose>0) print('fitting vanilla coxME')
     mod <- try(coxme(Surv(startDay, endDay, infected) ~ immuneGrp + (1|cluster), data = csd), silent=T)
-    if(!inherits(mod, 'try-error')) {
+    if(!inherits(mod, 'try-error') & !vcov(mod)<0) { ## if variance is <0 or model doesn't converge, go to else
         vaccEffEst <- 1-exp(mod$coef + c(0, 1.96, -1.96)*sqrt(vcov(mod)))
         zval <- mod$coef/sqrt(vcov(mod))
         pval <- pnorm(zval, lower.tail = vaccEffEst[1]>0)*2

@@ -26,5 +26,24 @@ thing <- 'Equip-randCFs'
 fincfs <- extractCFs(thing, verb=0)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 fincfs <- fincfs[nbatch<161] ## next 160-320 are redundant
+fincfs <- merge(fincfs, vaccProp, by = 'simNum', all.y=F) ## copy vaccProp in there (should do this in analysisFuns.R later
 
-fincfs[, list(caseTot= mean(caseTot), n=length(caseTot)) , list(simNum, cf)]
+## Look at counterfactuals
+fincfs[, list(caseTot= mean(caseTot), caseTotmin= min(caseTot), caseTotmax= max(caseTot), n=length(caseTot)) , list(simNum, cf)]
+
+fincfs[cf=='VRpop', list(caseTot= mean(caseTot), caseTotmin= min(caseTot), caseTotmax= max(caseTot), n=length(caseTot), vaccEff= unique(vaccEff)) , list(simNum)]
+
+summary(lm(caseTot ~ vaccEff, data = fincfs[cf=='VRpop']))
+
+jpeg('Figures/test.jpg')
+p <- ggplot(fincfs[cf=='VRpop'], aes(vaccEff, caseTot, group=simNum, color=simNum))
+## p + geom_point(aes(color=simNum))
+p + geom_boxplot()
+graphics.off()
+
+fincfs[cf=='NTpop', var(caseTot)] ## far more variance between hazard simulations than within them
+fincfs[cf=='NTpop', var(caseTot), list(simNum)]
+
+summary(aov(caseTot ~ simNum, data = fincfs))
+
+## compare to factuals

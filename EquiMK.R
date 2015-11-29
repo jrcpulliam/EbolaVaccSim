@@ -4,24 +4,34 @@ if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/'
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
  
-thing <- 'Equip-randCFs'
+thing <- 'Equip-rand'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- 'RCT'
-numEach <- 160
+numEach <- 80
+nsims <- 26
+print(paste0('doing ', nsims*numEach, ' per scenario with ', numEach , ' done on each core'))
 
-ves <- .7## c(0,.7)
+doCFs <- F
+if(doCFs) { 
+    gs <- F
+    ord <- 'TU'
+}else{
+    gs <- c(F, T)
+    ord <- c('none','TU')
+}
+ves <- NA
 pits <- c(.05)
 parmsMat <- as.data.table(expand.grid(
     batch =  1:numEach
     , trial = tnms
-  , gs = F ##c(F, T)
-  , ord = 'TU' ## c('none','TU')
+  , gs = gs
+  , ord = ord
   , propInTrial = pits
-  , delayUnit = 7 ##c(0,7)
+  , delayUnit = 7 ## c(0,7)
   , immunoDelay = c(21)
   , vaccEff = ves
   , randVaccProperties = T
@@ -31,7 +41,8 @@ parmsMat <- as.data.table(expand.grid(
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
 parmsMat$returnEventTimes <- TRUE
-parmsMat[,doCFs:= numCFs>0]
+parmsMat$doCFs <- doCFs
+
 parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(trial=='SWCT' & gs)] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(delayUnit==0 & ord=='TU')] ## ordering is meaningless with simultaneous instant vacc
@@ -40,7 +51,7 @@ parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 nmtmp <- thing
 parmsMat$saveNm <- nmtmp
-parmsMat$nsims <- 13 ## 85*24 is ~ 2000 simulations each (2040 but we'll round)
+parmsMat$nsims <- nsims
 parmsMat$reordLag <- 14
 parmsMat$nboot <- 0
 parmsMat$trialStartDate <- '2015-02-18'
