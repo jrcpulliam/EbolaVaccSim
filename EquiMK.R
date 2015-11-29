@@ -10,7 +10,7 @@ routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
-tnms <- 'RCT'
+tnms <- c('SWCT','RCT')
 numEach <- 80
 nsims <- 26
 print(paste0('doing ', nsims*numEach, ' per scenario with ', numEach , ' done on each core'))

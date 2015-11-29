@@ -26,7 +26,6 @@ vaccProp[, simNum:=1:length(vaccEff)]
 thing <- 'Equip-randCFs'
 fincfs <- extractCFs(thing, verb=0)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
-fincfs <- finInfo
 fincfs <- fincfs[nbatch<161] ## next 160-320 are redundant
 fincfs <- merge(fincfs, vaccProp, by = 'simNum', all.y=F) ## copy vaccProp in there (should do this in analysisFuns.R later
 
