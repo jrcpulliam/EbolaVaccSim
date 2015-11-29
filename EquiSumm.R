@@ -1,8 +1,8 @@
-if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
-require(RColorBrewer); require(boot)
+require(RColorBrewer); require(boot); require(data.table)
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R'), source)
 
@@ -83,4 +83,28 @@ cs <- ctot[order(cat), list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff =
                             power = mean(vaccGood), tcal = mean(tcal)), 
            list(gs, ord.x, cf, cat)]
 save(cs, file = file.path('Results','cs.Rdata'))
+
+load(file = file.path('Results','cs.Rdata'))
+class(cs$gs) <- 'logical'
+setkey(cs, gs, ord.x)
+
+par(mfrow=c(2,2))
+cs[, {
+
+
+}
+ , list(gs, ord.x)] 
+
+ctot
+
+cs[, lab:=paste0(c('gs','')[as.numeric(gs) + 1], 'RCT-',c('none','TU')[as.numeric(ord.x=='TU') + 1])]
+cs[, lab:=factor(lab)]
+
+plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
+cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
+legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
+abline(v = cs[cf=='NTpop', ctCF], lty=2)
+abline(v = cs[cf=='VRpop', ctCF], lty=2)
+
+cs[cf=='NTpop' & cat=='allFinalEV']
 
