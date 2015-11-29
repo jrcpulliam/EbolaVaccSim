@@ -28,6 +28,7 @@ extractSims <- function(thing
     if(verbose==2) browser()
     parmsDT <- rbindlist(parmsList, use.names = T, fill = T)
     finTrials <- merge(rbindlist(finModList), parmsDT, by = c('nbatch'))
+    finInfo <- merge(rbindlist(finInfoList), parmsDT, by = c('nbatch'))
     ## print(finTrials[,list(tcalMean = mean(tcal), power = mean(vaccGood), falsePos = mean(vaccGood|vaccBad)), 
     ##                 list(vaccEff, trial, gs, ord, delayUnit)]
     ## Coverage
@@ -46,10 +47,9 @@ extractSims <- function(thing
     back <- c('nbatch','sim')
     setcolorder(finTrials, c(setdiff(names(finTrials), back), back))
     if(doSave) {
-        save(finTrials, file=file.path('BigResults', paste0(thing, '.Rdata')))
-        save(finTrials, file=file.path('Results', paste0(thing, '.Rdata')))
+        save(finTrials, finInfo, file=file.path('BigResults', paste0(thing, '.Rdata')))
     }
-    return(finTrials)
+    return(list(finTrials=finTrials, finInfo=finInfo))
 }
 
 makePowTable <- function(finTrials, verbose=0, doSave=T) {
@@ -140,7 +140,7 @@ extractCFs <- function(thing
     nbatch <- length(fls)
     print(paste0('extracting from ', nbatch, ' files'))
     finInfoList <- finModList <- parmsList <- list(NULL)
-    for(ii in 1:3) {
+    for(ii in 1:nbatch) {
         if(ii%%100 ==0) print(ii)
         ff <- fls[ii]
         if(exists('sim')) rm(sim)
@@ -156,7 +156,6 @@ extractCFs <- function(thing
     finInfo <- merge(rbindlist(finInfoList), parmsDT, by = c('nbatch'))
     if(doSave) {
         save(finInfo, file=file.path('BigResults', paste0(thing, '.Rdata')))
-        save(finInfo, file=file.path('Results', paste0(thing, '.Rdata')))
     }
     return(finInfo)
 }
