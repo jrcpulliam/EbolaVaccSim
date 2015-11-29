@@ -225,7 +225,7 @@ simN_CFs <- function(batch = 1, parms=makeParms(), N = 2,
     }
     finInfo <- EventTimes[order(ss,batch,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, batch, cc, cf)]
     if(!as.logical(returnEventTimes)) EventTimes <- NULL
-    return(list(finInfo=finInfo, EventTimes=EventTimes))
+    return(list(finInfo=finInfo, EventTimes=EventTimes, parms=parms))
 }
 
 ## Wrapper to determine whether simulating factuals with analyses, or counterfactuals with only infection times

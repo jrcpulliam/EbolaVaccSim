@@ -13,7 +13,7 @@ tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- 'RCT'
 numEach <- 160
 
-ves <- c(0,.7)
+ves <- .7## c(0,.7)
 pits <- c(.05)
 parmsMat <- as.data.table(expand.grid(
     batch =  1:numEach

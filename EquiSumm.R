@@ -15,3 +15,16 @@ load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 pf <- makePowTable(finTrials, ver=0)
 pf[order(gs), list(gs, trial, ord, delayUnit, vaccEff, biasNAR, cvrNAR, vaccGood)]
 names(pf)
+
+####################################################################################################
+## extract counterfactuals
+load('data/vaccProp1.Rdata')
+vaccProp <- vaccProp1
+vaccProp[, simNum:=1:length(vaccEff)]
+
+thing <- 'Equip-randCFs'
+fincfs <- extractCFs(thing, verb=0)
+load(file=file.path('BigResults',paste0(thing, '.Rdata')))
+fincfs <- fincfs[nbatch<161] ## next 160-320 are redundant
+
+fincfs[, list(caseTot= mean(caseTot), n=length(caseTot)) , list(simNum, cf)]
