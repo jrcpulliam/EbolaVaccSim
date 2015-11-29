@@ -82,5 +82,5 @@ ctot[, list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsC
 cs <- ctot[order(cat), list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF), 
                             power = mean(vaccGood), tcal = mean(tcal)), 
            list(gs, ord.x, cf, cat)]
-save(cs, file = file.path('BigResults','cs.Rdata'))
+save(cs, file = file.path('Results','cs.Rdata'))
 
