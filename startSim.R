@@ -26,9 +26,9 @@ parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)
 saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", rcmdbatch),'.Rdata'))
-
 simArgs <- list(batch=batch, parms=parms, N=nsims, verbFreq=10, vaccProp=vaccProp, returnEventTimes=returnEventTimes,
                 simNums=simNumStart:simNumEnd)
+
 system.time(sim <- simNtrialsWRP(simArgs))
 sim <- list(sim=sim, parms=parms, batch=batch, rcmdbatch=rcmdbatch)
 save(sim, file = saveFl)

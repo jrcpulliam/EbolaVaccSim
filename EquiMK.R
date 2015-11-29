@@ -11,22 +11,22 @@ if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- 'RCT'
-numEach <- 40
+numEach <- 160
 
 ves <- c(0,.7)
 pits <- c(.05)
 parmsMat <- as.data.table(expand.grid(
     batch =  1:numEach
     , trial = tnms
-  , gs = c(F, T)
-  , ord = c('none','TU')
+  , gs = F ##c(F, T)
+  , ord = 'TU' ## c('none','TU')
   , propInTrial = pits
-  , delayUnit = c(0,7)
+  , delayUnit = 7 ##c(0,7)
   , immunoDelay = c(21)
   , vaccEff = ves
   , randVaccProperties = T
   , vaccPropStrg='vaccProp1'
-  , numCFs = 250
+  , numCFs = 500
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
@@ -40,7 +40,7 @@ parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 nmtmp <- thing
 parmsMat$saveNm <- nmtmp
-parmsMat$nsims <- 25 ## 85*24 is ~ 2000 simulations each (2040 but we'll round)
+parmsMat$nsims <- 13 ## 85*24 is ~ 2000 simulations each (2040 but we'll round)
 parmsMat$reordLag <- 14
 parmsMat$nboot <- 0
 parmsMat$trialStartDate <- '2015-02-18'
