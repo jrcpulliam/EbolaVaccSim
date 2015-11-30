@@ -10,10 +10,10 @@ routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
-tnms <- c('SWCT','RCT')
-numEach <- 80
-nsims <- 26
-print(paste0('doing ', nsims*numEach, ' per scenario with ', numEach , ' done on each core'))
+tnms <- c('RCT','SWCT')
+numEach <- 320
+nsims <- 7
+print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on each of ', numEach, ' cores'))
 
 doCFs <- F
 if(doCFs) { 
@@ -42,6 +42,9 @@ parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
 parmsMat$returnEventTimes <- TRUE
 parmsMat$doCFs <- doCFs
+parmsMat <- parmsMat[order(trial)]
+parmsMat$StatsFxns <- 'doCoxME'
+parmsMat[trial=='SWCT', StatsFxns:='doRelabel']
 
 parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(trial=='SWCT' & gs)] ## SWCT must have delay and cannot be ordered
@@ -61,11 +64,14 @@ parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 
 parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff)]
+
+
 nrow(parmsMat)
 jbs <- NULL
 jn <- 0
 
-parmsMatDo <- parmsMat
+parmsMatDo <- parmsMat[trial=='SWCT']
+nrow(parmsMatDo)
 sink(paste0('SLsims.txt'))
 for(ii in parmsMatDo$rcmdbatch) {
     cmd <- "R CMD BATCH '--no-restore --no-save --args"

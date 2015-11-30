@@ -68,12 +68,25 @@ names(fincfs)
 
 ## Merge (big merger but worth it in speed later)
 fin <- merge(finIT, fincfs, by ='simNum', all.y=F, allow.cartesian = T)
+class(fin$simNum) <- class(fin$cc)<- 'integer'
 setkey(fin, gs, ord.x, simNum, cf, cat)
 
 ## Get difference between caseTot
 ctot <- fin[cat %in% c('allFinalEV', 'allFinal_noEV'), 
             list(cc, vaccGood, vaccBad, tcal, caseTotvsCF = caseTot.x - caseTot.y, caseTotF = caseTot.x, caseTotCF = caseTot.y), 
             list(gs, ord.x, simNum, cf, cat)]
+setkey(ctot, simNum, cc, cf)
+satr <- CJ(simNum = 1:2080, cc = 1:500, cf = c('NTpop','VRpop'))
+
+## Merge to make sure that empty columns exist
+ctot <- ctot[satr, allow.cartesian=T]
+ctot
+
+
+## Get difference between caseTot
+ctot <- fin[cat %in% c('allFinalEV', 'allFinal_noEV'),  ## [1] below is because rows are replicated by cf, except for cf & caseTot.y & SAE
+            list(cc[1], vaccGood[1], vaccBad[1], tcal[1],  caseTotF = caseTot.x[1], caseTotNT = caseTot.y[cf=='NTpop'], caseTotVR = caseTot.y[cf=='VRpop']), 
+            list(gs, ord.x, simNum, cat)]
 ctot
 
 ctot[, list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF)), list(gs, ord.x, simNum, cf, cat)]
@@ -107,3 +120,31 @@ abline(v = cs[cf=='VRpop', ctCF], lty=2)
 
 cs[cf=='NTpop' & cat=='allFinalEV']
 
+## if homogenous then pop perspective is indiv equip
+## tradeoff when risk is low enough is that psae overcomes inf risk
+## ring vacc trial,
+
+## Talk outline
+
+## What is a vaccine trial?
+
+## What makes this situation unique?
+
+## ebv incidence, uncertainty in planning, urgency to do something
+
+## there may be no perfect ethical solution, but we should see the tradeoffs transparently
+
+## What are the tradeoffs: speed, information, cost, logistics, individual-level fairness, trial-level benefits, society-level information
+
+## equipoise, standard of care etc,
+
+## deadly disease, challenges equipoise (what about cancer, hiv, etc. how are those different)
+## power vs equipoise, not a strict tradeoff--only holds when sample size/funds/time are constrained (otherwise, large trial in ppl with mid-level risk where sae balances it out)
+
+## should we use untested vaccines? isn't it unsafe? we already do (pre-exposure prophylaxis, RVT trial participants)
+
+## ring vaccination trial
+
+## not everything is quantifiable (informed consent,
+
+## In research ethics, justice is the fair selection of research participants. Justice is the ideal distribution of risks and benefits when scientists conducting clinical research are recruiting volunteer research participants to participate in clinical trials.

@@ -35,3 +35,5 @@ save(sim, file = saveFl)
 
 rm(list=ls(all=T))
 gc()
+
+batch=18;trial="SWCT";gs="FALSE";ord="none";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";numCFs=500;remStartFin="TRUE";remProtDel="TRUE";returnEventTimes="TRUE";doCFs="FALSE";rcmdbatch=338;batchdirnm="BigResults/Equip-rand";saveNm="Equip-rand";nsims=26;reordLag=14;nboot=0;trialStartDate="2015-02-18";simNumStart=443;simNumEnd=468
