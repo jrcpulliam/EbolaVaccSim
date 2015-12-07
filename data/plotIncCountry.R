@@ -1,4 +1,4 @@
-setwd('~/Documents/R Repos/EbolaInc/')
+setwd('~/Documents/R Repos/EbolaVaccSim/data/')
 
 require(gdata); require(data.table); library(RColorBrewer); library(mgcv); require(animation); require(RColorBrewer)
 ff <- list.files('Data',full.names = T)
@@ -49,12 +49,12 @@ ebinc <- function(upto='2015-11-01', bg='black', fg='white',ps=27, detail=T, cex
             }
             ## Liberia
             if(cc=='Liberia' & upto>=as.Date('2015-02-02')) {
-                rect(as.Date('2015-02-02'), 0, min(upto, as.Date('2015-04-02')), 60, col=gray(.9,.5))
+                rect(as.Date('2015-02-02'), 0, min(upto, as.Date('2015-09-02')), 60, col=gray(.9,.5))
                 text(as.Date('2015-02-02'), 75, "NIH vaccine trial", col=fg, pos = 4)
             }
-            if(cc=='Liberia' & upto>=as.Date('2015-04-02')) {
-                arrows(as.Date('2015-04-02'), 35, as.Date('2015-04-02'), 5, len = .05, col='yellow', lwd = 3)
-                text(as.Date('2015-04-02'), 35, "halted", col='yellow', pos = 4)
+            if(cc=='Liberia' & upto>=as.Date('2015-09-02')) {
+       #         arrows(as.Date('2015-09-02'), 35, as.Date('2015-09-02'), 5, len = .05, col='yellow', lwd = 3)
+       #         text(as.Date('2015-09-02'), 35, "halted", col='yellow', pos = 4)
             }
             ## SL
             if(cc=='Sierra Leone' & upto>=as.Date('2015-04-15')) {
@@ -62,8 +62,8 @@ ebinc <- function(upto='2015-11-01', bg='black', fg='white',ps=27, detail=T, cex
                 text(as.Date('2015-04-15'), 75, "CDC vaccine trial", col=fg, pos = 4)
             }
             if(cc=='Sierra Leone' & upto>=as.Date('2015-08-31')) {
-                arrows(as.Date('2015-08-31'), 35, as.Date('2015-08-31'), 5, len = .05, col='yellow', lwd = 3)
-                text(as.Date('2015-08-31'), 35, "halted", col='yellow', pos = 4)
+          #      arrows(as.Date('2015-08-31'), 35, as.Date('2015-08-31'), 5, len = .05, col='yellow', lwd = 3)
+           #     text(as.Date('2015-08-31'), 35, "halted", col='yellow', pos = 4)
             }
             ## Guinea
             if(cc=='Guinea' & upto>=as.Date('2015-03-25')) {
@@ -92,7 +92,7 @@ resScl <- 1.5
 nm <- paste0('ebolaInc.mov')
 if(file.exists(nm)) file.remove(nm)
 saveVideo({
-    ani.options(interval = 0.3, nmax = 300, ani.dev='png', ani.type='png')
+    ani.options(interval = 0.15, nmax = 300, ani.dev='png', ani.type='png')
     for(ww in wktcks) ebinc(ww, ps=30)
 }, video.name = nm, other.opts = "-b 3000k -pix_fmt yuv420p", ani.width = 800*resScl, ani.height = 600*resScl)
 
