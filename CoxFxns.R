@@ -38,16 +38,23 @@ infBump <- function(parms, censorDay=parms$maxDurationDay) {
 
 permP <- function(x,na.rm=T) min(mean(x>=x[1],na.rm=na.rm), mean(x<=x[1],na.rm=na.rm))
 
-doRelabel <- function(parms, csd, bump=F, nboot=200, doMods=modsToDo, verbFreqRelab=10, minCases=0) {
+doRelabel <- function(parms, csd, bump=F, nboot=200, doMods='doCoxME', verbFreqRelab=10, minCases=0) {
     if(parms$verbose==3.45) browser()
-    if(parms$verbose>0) print(paste('doing relabeled models:', paste(unlist(modsToDo), collapse=', ')))
-    doFXNs <- lapply(doMods, function(x) get(paste0('do',x)))
+    if(parms$verbose>0) print(paste('doing relabeled models:', paste(unlist(doMods), collapse=', ')))
+    doFXNs <- lapply(doMods, function(x) get(x))
     names(doFXNs) <- doMods
     nmods <- length(doMods)
-    veePerm <- data.table(matrix(0,nboot,nmods))
+    veePerm <- as.data.table(matrix(0,nboot,nmods))
     setnames(veePerm, unlist(doMods))
     ## First row in table is effect estimate from simulation, remainin nboot-1 are from permutations
-    for(ii in 1:nmods) set(veePerm, i=1L, j=ii, doFXNs[[ii]](parms=within(parms, {verbose=0}), csd=csd, bump=F)[1,'mean'])
+    if(nmods>1) {
+        for(ii in 1:nmods) {
+            set(veePerm, i=1L, j=ii, doFXNs[[ii]](parms=within(parms, {verbose=0}), csd=csd, bump=F)[1,'mean'])
+        }
+    }else{
+        veePerm <- rep(0, nboot)
+        veePerm[1] <- doFXNs[[1]](parms=within(parms, {verbose=0}), csd=csd, bump=F)[1,'mean']
+    }
     numCases <- csd[,sum(infectDay!=Inf)]
     if(numCases >= minCases) { #
         for(bb in 2:nboot) {
@@ -93,8 +100,14 @@ doRelabel <- function(parms, csd, bump=F, nboot=200, doMods=modsToDo, verbFreqRe
             parmsB <- activeFXN(parmsB, whichDo = 'st')
             csdB <- censSurvDat(parmsB)
             parmsB$verbose <- 0 ## don't want printouts within resampling
-            for(ii in 1:nmods) set(veePerm, i=as.integer(bb), j=ii, doFXNs[[ii]](parms=parmsB, csd=csdB, bump=F)[1,'mean'])
+            if(nmods>1) {
+                for(ii in 1:nmods) 
+                    set(veePerm, i=as.integer(bb), j=ii, doFXNs[[ii]](parms=parmsB, csd=csdB, bump=F)[1,'mean'])
+            }else{
+                veePerm[bb] <- doFXNs[[1]](parms=parmsB, csd=csdB, bump=F)[1,'mean']
+            }
         }
+        veePerm <- t(t(veePerm))
         bootVee <- data.frame(mean = as.numeric(veePerm[1]), lci = NA, uci = NA, p = apply(veePerm, 2, permP), 
                               mod = paste0('relab',unlist(doMods)), bump = F, err = colSums(is.na(veePerm)))
     }else{ ## not enough cases
@@ -104,10 +117,10 @@ doRelabel <- function(parms, csd, bump=F, nboot=200, doMods=modsToDo, verbFreqRe
     return(bootVee)
 }
 
-doBoot <- function(parms, csd, nboot=200, bump=F, doMods=modsToDo, verbFreqBoot=10, minCases=0) {
+doBoot <- function(parms, csd, nboot=200, bump=F, doMods='doCoxME', verbFreqBoot=10, minCases=0) {
     if(parms$verbose==3.4) browser()
-    if(parms$verbose>0) print(paste('doing bootstrapped models:', paste(unlist(modsToDo), collapse=', ')))
-    doFXNs <- lapply(doMods, function(x) get(paste0('do',x)))
+    if(parms$verbose>0) print(paste('doing bootstrapped models:', paste(unlist(doMods), collapse=', ')))
+    doFXNs <- lapply(doMods, function(x) get(x))
     names(doFXNs) <- doMods
     nmods <- length(doMods)
     veeBoot <- data.table(matrix(0,nboot,nmods))

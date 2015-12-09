@@ -77,12 +77,20 @@ getEndResults <- function(parms, bump = T) {
             ## positive vaccine, yet HR < 1 is equivaleynt.  use first StatsFxns item to determine stopping
             ## (usually CoxME), could vectorize this later but confusing to have different vaccination rollout
             ## strategies for one simulation due to different stopping times by different analyses
-
-            intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
-            intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), intTab[analysisNum])
-            ## Even for non-GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
-            intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
-            intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
+            ## 
+            ## for GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
+            if(gs) {
+                intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
+                intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), 
+                                                 intTab[analysisNum])
+                intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
+                intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
+            }else{
+                intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), 
+                                                 intTab[analysisNum])
+                intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, p < .05 & mean>0] ]
+                intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, p < .05 & mean <0] ]
+            }
             intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]
             intStats[[analysisNum]][, vaccCases := tmpCSD[immuneGrp==1,sum(infected)]]
         })
@@ -107,6 +115,7 @@ getEndResults <- function(parms, bump = T) {
     return(parms)
 }
 
+## tmp <- do.call(doRelabel, args=list(parmsE, tmpCSDE, parmsE$bump, nboot = 5))
 
 doStats <- function(parmsE, tmpCSDE, analysisNum=1) {
     with(parmsE, {

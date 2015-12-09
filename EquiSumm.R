@@ -2,7 +2,7 @@ if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/Ebol
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
-require(RColorBrewer); require(boot); require(data.table)
+require(RColorBrewer); require(boot); require(data.table); require(vioplot)
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R'), source)
 
@@ -59,12 +59,42 @@ finInfo[cat=='allFinalEV', length(caseTot), list(simNum, gs, ord)] ## 4 types of
 setkey(finInfo, gs, ord, simNum, cat)
 setkey(finTrials, gs, ord, simNum)
 
+finTrials <- finTrials[trial!='SWCT']
+finInfo <- finInfo[trial!='SWCT']
+
 ## merge them so we have power & speed info here too
-finIT <- finInfo[finTrials[, list(gs, ord, simNum, vaccGood, vaccBad, tcal, vaccEff, PHU)]]
+finit <- finInfo[finTrials[, list(gs, ord, simNum, tcal, vaccCases, contCases, vaccGood, vaccBad, vaccEff, PHU)]]
+
 
 class(fincfs$cc) <- 'numeric'
 setkey(fincfs,  simNum, cc)
-names(fincfs)
+names(fincfs) 
+
+finit[cat=='allFinalEV'][1:2]
+
+breaks <- seq(0,200, by = 5)
+pdf('Figures/tp1.pdf')
+par(mfrow=c(2,1))
+finit[cat=='allFinalEV' & gs==T, 
+hist(tcal, xlab = 'DALYS lost', freq = F, breaks = breaks, col = 'black', bty = 'n', xlim = range(breaks), plot=T, main=paste(ord)), 
+list(ord)]
+dev.off()
+
+finit[cat=='allFinalEV' & gs==T, mean(tcal<168), ord]
+finit[cat=='allFinalEV', mean(caseTot), list(ord, gs)]
+
+pdf('Figures/tp1.pdf')
+par(mfrow=c(2,1))
+for(cc in c('allFinalEV', 'allFinal_noEV')) {
+    finit[, lab:=factor(paste0(c('','gs-')[as.numeric(gs==T)+1],ord))]
+    finit[, col:=rainbow(4)[as.numeric(lab)]]
+    plot(0,0, type = 'n', xlab = 'DALYS lost', col = 'black', bty = 'n', xlim = c(0,200), ylab='',ylim = c(0, 0.02), las = 1, main =cc)
+    finit[cat==cc, lines(density(caseTot), col = col[1] , lwd = 2), list(ord, gs)]
+}
+finit[, legend('topright', leg = unique(lab), col = unique(col), lwd = 2, bty = 'n')]
+dev.off()
+
+
 
 ## Merge (big merger but worth it in speed later)
 fin <- merge(finIT, fincfs, by ='simNum', all.y=F, allow.cartesian = T)
@@ -112,39 +142,25 @@ ctot
 cs[, lab:=paste0(c('gs','')[as.numeric(gs) + 1], 'RCT-',c('none','TU')[as.numeric(ord.x=='TU') + 1])]
 cs[, lab:=factor(lab)]
 
+pdf('Figures/test.pdf')
 plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
 cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
 legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
 abline(v = cs[cf=='NTpop', ctCF], lty=2)
 abline(v = cs[cf=='VRpop', ctCF], lty=2)
+dev.off()
+
+
+pdf('Figures/test.pdf')
+plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
+cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
+legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
+abline(v = cs[cf=='NTpop', ctCF], lty=2)
+abline(v = cs[cf=='VRpop', ctCF], lty=2)
+dev.off()
 
 cs[cf=='NTpop' & cat=='allFinalEV']
 
-## if homogenous then pop perspective is indiv equip
-## tradeoff when risk is low enough is that psae overcomes inf risk
-## ring vacc trial,
+pdf('Figures/test.pdf')
+ctot
 
-## Talk outline
-
-## What is a vaccine trial?
-
-## What makes this situation unique?
-
-## ebv incidence, uncertainty in planning, urgency to do something
-
-## there may be no perfect ethical solution, but we should see the tradeoffs transparently
-
-## What are the tradeoffs: speed, information, cost, logistics, individual-level fairness, trial-level benefits, society-level information
-
-## equipoise, standard of care etc,
-
-## deadly disease, challenges equipoise (what about cancer, hiv, etc. how are those different)
-## power vs equipoise, not a strict tradeoff--only holds when sample size/funds/time are constrained (otherwise, large trial in ppl with mid-level risk where sae balances it out)
-
-## should we use untested vaccines? isn't it unsafe? we already do (pre-exposure prophylaxis, RVT trial participants)
-
-## ring vaccination trial
-
-## not everything is quantifiable (informed consent,
-
-## In research ethics, justice is the fair selection of research participants. Justice is the ideal distribution of risks and benefits when scientists conducting clinical research are recruiting volunteer research participants to participate in clinical trials.
