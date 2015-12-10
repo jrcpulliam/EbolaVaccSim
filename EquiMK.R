@@ -4,21 +4,22 @@ if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/'
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
  
-thing <- 'Equip-rand'
+thing <- 'Equip-cfs-3pit'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
 tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- c('RCT','SWCT')
-numEach <- 320
-nsims <- 7
+numEach <- 32
+nsims <- 70
 print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on each of ', numEach, ' cores'))
 
-doCFs <- F
+doCFs <- T
 if(doCFs) { 
     gs <- F
     ord <- 'TU'
+    tnms <- 'RCT'
 }else{
     gs <- c(F, T)
     ord <- c('none','TU')
@@ -36,7 +37,7 @@ parmsMat <- as.data.table(expand.grid(
   , vaccEff = ves
   , randVaccProperties = T
   , vaccPropStrg='vaccProp1'
-  , numCFs = 1
+  , numCFs = 50
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
@@ -70,7 +71,12 @@ nrow(parmsMat)
 jbs <- NULL
 jn <- 0
 
-parmsMatDo <- parmsMat[trial=='SWCT']
+## thing <- 'Equip-rand3pit'
+## batchdirnm <- file.path('BigResults',thing)
+## fls <- list.files(batchdirnm, pattern='.Rdata')
+## numDone <- as.numeric(sapply(fls, function(x) { x <- sub(thing,'',x); x <- sub('.Rdata','',x); x <- as.numeric(x)}))
+
+parmsMatDo <- parmsMat#[!rcmdbatch %in% numDone]
 nrow(parmsMatDo)
 sink(paste0('SLsims.txt'))
 for(ii in parmsMatDo$rcmdbatch) {

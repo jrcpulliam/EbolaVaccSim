@@ -76,7 +76,6 @@ for(kk in 1:1) {
             p2 <- simTrial(makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'Phenom', weeklyDecay = wds[jj],
                                      cvWeeklyDecay = cvwd[ii], cvClus = 1.8, cvClusTime = cvct, numClus = 20, dontReordForPlot=T, doInf=F)
                          , seed = kk)
-
             plotHazT(p2, main='', ymax = .02, xlab = '', ylab = '', ytickLab = ii==1)
         }}
     mtext('increasing variation around trend', 3, 0, T)
@@ -86,7 +85,5 @@ for(kk in 1:1) {
 }
 graphics.off()
 
-parms <- makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'Phenom', weeklyDecay = wds[jj],
-                                     cvWeeklyDecay = cvwd[ii], cvClus = 1.8, cvClusTime = cvct, numClus = 20, dontReordForPlot=T, doInf=F)
-            p2 <- simTrial(parms)
+
 

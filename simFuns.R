@@ -104,7 +104,6 @@ createHazTraj_Phenom <- function(parms) within(parms, {
     }
     dailyDecayRates <- inv.logit(rnorm(numClus, mean = logit(wd^(1/7)), sd = cvWeeklyDecay*logit(wd)))
     if(inverted) dailyDecayRates <- 1/dailyDecayRates
-    browser()
     hazT <- data.table(day = rep(daySeq, each = numClus), cluster = rep(1:numClus, length(daySeq)), clusHaz = 0)
     cHind <- which(names(hazT)=='clusHaz')
     ## mean cluster hazard trajectory
@@ -309,7 +308,7 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1, R
         tmpH[tmp[SAE==1, list(indiv, vaccDay)], SAE:=1]
         if(whichDo %in% c('NTpop','VRpop')) {## output summary of the population's infections & SAEs
             indivEventDays <- tmp[infectDay!=Inf | SAE==1, list(indiv,infectDay, vaccDay, SAE, indivRR)]
-            if(nrow(tmp$indivEventDays)==0) ## still need a row in this data.table, otherwise messes up summaries later in finInfo
+            if(nrow(indivEventDays)==0) ## still need a row in this data.table, otherwise messes up summaries later in finInfo
                 indivEventDays <- data.table(indiv=NA, infectDay=Inf, vaccDay=Inf, SAE=0, indivRR=NA)
         }
         ## Assign back to global variables
