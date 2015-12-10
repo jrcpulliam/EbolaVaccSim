@@ -43,6 +43,7 @@ makeParms <- function(
   , small=F ## do a small trial for illustration
   , StatsFxns = c('doCoxME')##,'doGLMFclus','doGMMclus','doGLMclus','doRelabel','doBoot')
   , nboot = 200 ## bootstrap samples
+  , doInf = T
   , verbose = 0
   , dontReordForPlot = F
 ){
@@ -95,7 +96,15 @@ reParmRgamma <- function(nn, mean, cv) {
 createHazTraj_Phenom <- function(parms) within(parms, {
     if(verbose>10) browser()
     baseClusHaz <- reParmRgamma(numClus, mean = mu, cv = cvClus) ## gamma distributed baseline hazards
-    dailyDecayRates <- inv.logit(rnorm(numClus, mean = logit(weeklyDecay^(1/7)), sd = cvWeeklyDecay*logit(weeklyDecay)))
+    wd <- weeklyDecay
+    inverted <- F
+    if(weeklyDecay>1) { ## so we can use logit transform for growing epidemics too
+        wd <- 1/weeklyDecay
+        inverted <- T
+    }
+    dailyDecayRates <- inv.logit(rnorm(numClus, mean = logit(wd^(1/7)), sd = cvWeeklyDecay*logit(wd)))
+    if(inverted) dailyDecayRates <- 1/dailyDecayRates
+    browser()
     hazT <- data.table(day = rep(daySeq, each = numClus), cluster = rep(1:numClus, length(daySeq)), clusHaz = 0)
     cHind <- which(names(hazT)=='clusHaz')
     ## mean cluster hazard trajectory
@@ -322,8 +331,10 @@ simTrial <- function(parms=makeParms(), seed = NULL) {
     parms <- setIndHaz(parms) ## set individual-level hazards
     parms <- reordPop(parms) ## reorder vaccination sequence by incidence (if applicable), doReord off for plotting only
     parms <- setVaccDays(parms) ## set vaccination days
-    parms <- setImmuneDays(parms) ## set vaccination days
-    parms <- simInfection(parms) ## simulate infection
+    if(parms$doInf) {
+        parms <- setImmuneDays(parms) ## set vaccination days
+        parms <- simInfection(parms) ## simulate infection
+    }
     return(parms)
 }
 ## simTrial(b=F)

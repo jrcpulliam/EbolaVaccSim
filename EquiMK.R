@@ -24,7 +24,7 @@ if(doCFs) {
     ord <- c('none','TU')
 }
 ves <- NA
-pits <- c(.05)
+pits <- c(.05, .1, .2)
 parmsMat <- as.data.table(expand.grid(
     batch =  1:numEach
     , trial = tnms
@@ -36,7 +36,7 @@ parmsMat <- as.data.table(expand.grid(
   , vaccEff = ves
   , randVaccProperties = T
   , vaccPropStrg='vaccProp1'
-  , numCFs = 500
+  , numCFs = 1
 ))
 parmsMat$remStartFin <- TRUE ##***
 parmsMat$remProtDel <- TRUE
@@ -56,7 +56,7 @@ nmtmp <- thing
 parmsMat$saveNm <- nmtmp
 parmsMat$nsims <- nsims
 parmsMat$reordLag <- 14
-parmsMat$nboot <- 0
+parmsMat$nboot <- 200
 parmsMat$trialStartDate <- '2015-02-18'
 nrow(parmsMat)
 

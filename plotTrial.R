@@ -1,6 +1,7 @@
-if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
-if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R'), source)
 outdir <- 'Figures'
@@ -14,7 +15,7 @@ plotHazT <- function(parms, flnm = NULL, browse=F, main='', ymax = NULL, ytickLa
         }
         if(is.null(ymax)) ymax <- popH[, max(clusHaz)] * 30
         plot(0,0, type = 'n', xlab = xlab, ylab = ylab, main=main, bty = 'n', las = 1, axes = F,
-             xlim = c(0, (maxInfectDay+hazIntUnit)/7), ylim = c(0,ymax)) #max(popH$clusHaz)*30))
+             xlim = c(0, (maxDurationDay+hazIntUnit)/7), ylim = c(0,ymax)) #max(popH$clusHaz)*30))
         if(ytickLab) axis(2, seq(0, ymax, l =5), las = 1) else axis(2, seq(0, ymax, l =5), labels = NA)
         popH[idByClus==1, lines(day/7, clusHaz*30, type = 'l', col = rainbow(numClus)[cluster]), by = cluster]
         axis(1, at = c(0,12,24), las = 1)
@@ -33,7 +34,7 @@ graphics.off()
 pdf('Figures/sim hazards.pdf', w = 6.5, h = 4) ## show 10 simulations
 for(ii in 1:10) {
     p1 <- simTrial(makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'SL', propInTrial = .03, numClus = 20))
-    p2 <- simTrial(makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'Phenom'J, weeklyDecay = .9, cvWeeklyDecay = .5, cvClus = 1.8, cvClusTime = 0.5, numClus = 20))
+    p2 <- simTrial(makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'Phenom', weeklyDecay = .9, cvWeeklyDecay = .5, cvClus = 1.8, cvClusTime = 0.5, numClus = 20))
     ## png('Figures/sim hazards.png', w = 6.5, h = 4, units='in', res = 200)
     par(mfrow=c(1,2), 'ps'=10, mgp = c(3.5,1,0), mar = c(5,5,2,.5))
     plotHazT(p1, main='(A) simulated hazards based \non Sierra Leone forecasts', ymax = .02)
@@ -61,5 +62,31 @@ mtext('weeks', 1, 0, T)
 }
 graphics.off()
 
-plotTrialRollout <- function(parms, flnm = NULL, browse=F, main='', ...) with(parms, {
-})
+
+##png('Figures/phenom haz.png', w = 7, h = 8, units = 'in', res = 200) ## show 10 simulations
+pdf('Figures/grow peak decline phenom haz.pdf', w = 6.5, h = 5)#, units = 'in', res = 200) ## show 10 simulations
+cvwd <- c(0.1,.5,1)
+cvct <- 0#c(.5)
+wds <- c(.9, .99, 1.02)
+seed <- 2
+par(mfrow=c(3,3), 'ps'=10, mgp = c(3.5,1,0), mar = c(2,1.5,2,.5), oma = c(1,6,1,0))
+for(kk in 1:1) {
+    for(jj in 1:3) {
+        for(ii in 1:3) {
+            p2 <- simTrial(makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'Phenom', weeklyDecay = wds[jj],
+                                     cvWeeklyDecay = cvwd[ii], cvClus = 1.8, cvClusTime = cvct, numClus = 20, dontReordForPlot=T, doInf=F)
+                         , seed = kk)
+
+            plotHazT(p2, main='', ymax = .02, xlab = '', ylab = '', ytickLab = ii==1)
+        }}
+    mtext('increasing variation around trend', 3, 0, T)
+    mtext('increasing variation in trend', 2, 4.5, T)
+    mtext('hazard per person-month', 2, 2, T)
+    mtext('weeks', 1, 0, T)
+}
+graphics.off()
+
+parms <- makeParms('RCT',small=F, ord='none', delayUnit = 0, clusSize=300, hazType = 'Phenom', weeklyDecay = wds[jj],
+                                     cvWeeklyDecay = cvwd[ii], cvClus = 1.8, cvClusTime = cvct, numClus = 20, dontReordForPlot=T, doInf=F)
+            p2 <- simTrial(parms)
+

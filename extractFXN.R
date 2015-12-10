@@ -27,8 +27,8 @@ extractSims <- function(thing
     }
     if(verbose==2) browser()
     parmsDT <- rbindlist(parmsList, use.names = T, fill = T)
-    finTrials <- merge(rbindlist(finModList), parmsDT, by = c('nbatch'))
-    finInfo <- merge(rbindlist(finInfoList), parmsDT, by = c('nbatch'))
+    finTrials <- merge(rbindlist(finModList, fill=T), parmsDT, by = c('nbatch'))
+    finInfo <- merge(rbindlist(finInfoList, fill=T), parmsDT, by = c('nbatch'))
     ## print(finTrials[,list(tcalMean = mean(tcal), power = mean(vaccGood), falsePos = mean(vaccGood|vaccBad)), 
     ##                 list(vaccEff, trial, gs, ord, delayUnit)]
     ## Coverage

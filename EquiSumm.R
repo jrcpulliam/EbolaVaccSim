@@ -59,12 +59,11 @@ finInfo[cat=='allFinalEV', length(caseTot), list(simNum, gs, ord)] ## 4 types of
 setkey(finInfo, gs, ord, simNum, cat)
 setkey(finTrials, gs, ord, simNum)
 
-finTrials <- finTrials[trial!='SWCT']
-finInfo <- finInfo[trial!='SWCT']
+## finTrials <- finTrials[trial!='SWCT']
+## finInfo <- finInfo[trial!='SWCT']
 
 ## merge them so we have power & speed info here too
 finit <- finInfo[finTrials[, list(gs, ord, simNum, tcal, vaccCases, contCases, vaccGood, vaccBad, vaccEff, PHU)]]
-
 
 class(fincfs$cc) <- 'numeric'
 setkey(fincfs,  simNum, cc)
@@ -84,17 +83,15 @@ finit[cat=='allFinalEV' & gs==T, mean(tcal<168), ord]
 finit[cat=='allFinalEV', mean(caseTot), list(ord, gs)]
 
 pdf('Figures/tp1.pdf')
-par(mfrow=c(2,1))
-for(cc in c('allFinalEV', 'allFinal_noEV')) {
-    finit[, lab:=factor(paste0(c('','gs-')[as.numeric(gs==T)+1],ord))]
-    finit[, col:=rainbow(4)[as.numeric(lab)]]
+par(mfrow=c(3,1))
+for(cc in c('all', 'allFinalEV', 'allFinal_noEV')) {
+    finit[, lab:=factor(paste0(trial,c('','gs-')[as.numeric(gs==T)+1],'-', ord))]
+    finit[, col:=rainbow(5)[as.numeric(lab)]]
     plot(0,0, type = 'n', xlab = 'DALYS lost', col = 'black', bty = 'n', xlim = c(0,200), ylab='',ylim = c(0, 0.02), las = 1, main =cc)
-    finit[cat==cc, lines(density(caseTot), col = col[1] , lwd = 2), list(ord, gs)]
+    finit[cat==cc, lines(density(caseTot), col = col[1] , lwd = 2), list(ord, gs, trial)]
 }
 finit[, legend('topright', leg = unique(lab), col = unique(col), lwd = 2, bty = 'n')]
 dev.off()
-
-
 
 ## Merge (big merger but worth it in speed later)
 fin <- merge(finIT, fincfs, by ='simNum', all.y=F, allow.cartesian = T)
