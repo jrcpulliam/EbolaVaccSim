@@ -129,50 +129,38 @@ ctot <- fin[cat %in% c('allFinalEV', 'allFinal_noEV'),
             list(gs, ord.x, simNum, cat)]
 ctot
 
-ctot[, list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF)), list(gs, ord.x, simNum, cf, cat)]
+## ctot[, list(ctF = mean(caseTotF),
+##             ctCF = mean(caseTotCF),
+##             diff = mean(caseTotvsCF)),
+##      list(gs, ord.x, simNum, cf, cat)]
 
-cs <- ctot[order(cat), list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF), 
-                            power = mean(vaccGood), tcal = mean(tcal)), 
-           list(gs, ord.x, cf, cat)]
-save(cs, file = file.path('Results','cs.Rdata'))
+## cs <- ctot[order(cat), list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF), 
+##                             power = mean(vaccGood), tcal = mean(tcal)), 
+##            list(gs, ord.x, cf, cat)]
+## save(cs, file = file.path('Results','cs.Rdata'))
 
-load(file = file.path('Results','cs.Rdata'))
-class(cs$gs) <- 'logical'
-setkey(cs, gs, ord.x)
+## load(file = file.path('Results','cs.Rdata'))
+## class(cs$gs) <- 'logical'
+## setkey(cs, gs, ord.x)
 
-par(mfrow=c(2,2))
-cs[, {
+## cs[, lab:=paste0(c('gs','')[as.numeric(gs) + 1], 'RCT-',c('none','TU')[as.numeric(ord.x=='TU') + 1])]
+## cs[, lab:=factor(lab)]
 
+## pdf('Figures/test.pdf')
+## plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
+## cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
+## legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
+## abline(v = cs[cf=='NTpop', ctCF], lty=2)
+## abline(v = cs[cf=='VRpop', ctCF], lty=2)
+## dev.off()
 
-}
- , list(gs, ord.x)] 
-
-ctot
-
-cs[, lab:=paste0(c('gs','')[as.numeric(gs) + 1], 'RCT-',c('none','TU')[as.numeric(ord.x=='TU') + 1])]
-cs[, lab:=factor(lab)]
-
-pdf('Figures/test.pdf')
-plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
-cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
-legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
-abline(v = cs[cf=='NTpop', ctCF], lty=2)
-abline(v = cs[cf=='VRpop', ctCF], lty=2)
-dev.off()
-
-
-pdf('Figures/test.pdf')
-plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
-cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
-legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
-abline(v = cs[cf=='NTpop', ctCF], lty=2)
-abline(v = cs[cf=='VRpop', ctCF], lty=2)
-dev.off()
-
-cs[cf=='NTpop' & cat=='allFinalEV']
-
-pdf('Figures/test.pdf')
-ctot
+## pdf('Figures/test.pdf')
+## plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
+## cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
+## legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
+## abline(v = cs[cf=='NTpop', ctCF], lty=2)
+## abline(v = cs[cf=='VRpop', ctCF], lty=2)
+## dev.off()
 
 ## break down what's happening before trial & after trial (due to roll out)
 ## parse out false pos/negative from correct identifications

@@ -1,3 +1,13 @@
+## Divide up cases pre/post end of trial, & those avoided by end vaccination end of trial
+## 1. Run simulations on actual outbreak trajectories weighted by propInTrial
+## 2. Stochastic epidemic
+## 3. 2 + herd immunity (SHERIF?)
+## 4. ring vacc simulator ?
+
+## Plots
+## 1. DALYs averted/could have been averted by case fatality rate
+## 2. psae needed for DALYs averted differential ==0
+
 
 ## if homogenous then pop perspective is indiv equip
 ## tradeoff when risk is low enough is that psae overcomes inf risk
