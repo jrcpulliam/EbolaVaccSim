@@ -35,3 +35,12 @@ save(sim, file = saveFl)
 
 rm(list=ls(all=T))
 gc()
+
+pdf('test.pdf')
+for(hh in 1:10) {
+tp <- simTrial(within(parms,{verbose=10; clusSize=6; HazTrajSeed=hh}))
+ggplot(tp$popH[idByClus==1], aes(Date,clusHaz, color=factor(cluster)))+geom_line() + facet_wrap(~cluster, ncol=4)
+}
+graphics.off()
+
+

@@ -125,13 +125,12 @@ createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = a
     if(!is.na(HazTrajSeed)) { 
         storedSeed <- .Random.seed
         set.seed(HazTrajSeed)
-        print(HazTrajSeed)
     }
     for(cc in 1:numClus) {
         sampReg <- sample(regs, 1)
-        print(as.character(sampReg))
         fit <- fits[[sampReg]]
         src <- forecast(fit, doPlot = F, nbsize = nbsize, xlim = xlim)
+        browser()
         src$day <- src[, as.numeric(Date - trialStartDate)]
         lastDataDay <- src[max(which(!is.na(src$cases))), day]
         src[day < lastDataDay & is.na(cases), cases := 0] ## fill in over interval without reporting
