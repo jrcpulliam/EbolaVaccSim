@@ -10,7 +10,7 @@ makeSurvDat <- function(parms,  whichDo='pop') within(parms, {
     stPre$infected <- stPre[ ,as.numeric(infectDay <= immuneDayThink)]
     stPre$immuneGrp <-  0     ## immuneGrp is variable used for analysis, not omnietient knowledge of vaccination/immune status
     stPre <- stPre[,list(indiv, cluster, pair, idByClus, vaccDay, immuneDay, 
-                         immuneDayThink, startDay, endDay, infectDay, infected, immuneGrp)]
+                         immuneDayThink, startDay, endDay, infectDay, infected, immuneGrp, SAE)]
     ## post-immunity table
     stPost <- copy(popTmp)[infectDay > immuneDayThink,]
     stPost$startDay <- stPost[,immuneDayThink]
@@ -18,9 +18,11 @@ makeSurvDat <- function(parms,  whichDo='pop') within(parms, {
     stPost$infected <- 1 ## everyone gets infected eventually, but will truncate this in a separate function
     stPost$immuneGrp <- 1
     stPost <- stPost[,list(indiv, cluster, pair, idByClus, vaccDay, immuneDay, 
-                           immuneDayThink, startDay, endDay, infectDay,  infected, immuneGrp)]
+                           immuneDayThink, startDay, endDay, infectDay,  infected, immuneGrp, SAE)]
     nmSt <- paste0('st', sub('pop','',whichDo)) ## makes EVpop into EVst for example
-    assign(nmSt, rbind(stPre, stPost)) ## combine tables
+    tmpSt <- rbind(stPre, stPost)
+    tmpSt[!(immuneDay>=startDay & immuneDay<endDay) , SAE:=0] ## only count SAEs once per individual, in the interval in which they become immune** (not known in reality)
+    assign(nmSt, tmpSt) ## combine tables
     rm(stPre, stPost, popTmp, nmSt)
 }) ## careful with modifying parms, st depends on analysis a bit too (immunoDelayThink), so we can have different st for same popH
 
@@ -39,7 +41,7 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
         if(trial=='SWCT') {## inactive during protective delay; active only when there exists both vacc & unvacc person-time observed
             if(remStartFin) {
                 firstDayAnyoneImmune <- stA[, min(immuneDayThink)]
-                lastDayAnyoneNotVacc <- stA[, max(immuneDayThink)]
+                lastDayAnyoneNotVacc <- stA[, max(vaccDay)]
                 if(verbose>1.5)    {
                     print(paste0('excluding ', stA[endDay <= firstDayAnyoneImmune, sum(infectDay<Inf)], 
                                  ' infected before ', firstDayAnyoneImmune, ' days'))
@@ -92,14 +94,21 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
 ## s1 <- activeFXN(s1)
 ## s1$st[idByClus%in%1:2, list(indiv, cluster, pair, idByClus,immuneDayThink, startDay,endDay)]
 
-plotSTA <- function(stA) {
-    par(mfrow=c(2,1))
-    plot(0,0, type = 'n', xlim = c(0,168), ylim = c(0,6000), bty = 'n', xlab = 'day', ylab='ID in trial', yaxt='n', main = 'infected individuals')
-    stA[infected==1 & immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = 'dodger blue'), cluster]
-    stA[infected==1 & infectDay<Inf & immuneGrp==1, segments(startDay, indiv, min(168,endDay), indiv, col = 'red'), cluster]            
-    plot(0,0, type = 'n', xlim = c(0,168), ylim = c(0,6000), bty = 'n', xlab = 'day', ylab='ID in trial', yaxt='n', main = '1st individual per cluster')
-    stA[idByClus==1 & immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = 'dodger blue'), cluster]
-    stA[idByClus==1 & immuneGrp==1, segments(startDay, indiv, min(168,endDay), indiv, col = 'red'), cluster]
+plotSTA <- function(stA, vaccCol='dodger blue', contCol='red') {
+    ## par(mfrow=c(2,1))
+    ## plot(0,0, type = 'n', xlim = c(0,168), ylim = c(0,6000), bty = 'n', xlab = 'day', ylab='ID in trial', yaxt='n', main = 'infected individuals')
+    ## stA[infected==1 & immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = contCol), cluster]
+    ## stA[infected==1 & infectDay<Inf & immuneGrp==1, segments(startDay, indiv, min(168,endDay), indiv, col = vaccCol), cluster]
+    par(mar=c(5,4,1,.5))
+    plot(0,0, type = 'n', xlim = c(0,1.5*stA[,max(endDay)]), ylim = c(0,6000), bty = 'n', xlab = 'day', ylab='individuals', yaxt='n', main = '')
+    stA[ immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = contCol), cluster]
+    stA[ immuneGrp==1, segments(startDay, indiv, endDay, indiv, col = vaccCol), cluster]
+    ## stA[infected==1 & immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = 'black'), cluster]
+    ## stA[infected==1 & infectDay<Inf & immuneGrp==1, segments(startDay, indiv, endDay, indiv, col = 'black'), cluster]
+    stA[infected==1 & immuneGrp==0, points(endDay, indiv, pch = 16, cex = .5, col = 'black'), cluster]
+    stA[infected==1 & infectDay<Inf & immuneGrp==1, points(endDay, indiv, pch = 16, cex = .5, col = 'black'), cluster]
+    legend('topright', c('vaccinated & immune','unvaccinated','infected individual'),
+           title = 'analyzeable person-time', bty = 'n', col = c(vaccCol,contCol,'black'), pch = c(15,15,16),, cex = .7)
     print('# infections')
     print(stA[, sum(infected==1), immuneGrp])
     print('empirical hazard (remember declining incidence distorts this')

@@ -143,12 +143,15 @@ compileStopInfo <- function(atDay, tmp, verbose=0) {
                     , hazC = tmp[immuneGrp==0, sum(infected)/sum(perstime)]
                     , hazV = tmp[immuneGrp==1, sum(infected)/sum(perstime)]
                     , ptRatioCV = tmp[immuneGrp==0, sum(perstime)] / tmp[immuneGrp==1, sum(perstime)]
+                    ## , saeC = tmp[immuneGrp==0 & vaccDay < atDay, sum(SAE)]
+                    ## , saeV = tmp[immuneGrp==1, sum(SAE)]
                       )
     out <- as.data.frame(out)
     return(out)
 }
 
 finInfoFxn <- function(parms) {
+#    browser()
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
