@@ -13,7 +13,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";rcmdbatch=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T;randVaccProperties=F;vaccPropStrg=NA;simNumStart=(batch-1)*nsims+1;simNumEnd=(batch-1)*nsims+nsims;returnEventTimes=T
+batch=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";rcmdbatch=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2014-07-01"; gs=T;randVaccProperties=F;vaccPropStrg=NA;simNumStart=(batch-1)*nsims+1;simNumEnd=(batch-1)*nsims+nsims;returnEventTimes=T
 }
 load('data/vaccProp1.Rdata')
 
@@ -35,3 +35,8 @@ save(sim, file = saveFl)
 
 rm(list=ls(all=T))
 gc()
+
+pdf('Figures/blah.pdf')
+hazT[,plot(Date, clusHaz, type = 'n')]
+hazT[,lines(Date, clusHaz), cluster]
+dev.off()
