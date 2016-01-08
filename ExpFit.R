@@ -115,15 +115,15 @@ forecast <- function(fit, main=NULL, nbsize = NULL, doPlot = T, xticks = T,  yli
 })
 
 createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = as.Date('2015-02-01'),
-                                          xlim = as.Date(c('2014-09-15','2015-12-01')), 
+                                          xlim = as.Date(c('2014-09-15','2015-12-01')), ## exact = F,
                                           propInTrial = .03, numClus = 20, clusSize = 300, weeks = T, verbose=0) {
     hazTList <- NULL
     if(verbose>20) browser()
     for(cc in 1:numClus) {
+        sampReg <- regs[14] ##sample(regs, 1)
         ## if(!exact) {
-        ## fit <- fits[[sampReg]]
-        fit <- fits[[sample(regs, 1)]]
-        src <- forecast(fit, doPlot = F, nbsize = nbsize, xlim = xlim)
+            fit <- fits[[sampReg]]
+            src <- forecast(fit, doPlot = F, nbsize = nbsize, xlim = xlim)
         ## }else{ ## sample exactly
         ##     src <- sl[reg==sampReg]
         ## }
