@@ -21,7 +21,9 @@ makeSurvDat <- function(parms,  whichDo='pop') within(parms, {
                            immuneDayThink, startDay, endDay, infectDay,  infected, immuneGrp, SAE)]
     nmSt <- paste0('st', sub('pop','',whichDo)) ## makes EVpop into EVst for example
     tmpSt <- rbind(stPre, stPost)
-    tmpSt[!(immuneDay>=startDay & immuneDay<endDay) , SAE:=0] ## only count SAEs once per individual, in the interval in which they become immune** (not known in reality)
+    ## only count SAEs once per individual, in the interval in which they become **immune** so that
+    ## we can count SAE by analyzeable groups as well as not (not known in reality)
+    tmpSt[!(immuneDay>=startDay & immuneDay<endDay) , SAE:=0] 
     assign(nmSt, tmpSt) ## combine tables
     rm(stPre, stPost, popTmp, nmSt)
 }) ## careful with modifying parms, st depends on analysis a bit too (immunoDelayThink), so we can have different st for same popH

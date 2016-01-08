@@ -143,15 +143,15 @@ compileStopInfo <- function(atDay, tmp, verbose=0) {
                     , hazC = tmp[immuneGrp==0, sum(infected)/sum(perstime)]
                     , hazV = tmp[immuneGrp==1, sum(infected)/sum(perstime)]
                     , ptRatioCV = tmp[immuneGrp==0, sum(perstime)] / tmp[immuneGrp==1, sum(perstime)]
-                    ## , saeC = tmp[immuneGrp==0 & vaccDay < atDay, sum(SAE)]
-                    ## , saeV = tmp[immuneGrp==1, sum(SAE)]
+                    , nsae = tmp[,sum(SAE)]
                       )
+    ## To check that SAE's are working:
+    ## tmp[indiv%in%tmp[SAE>0, unique(indiv)], list(indiv, startDay,endDay,vaccDay,immuneDayThink, immuneGrp, SAE)][order(indiv)]
     out <- as.data.frame(out)
     return(out)
 }
 
 finInfoFxn <- function(parms) {
-#    browser()
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
@@ -169,7 +169,7 @@ finInfoFxn <- function(parms) {
     ## vaccEff estimate should roughly equate to 
     ## 1-finInfo[1,hazV/hazC]
     finInfo$caseTot <- finInfo[,caseC+caseV]
-    setcolorder(finInfo, c('cat','atDay','caseTot','caseC','caseV','hazC','hazV','ptRatioCV'))
+    setcolorder(finInfo, c('cat','atDay','caseTot','caseC','caseV','nsae','hazC','hazV','ptRatioCV'))
     parms$finInfo <- finInfo
     return(parms)
 }
