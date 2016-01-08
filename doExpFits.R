@@ -114,6 +114,13 @@ for(hh in 1:10) {
 tp <- setClusHaz(parms=makePop(within(parms,{verbose=10; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-01'); propInTrial=.05})))
 print(ggplot(tp$hazT[Date>as.Date('2015-02-01')], aes(Date,clusHaz, color=factor(cluster)))+geom_line() + facet_wrap(~cluster, ncol=4) + labs(title=paste('haztrajseed =',hh)))# + ylim(c(0,.05)))
 }
+graphics.off() ## HazTrajSeed = 7 is favorite
+
+pdf('Figures/HazAv Trajs.pdf', w = 11, h = 8)
+for(hh in c('','xClus','xTime','xClusxTime')) {
+tp <- setClusHaz(parms=makePop(within(parms,{verbose=10; HazTrajSeed=7; avHaz=hh; trialStartDate=as.Date('2015-01-01'); propInTrial=.05})))
+print(ggplot(tp$hazT[Date>as.Date('2015-02-01')], aes(Date,clusHaz, color=factor(cluster)))+geom_line() + facet_wrap(~cluster, ncol=4) + labs(title=hh)+ylim(c(0,5e-4)))
+}
 graphics.off()
 
 ## ## Show that the HazTrajSeed is controlling the projections

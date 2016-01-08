@@ -11,6 +11,7 @@ makeParms <- function(
   , delayUnit = 7 ## logistically imposed interval in between each new cluster receiving vaccination
   , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
   , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
+  , avHaz = ''      ## average over time 'xTime' across clusters 'xClus' or both 'xClusxTime'
   , HazTrajSeed = NA ## allows keeping all forecasted hazard trajectories identical between simulations (only demograhic stochasticity)
   , nbsize = .8 ## for above
   , propInTrial = .03 ## for above
@@ -122,6 +123,10 @@ createHazTraj_SL <- function(parms) within(parms, {
                                                      clusSize = clusSize, numClus = numClus, weeks = T))
     hazT <- hazT[day %in% daySeq]
     hazT[clusHaz==0, clusHaz := 10^-8] ## to stablize things
+    ## Options to average hazard overtime or across clusters or both for comparator scenarios
+    if(avHaz=='xClusxTime') hazT[,clusHaz:=mean(clusHaz)]
+    if(avHaz=='xTime') hazT[,clusHaz:=mean(clusHaz),cluster]
+    if(avHaz=='xClus') hazT[,clusHaz:=mean(clusHaz),day]
     setcolorder(hazT, c('day','cluster','clusHaz','Date'))
 })
 

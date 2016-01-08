@@ -9,7 +9,7 @@ gsTimeCalc <- function(parms) {
             infDays <- stActive$infectDay[stActive$infectDay!=Inf]
             infDays <- infDays[order(infDays)]
             ## Calculate interim analyses times
-            intTab[, tcal:= ceiling(infDays[events])] ## calendar time (as opposed to information time)
+            intTab[, tcal:= ceiling(infDays[events])] ## calendar time (as opposed to information time); *CEILING MEANS MIGHT HAVE MORE INFO*
             intTab <- intTab[!is.na(tcal)]
             intTab$trigger <- 'events'
             intTab <- intTab[tcal <= maxDurationDay]
