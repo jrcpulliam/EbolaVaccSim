@@ -111,17 +111,19 @@ save(fits, regs, ht, file = 'data/createHT.Rdata')
 ## look at hazT not popH because the former isn't reordered in a way that depends on start date
 pdf('Figures/HazTrajSeed.pdf', w = 11, h = 8)
 for(hh in 1:10) {
-tp <- setClusHaz(parms=makePop(within(parms,{verbose=10; clusSize=1; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-01')})))
-print(ggplot(tp$hazT[Date>as.Date('2015-01-01')], aes(Date,clusHaz, color=factor(cluster)))+geom_line() + facet_wrap(~cluster, ncol=4) + labs(title=paste('haztrajseed =',hh)))
+tp <- setClusHaz(parms=makePop(within(parms,{verbose=10; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-01'); propInTrial=.05})))
+print(ggplot(tp$hazT[Date>as.Date('2015-02-01')], aes(Date,clusHaz, color=factor(cluster)))+geom_line() + facet_wrap(~cluster, ncol=4) + labs(title=paste('haztrajseed =',hh)))# + ylim(c(0,.05)))
 }
 graphics.off()
 
-hh <- 1
-tp1 <- setClusHaz(parms=makePop(within(parms,{verbose=10; clusSize=1; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-01')})))
-tp2 <- setClusHaz(parms=makePop(within(parms,{verbose=10; clusSize=1; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-29')})))
-## 
-tp1$hazT[cluster==15 & format(Date, '%Y-%m')=='2015-04', max(clusHaz)]
-tp2$hazT[cluster==15 & format(Date, '%Y-%m')=='2015-04', max(clusHaz)]
-## 
-tp1$hazT[format(Date, '%Y-%m-%d')=='2015-04-02', list(cluster,clusHaz,Date)][order(clusHaz)]
-tp2$hazT[format(Date, '%Y-%m-%d')=='2015-04-02', list(cluster,clusHaz,Date)][order(clusHaz)]
+## ## Show that the HazTrajSeed is controlling the projections
+## hh <- 1
+## tp1 <- setClusHaz(parms=makePop(within(parms,{verbose=10; clusSize=1; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-01')})))
+## tp2 <- setClusHaz(parms=makePop(within(parms,{verbose=10; clusSize=1; HazTrajSeed=hh; trialStartDate=as.Date('2015-01-29')})))
+## ## 
+## tp1$hazT[cluster==15 & format(Date, '%Y-%m')=='2015-04', max(clusHaz)]
+## tp2$hazT[cluster==15 & format(Date, '%Y-%m')=='2015-04', max(clusHaz)]
+## ## 
+## tp1$hazT[format(Date, '%Y-%m-%d')=='2015-04-02', list(cluster,clusHaz,Date)][order(clusHaz)]
+## tp2$hazT[format(Date, '%Y-%m-%d')=='2015-04-02', list(cluster,clusHaz,Date)][order(clusHaz)]
+      
