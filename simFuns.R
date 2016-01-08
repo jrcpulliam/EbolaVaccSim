@@ -11,6 +11,7 @@ makeParms <- function(
   , delayUnit = 7 ## logistically imposed interval in between each new cluster receiving vaccination
   , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
   , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
+  , HazTrajSeed = NA ## allows keeping all forecasted hazard trajectories identical between simulations (only demograhic stochasticity)
   , nbsize = .8 ## for above
   , propInTrial = .03 ## for above
   , mu=.03 * yearToDays ## mean hazard in all participants at baseline
@@ -116,7 +117,7 @@ createHazTraj_Phenom <- function(parms) within(parms, {
 ## Hazard Trajectories from SL district-level incidence (calls fits peviously made)
 createHazTraj_SL <- function(parms) within(parms, {
     if(verbose>10) browser()
-    hazT <- data.table(createHazTrajFromSLProjection(fits, trialStartDate = trialStartDate,
+    hazT <- data.table(createHazTrajFromSLProjection(fits, trialStartDate = trialStartDate, HazTrajSeed=HazTrajSeed,
                                                      nbsize = nbsize, propInTrial = propInTrial, verbose=verbose,
                                                      clusSize = clusSize, numClus = numClus, weeks = T))
     hazT <- hazT[day %in% daySeq]

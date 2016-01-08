@@ -116,17 +116,22 @@ forecast <- function(fit, main=NULL, nbsize = NULL, doPlot = T, xticks = T,  yli
 
 createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = as.Date('2015-02-01'),
                                           xlim = as.Date(c('2014-09-15','2015-12-01')), ## exact = F,
+                                          HazTrajSeed = NA,
                                           propInTrial = .03, numClus = 20, clusSize = 300, weeks = T, verbose=0) {
     hazTList <- NULL
     if(verbose>20) browser()
+    ## use this seed for just forecasts, ensuring not to affect RNG down the line (ie
+    ## demogrpahic stochasticity in rest of code
+    if(!is.na(HazTrajSeed)) { 
+        storedSeed <- .Random.seed
+        set.seed(HazTrajSeed)
+        print(HazTrajSeed)
+    }
     for(cc in 1:numClus) {
-        sampReg <- regs[14] ##sample(regs, 1)
-        ## if(!exact) {
-            fit <- fits[[sampReg]]
-            src <- forecast(fit, doPlot = F, nbsize = nbsize, xlim = xlim)
-        ## }else{ ## sample exactly
-        ##     src <- sl[reg==sampReg]
-        ## }
+        sampReg <- sample(regs, 1)
+        print(as.character(sampReg))
+        fit <- fits[[sampReg]]
+        src <- forecast(fit, doPlot = F, nbsize = nbsize, xlim = xlim)
         src$day <- src[, as.numeric(Date - trialStartDate)]
         lastDataDay <- src[max(which(!is.na(src$cases))), day]
         src[day < lastDataDay & is.na(cases), cases := 0] ## fill in over interval without reporting
@@ -145,6 +150,7 @@ createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = a
     setnames(hazT, 'haz', 'clusHaz')
     hazT$day <- hazT[, week*7]
     setkey(hazT, day, cluster)
+    if(!is.na(HazTrajSeed)) .Random.seed <<- storedSeed ## revert RNG state
     return(hazT[, list(cluster, day, Date, clusHaz)])
 }
 
