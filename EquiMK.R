@@ -9,13 +9,18 @@ batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
-tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
+#tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
 tnms <- c('RCT','SWCT')
-numEach <- 32
-nsims <- 70
-print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on each of ', numEach, ' cores'))
+numEach <- 24
+nsims <- 85
+print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on each of ', numEach, ' cores (batches)'))
 
-doCFs <- T
+## start dates
+sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
+sdates <- sdates[1:length(sdates) %% 2 ==1]
+## sdates <- '2015-02-18'
+
+doCFs <- F
 if(doCFs) { 
     gs <- F
     ord <- 'TU'
@@ -25,22 +30,22 @@ if(doCFs) {
     ord <- c('none','TU')
 }
 ves <- NA
-pits <- c(.05, .1, .2)
+pits <- c(.025, .05, .1, .2)
 parmsMat <- as.data.table(expand.grid(
     batch =  1:numEach
-    , trial = tnms
+  , trial = tnms
   , gs = gs
   , ord = ord
+  , trialStartDate = sdates
   , propInTrial = pits
   , delayUnit = 7 ## c(0,7)
   , immunoDelay = c(21)
   , vaccEff = ves
   , randVaccProperties = T
   , vaccPropStrg='vaccProp1'
-  , numCFs = 50
+  , numCFs = 1
+  , HazTrajSeed = 7
 ))
-parmsMat$remStartFin <- TRUE ##***
-parmsMat$remProtDel <- TRUE
 parmsMat$returnEventTimes <- TRUE
 parmsMat$doCFs <- doCFs
 parmsMat <- parmsMat[order(trial)]
@@ -58,14 +63,12 @@ parmsMat$saveNm <- nmtmp
 parmsMat$nsims <- nsims
 parmsMat$reordLag <- 14
 parmsMat$nboot <- 200
-parmsMat$trialStartDate <- '2015-02-18'
 nrow(parmsMat)
 
 parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 
 parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff)]
-
 
 nrow(parmsMat)
 jbs <- NULL

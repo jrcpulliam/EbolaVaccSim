@@ -212,9 +212,8 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
     return(list(finMods=finMods, finInfo=finInfo))
 }
 
-## Simulate counterfactuals, similar to above but no analyses. Only
-## tracking infections for No Trial & Vaccine Rollout
-## coutnerfactuals. Do more than one simInfection for each population.
+## Simulate counterfactuals, similar to above but no analyses. Only tracking infections for No Trial
+## & Vaccine Rollout coutnerfactuals. Do more than one simInfection for each population.
 simN_CFs <- function(batch = 1, parms=makeParms(), N = 2, 
                      simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
                      returnEventTimes = T, verbFreq=10, vaccProp=NA) {
@@ -249,9 +248,6 @@ simNtrialsWRP <- function(input) {
     }
 }
 ## system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
-
-
-
 
 ## ####################################################################################################
 ## ## To show that RNGs line up between counterfactuals & factuals for first simulation & with

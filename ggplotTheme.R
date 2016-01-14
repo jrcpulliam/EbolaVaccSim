@@ -2,16 +2,18 @@
 percent <- function(x) paste0(formatC(x*100), '%')
 
 gg_color_hue <- function(n) {
-  hues = seq(15, 375, length=n+1)
-  hcl(h=hues, l=65, c=100)[1:n]
+    hues = seq(15, 375, length=n+1)
+    hcl(h=hues, l=65, c=100)[1:n]
 }
 group.colors <- c(RCT = "#333BFF", FRCT = "#CC6600", SWT ="#9633FF")
 group.colors[c(1,3,2)] <- gg_color_hue(3)
 group.colors['SWCT'] <- 'orange'
+if(class(pf)!='function') {
 pf$trial <- factor(pf$trial, levels=levels(pf$trial)[c(2,1,3)])
 pf[, biasNAR:=biasNAR/vaccEff]
 levels(pf$order)[1] <- 'random'
 levels(pf$order)[2] <- 'risk-prioritized'
+}
 
 ####################################################################################################
 ## ggplot theme for MS

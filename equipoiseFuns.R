@@ -4,7 +4,7 @@ equipFxn <- function(N=1
                      , seed=1
                      , probVaccWorks = .7
                      , EfficacyRNG = function(N) runif(N, .5, .9) ## pdf of efficacy give any efficacy
-                     , saeRNG = function(N) runif(N, 10^-5, 10^-4) ## serious adverse effect
+                     , saeRNG = function(N) runif(N, 10^-5, 5*10^-4) ## serious adverse effect
                      , probVaccIncreasesCFR = 0 ## probablity a vaccine is not efficacious AND increases the case fatality rate
                      , badVaccCFR_OR = 2 ## odds ratio of dying given EVD if vaccinted versus if not, if above true                     
                      ) {
@@ -19,6 +19,12 @@ equipFxn <- function(N=1
 ## set.seed(1)
 ## vaccProp1 <- equipFxn(5000)
 ## save(vaccProp1, file='data/vaccProp1.Rdata')
+
+## pdf('Figures/EquipPrior.pdf')
+## par(mfrow=c(2,1))
+## hist(vaccProp1$vaccEff, xlab = 'vaccine efficacy', col = 'black', bty = 'n')
+## hist(vaccProp1$pSAE, xlab = 'pSAE', col = 'black', bty = 'n')
+## dev.off()
 
 ## equipFxn(10)
 

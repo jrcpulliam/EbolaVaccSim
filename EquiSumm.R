@@ -3,22 +3,26 @@ if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVa
 if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
 rm(list=ls(all=T))
-require(RColorBrewer); require(boot); require(data.table); require(vioplot)
+require(RColorBrewer); require(boot); require(data.table); require(vioplot); require(ggplot2); require(grid); require(reshape2)
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R'), source)
+source('ggplotTheme.R')
 
 ####################################################################################################
 ## extract factuals
-thing <- 'Equip-rand3pit'
+thing <- 'Equip-ByTrialDate' ## 'Equip-rand3pit'
 ## out <- extractSims(thing, verb=0)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
-          list(trial, gs, ord, delayUnit, propInTrial)]
+          list(trial, gs, ord, delayUnit, propInTrial, trialStartDate)]
 finTrials[tcal<168 & vaccEff>0, list(nsim=length(tcal), tcalMean = mean(tcal), power = mean(vaccGood)),
           list(trial, gs, ord, delayUnit)]
 ## finInfo has 4 categories for each simulation in finTrials (all=all cases by trial end date,
 ## analyzed = all analyzed cases by trial end date, allFinalEV/no_EV = all cases by stop date w/ or
 ## w/o end vaccine rollout)
+
+figdir <- file.path('Figures', thing)
+dir.create(figdir)
 
 ####################################################################################################
 ## extract counterfactuals
@@ -26,81 +30,88 @@ load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
 vaccProp[, simNum:=1:length(vaccEff)]
 
-thing <- 'Equip-cfs-3pit'
-## fincfs <- extractCFs(thing, verb=0)
-load(file=file.path('BigResults',paste0(thing, '.Rdata')))
+thingCFs <- paste0(thing, 'CFs') ##'Equip-cfs-3pit'
+## fincfs <- extractCFs(thingCFs, verb=0)
+load(file=file.path('BigResults',paste0(thingCFs, '.Rdata')))
 fincfs <- merge(fincfs, vaccProp, by = 'simNum', all.y=F) ## copy vaccProp in there (should do this in analysisFuns.R later
 class(fincfs$cc) <- 'numeric'
+setnames(fincfs, 'saeTot','nsae')
 
-## Examine
-fincfs[, length(vaccEff), list(simNum,cf)]
-finTrials[, length(vaccEff), simNum] ## 4 types of simulations
-finTrials[, list(numSim = length(vaccEff)), list(simNum, gs, ord, trial, propInTrial)] ## these are the groupings
-finTrials[, list(numSim = length(vaccEff)), list(simNum, gs, ord, trial, propInTrial)][,max(numSim)]
-finInfo[cat=='allFinalEV', length(caseTot), list(simNum, gs, ord, trial, propInTrial)] ## 4 types of simulations
-
-setkey(finInfo, gs, ord, trial, propInTrial, simNum, cat)
-setkey(finTrials, gs, ord, trial, propInTrial, simNum)
+setkey(finInfo, gs, ord, trial, propInTrial, simNum, trialStartDate, cat)
+setkey(finTrials, gs, ord, trial, propInTrial, simNum, trialStartDate)
 
 ## Merge them so we have simulation level-info (speed, result, etc) in each finInfo category
-finit <- finInfo[finTrials[, list(gs, ord, trial, propInTrial, simNum, tcal, vaccCases, contCases, vaccGood, vaccBad, vaccEff, PHU)]]
+finit <- finInfo[finTrials[, list(gs, ord, trial, propInTrial, trialStartDate, simNum, tcal, vaccCases, contCases, vaccGood, vaccBad, vaccEff, pSAE, PHU)]]
 finit[, lab:=factor(paste0(trial, c('','gs-')[as.numeric(gs==T)+1],'-', ord))] ## make useful labels
 
 ## Merge finit with fincfs so we can compare counterfactuals and factuals
-fall <- rbind(fincfs[, list(lab = cf, cat = 'allFinalEV', propInTrial, caseTot, vaccEff, simNum)],
-              finit[, list(lab, cat, propInTrial, caseTot, vaccEff, simNum)]) ##cat %in% c('all','allFinalEV','allFinal_noEV')
+fall <- rbind(fincfs[, list(lab = cf, cat = 'allFinalEV', propInTrial, caseTot, vaccEff, simNum, trialStartDate, nsae, pSAE)],
+              finit[, list(lab, cat, propInTrial, caseTot, vaccEff, simNum, trialStartDate, nsae, pSAE, vaccGood)], fill=T) ##cat %in% c('all','allFinalEV','allFinal_noEV')
 fall[, posv:= vaccEff>0] ## positive vaccine efficacy simulations
 
+fall[, list(nsim = length(caseTot), meansae = mean(nsae)), list(lab, cat, propInTrial, trialStartDate)]##[,range(V1)]
 
+fall[, unique(lab)]
+fall[, caseTotNT := caseTot[lab=='NTpop'], list(simNum, propInTrial, trialStartDate)]
+fall[, lyg := caseTotNT - caseTot]
+
+labsToShow <- c('RCTgs--TU','SWCT-none', 'VRpop','RCT-none')
+ltys <- c('VRpop'=2, 'RCT-none' = 3, 'RCTgs--TU'=1, 'SWCT-none'=1)
+cols <- c('VRpop'='dark green', 'RCT-none' = 'light blue', 'RCTgs--TU'="#333BFF", 'SWCT-none'='orange')
+
+ftmp <- fall[cat=='allFinalEV'  & lab %in% labsToShow]
+
+pdf(file.path(figdir, 'lyg dens.pdf'))
+for(ts in fall[,unique(trialStartDate)]) {
+    p <- ggplot(ftmp[trialStartDate==ts], aes(lyg, colour = lab, linetype = lab)) +
+        geom_density() + facet_wrap(~propInTrial, ncol=1) + labs(title=paste0('trial starts ', ts)) +
+            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+#                scale_x_continuous(limits=c(-100,600)) + 
+                xlab("life years gained")
+    print(p+thsb)
+}
+dev.off()
+
+lygPow <- fall[!lab %in% c('NTpop','VRpop'), list(pow = mean(vaccGood), lyg = mean(lyg)), list(propInTrial, trialStartDate, cat, lab)]
+
+pdf(file.path(figdir, 'lyg pow.pdf'))
+    p <- ggplot(lygPow[cat=='allFinalEV' & lab %in% labsToShow], aes(lyg, pow, colour = lab, linetype = lab)) +
+        geom_point() + facet_grid(propInTrial~trialStartDate) + 
+            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+#                scale_x_continuous(limits=c(-100,600)) + 
+                xlab("life years gained")
+    print(p)
+dev.off()
+                
 ####################################################################################################
 ## Figures
 ####################################################################################################
-pdf('Figures/case dens.pdf')
-ggplot(finit[cat=='allFinalEV'], aes(caseTot, colour = lab)) +
-  geom_density() + facet_wrap(~propInTrial, ncol=1)
+fall[,unique(lab)]
+
+
+## pit facets, tsd pages
+pdf(file.path(figdir, 'case dens.pdf'))
+for(ts in ftmp[,unique(trialStartDate)]) {
+    p <- ggplot(ftmp[trialStartDate==ts], aes(caseTot, colour = lab, linetype = lab)) +
+        geom_density() + facet_wrap(~propInTrial, ncol=1) + labs(title=paste0('trial starts ', ts)) +
+            scale_color_manual(values=groupcols) + scale_linetype_manual(values = ltys) +
+                xlab("total cases by 1 year post start date")
+    print(p+thsb)
+}
 dev.off()
 
-pdf('Figures/caseXtime.pdf')
-p <- ggplot(finit[cat=='allFinalEV' & gs==T], aes(as.numeric(tcal), caseTot, colour = vaccGood))
-p + geom_point(alpha = 1/5) + facet_wrap(~propInTrial+ord, ncol=2)
+## pit pages, tsd facets
+pdf(file.path(figdir, 'caseXpitXtsd.pdf'))
+for(ts in ftmp[,unique(propInTrial)]) {
+    p <- ggplot(ftmp[propInTrial==ts], aes(caseTot, colour = lab, linetype = lab)) +
+        geom_density() + facet_wrap(~trialStartDate, ncol=1) + labs(title=paste0('proportion cases in trial ', ts)) +
+            scale_color_manual(values=groupcols) + scale_linetype_manual(values = ltys) +
+                xlab("total cases by 1 year post start date")
+    print(p+thsb)
+}
 dev.off()
 
-pdf('Figures/caseXtime.pdf')
-p <- ggplot(finit[propInTrial==.2 & cat=='allFinalEV' & gs==T], aes(as.numeric(tcal), caseTot, colour = vaccGood))
-p + geom_point(alpha = 1/5) + facet_grid(posv~ord)
-dev.off()
 
-pdf('Figures/caseXtime end vs not.pdf')
-p <- ggplot(finit[propInTrial==.2 & cat %in% c('all','allFinalEV') & gs==T], aes(as.numeric(tcal), caseTot, colour = vaccGood))
-p + geom_point(alpha = 1/5) + facet_grid(posv~ord + cat)
-dev.off()
-
-pdf('Figures/tp box.pdf')
-p <- ggplot(finit[cat=='allFinalEV'], aes(lab, caseTot))
-p + geom_boxplot() + facet_wrap(~propInTrial, ncol=1)
-dev.off()
-
-pdf('Figures/cfs.pdf')
-ggplot(fall[!lab %in% c('RCT-none','RCT-TU')], aes(caseTot, colour = lab)) +
-  geom_density(lwd=2) + facet_wrap(~propInTrial, ncol=1) + scale_x_continuous(limits = c(0, 400))
-dev.off()
-
-pdf('Figures/cfs pos vacceff.pdf')
-ggplot(fall[ !lab %in% c('RCT-none','RCT-TU') & cat =='allFinalEV'], aes(caseTot, colour = lab)) +
-  geom_density(lwd=2) + facet_grid(posv ~  propInTrial) + scale_x_continuous(limits = c(0, 400))
-dev.off()
-
-pdf('Figures/cfs pos vacceff end vs final.pdf')
-ggplot(fall[ !grepl('pop',lab) & posv==T &  !lab %in% c('RCT-none','RCT-TU') ], aes(caseTot, colour = lab)) +
-  geom_density(lwd=1) + facet_grid(cat ~  propInTrial) + scale_x_continuous(limits = c(0, 400))
-dev.off()
-
-pdf('Figures/cfs.pdf')
-ggplot(fall[!lab %in% c('RCT-none','RCT-TU')], aes(caseTot, colour = lab)) +
-  geom_density(lwd=2) + facet_wrap(~propInTrial, ncol=1) + scale_x_continuous(limits = c(0, 400))
-dev.off()
-
-finit[cat=='allFinalEV'][1:2]
 
 ####################################################################################################
 ## Difference between matched counterfactuals and factuals
@@ -146,7 +157,7 @@ ctot
 ## cs[, lab:=paste0(c('gs','')[as.numeric(gs) + 1], 'RCT-',c('none','TU')[as.numeric(ord.x=='TU') + 1])]
 ## cs[, lab:=factor(lab)]
 
-## pdf('Figures/test.pdf')
+## pdf(file.path(figdir, 'test.pdf')
 ## plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
 ## cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
 ## legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
@@ -154,7 +165,7 @@ ctot
 ## abline(v = cs[cf=='VRpop', ctCF], lty=2)
 ## dev.off()
 
-## pdf('Figures/test.pdf')
+## pdf(file.path(figdir, 'test.pdf')
 ## plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
 ## cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
 ## legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
