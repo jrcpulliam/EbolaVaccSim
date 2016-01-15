@@ -1,7 +1,10 @@
-setwd('~/Documents/R Repos/EbolaVaccSim/data/')
+if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
 
-require(gdata); require(data.table); library(RColorBrewer); library(mgcv); require(animation); require(RColorBrewer)
-ff <- list.files('Data',full.names = T)
+require(gdata); require(data.table); library(RColorBrewer); library(mgcv);  require(RColorBrewer)
+ff <- list.files('data/Data',full.names = T)
 
 for(ii in 1:3) assign(paste0('dat',ii), as.data.table(read.csv(ff[ii])))
 
@@ -82,21 +85,24 @@ ebinc <- function(upto='2015-11-01', bg='black', fg='white',ps=27, detail=T, cex
     }
     mtext(expression(frac(cases,week)), side=2, line=0.3, outer=T, col=fg, las = 1, cex = 1)
 }
-ebinc(wktcks[1], ps = 16)
 
-wktcks <- as.character(seq.Date(min(pdat[,date],na.rm=T),max(pdat[,date],na.rm=T), by='week'))
-wktcks <- wktcks[80:85]
+
+## ebinc(wktcks[1], ps = 16)
+
+## wktcks <- as.character(seq.Date(min(pdat[,date],na.rm=T),max(pdat[,date],na.rm=T), by='week'))
+## wktcks <- wktcks[80:85]
 
 ## Movie
-resScl <- 1.5
-nm <- paste0('ebolaInc.mov')
-if(file.exists(nm)) file.remove(nm)
-saveVideo({
-    ani.options(interval = 0.15, nmax = 300, ani.dev='png', ani.type='png')
-    for(ww in wktcks) ebinc(ww, ps=30)
-}, video.name = nm, other.opts = "-b 3000k -pix_fmt yuv420p", ani.width = 800*resScl, ani.height = 600*resScl)
+## require(animation);
+## resScl <- 1.5
+## nm <- paste0('ebolaInc.mov')
+## if(file.exists(nm)) file.remove(nm)
+## saveVideo({
+##     ani.options(interval = 0.15, nmax = 300, ani.dev='png', ani.type='png')
+##     for(ww in wktcks) ebinc(ww, ps=30)
+## }, video.name = nm, other.opts = "-b 3000k -pix_fmt yuv420p", ani.width = 800*resScl, ani.height = 600*resScl)
 
-resScl <- 1
-png('EbolaIncXDistrictWA Tall.png', w=800*resScl, h=1000*resScl)
-ebinc(ps = 30, detail=F, cex = 1)
-dev.off()
+## resScl <- 1
+## png('EbolaIncXDistrictWA Tall.png', w=800*resScl, h=1000*resScl)
+## ebinc(ps = 30, detail=F, cex = 1)
+## dev.off()

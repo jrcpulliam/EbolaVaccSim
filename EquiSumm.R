@@ -7,6 +7,8 @@ require(RColorBrewer); require(boot); require(data.table); require(vioplot); req
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R'), source)
 source('ggplotTheme.R')
+source('data/plotIncCountry.R')
+source('multiplot.R')
 
 ####################################################################################################
 ## extract factuals
@@ -20,6 +22,7 @@ finTrials[tcal<168 & vaccEff>0, list(nsim=length(tcal), tcalMean = mean(tcal), p
 ## finInfo has 4 categories for each simulation in finTrials (all=all cases by trial end date,
 ## analyzed = all analyzed cases by trial end date, allFinalEV/no_EV = all cases by stop date w/ or
 ## w/o end vaccine rollout)
+load(file=paste0('BigResults/',thing,'/hazT',7,'.Rdata'))
 
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
@@ -46,43 +49,113 @@ finit[, lab:=factor(paste0(trial, c('','gs-')[as.numeric(gs==T)+1],'-', ord))] #
 
 ## Merge finit with fincfs so we can compare counterfactuals and factuals
 fall <- rbind(fincfs[, list(lab = cf, cat = 'allFinalEV', propInTrial, caseTot, vaccEff, simNum, trialStartDate, nsae, pSAE)],
+              fincfs[, list(lab = cf, cat = 'allFinal_noEV', propInTrial, caseTot, vaccEff, simNum, trialStartDate, nsae, pSAE)],
               finit[, list(lab, cat, propInTrial, caseTot, vaccEff, simNum, trialStartDate, nsae, pSAE, vaccGood)], fill=T) ##cat %in% c('all','allFinalEV','allFinal_noEV')
 fall[, posv:= vaccEff>0] ## positive vaccine efficacy simulations
 
 fall[, list(nsim = length(caseTot), meansae = mean(nsae)), list(lab, cat, propInTrial, trialStartDate)]##[,range(V1)]
 
 fall[, unique(lab)]
-fall[, caseTotNT := caseTot[lab=='NTpop'], list(simNum, propInTrial, trialStartDate)]
-fall[, lyg := caseTotNT - caseTot]
+fall[grepl('Final',cat), caseTotNT := caseTot[lab=='NTpop'], list(simNum, propInTrial, trialStartDate)]
+fall[, infAvert := caseTotNT - caseTot]
+fall[, infAvertprop := infAvert/caseTotNT]
+fall[, infAvertSAE := caseTotNT - (caseTot+nsae)]
+fall[, infAvertSAEprop := infAvertSAE/caseTotNT]
 
 labsToShow <- c('RCTgs--TU','SWCT-none', 'VRpop','RCT-none')
 ltys <- c('VRpop'=2, 'RCT-none' = 3, 'RCTgs--TU'=1, 'SWCT-none'=1)
-cols <- c('VRpop'='dark green', 'RCT-none' = 'light blue', 'RCTgs--TU'="#333BFF", 'SWCT-none'='orange')
+cols <- c('VRpop'='dark green', 'RCT-none' = 'purple', 'RCTgs--TU'="#333BFF", 'SWCT-none'='orange')
 
-ftmp <- fall[cat=='allFinalEV'  & lab %in% labsToShow]
+ftmp <- fall[lab %in% labsToShow & grepl('Final',cat)]
+ftmp$catn <- factor(ftmp$cat)
+ftmp[, catn:=factor(catn, labels = c('1yr w/o rollout','1yr w/ rollout'))]
 
-pdf(file.path(figdir, 'lyg dens.pdf'))
-for(ts in fall[,unique(trialStartDate)]) {
-    p <- ggplot(ftmp[trialStartDate==ts], aes(lyg, colour = lab, linetype = lab)) +
-        geom_density() + facet_wrap(~propInTrial, ncol=1) + labs(title=paste0('trial starts ', ts)) +
-            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-#                scale_x_continuous(limits=c(-100,600)) + 
-                xlab("life years gained")
-    print(p+thsb)
+####################################################################################################
+## power vs infections averted
+ip <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date() +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+
+infAvertPow <- fall[!lab %in% c('NTpop'), list(pow = mean(vaccGood), infAvert = mean(infAvert), infAvertSAE = mean(infAvertSAE),
+                                                  infAvertprop = mean(infAvertprop), infAvertSAEprop = mean(infAvertSAEprop)), list(propInTrial, trialStartDate, cat, lab)]
+infAvertPow[lab=='VRpop', pow:=0]
+infAvertPow[,infAvertpropVR := infAvertprop/infAvertprop[lab=='VRpop'], list(propInTrial,trialStartDate,cat)]
+
+infAvertLab <- "infections averted relative to not performing any trial"
+
+####################################################################################################
+## set up hazard trajectories
+ymax <- hazT[,max(clusHaz)]
+rect <- data.table(xmin=as.Date(infAvertPow[,unique(trialStartDate)]), ymin=-Inf, ymax=Inf)
+rect[,xmax :=xmin+24*7]
+eb <- theme(
+    ## axis.line=element_blank(),axis.text.x=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks=element_blank(),
+    axis.title.x=element_blank(),
+    axis.title.y=element_blank(),legend.position="none",
+    panel.background=element_blank(),
+    panel.border=element_blank(),panel.grid.major=element_blank(),
+    panel.grid.minor=element_blank(),plot.background=element_blank())
+ip <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date() ##+
+####################################################################################################
+
+## density of infections averted by endtime, trial start date & % in trial
+for(ii in 1:2) {
+    if(ii==1) {
+        ft <- ftmp[posv==T]
+        nmtmp <- 'infAvert dens Pos.pdf'
+    }else{
+        ft <- ftmp
+        nmtmp <- 'infAvert dens.pdf'
+    }        
+    pdf(file.path(figdir, nmtmp), w=10, h = 8)
+    for(jj in 1:4) {
+        ts <- ft[,unique(trialStartDate)][jj]
+        p <- ggplot(ft[trialStartDate==ts], aes(infAvert, colour = lab, linetype = lab)) +
+            geom_density() + labs(title=paste0('trial starts ', ts)) +
+                ## facet_wrap(~propInTrial, ncol=1) +
+                facet_grid(catn~propInTrial) +                 
+                    scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+                                        #                scale_x_continuous(limits=c(-100,600)) + 
+                        xlab(infAvertLab)
+        ip1 <- ip + geom_rect(data=rect[jj], aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+        multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
+    }
+    graphics.off()
 }
+
+rect[,ymax:=ymax*c(1,.9,.8,.7)]
+ip <- ip + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+
+## Basic plot
+pdf(file.path(figdir, 'infAvert pow.pdf'), w = 10, h = 8)
+p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvert, pow, colour = lab, linetype = lab)) +
+    geom_point() + facet_grid(propInTrial~trialStartDate) + 
+        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+            xlab(infAvertLab) + theme(legend.position='top')
+                geom_vline(aes(xintercept=infAvert), data = infAvertPow[lab=='VRpop'], col = 'dark green')
+multiplot(ip, p, layout = matrix(c(1, rep(2,3)), ncol=1))
 dev.off()
 
-lygPow <- fall[!lab %in% c('NTpop','VRpop'), list(pow = mean(vaccGood), lyg = mean(lyg)), list(propInTrial, trialStartDate, cat, lab)]
-
-pdf(file.path(figdir, 'lyg pow.pdf'))
-    p <- ggplot(lygPow[cat=='allFinalEV' & lab %in% labsToShow], aes(lyg, pow, colour = lab, linetype = lab)) +
+## by proportion of infections averted
+pdf(file.path(figdir, 'infAvertprop pow.pdf'), w = 10, h = 8)
+    p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertprop, pow, colour = lab, linetype = lab)) +
         geom_point() + facet_grid(propInTrial~trialStartDate) + 
             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-#                scale_x_continuous(limits=c(-100,600)) + 
-                xlab("life years gained")
-    print(p)
+                        xlab(paste('proportion of ', infAvertLab)) +
+                            geom_vline(aes(xintercept=infAvertprop), data = infAvertPow[lab=='VRpop'], col = 'dark green')
+multiplot(ip, p, layout = matrix(c(1, rep(2,3)), ncol=1))
 dev.off()
-                
+
+## by proportion of avertable infections averted
+pdf(file.path(figdir, 'infAvertpropVR pow.pdf'), w = 10, h = 8)
+p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertpropVR, pow, colour = lab, linetype = lab)) +
+    geom_point() + facet_grid(propInTrial~trialStartDate) + 
+        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+            xlab(paste('proportion of avertable (from VR) deaths averted'))
+multiplot(ip, p, layout = matrix(c(1, rep(2,3)), ncol=1))
+dev.off()
+              
 ####################################################################################################
 ## Figures
 ####################################################################################################

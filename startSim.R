@@ -13,7 +13,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=1;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";rcmdbatch=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2014-10-18"; gs=T;randVaccProperties=F;vaccPropStrg=NA;simNumStart=(batch-1)*nsims+1;simNumEnd=(batch-1)*nsims+nsims;returnEventTimes=T;pSAE=10^-2;HazTrajSeed=1
+batch=1;trial="RCT";gs="FALSE";ord="none";trialStartDate="2014-10-01";propInTrial=0.025;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";numCFs=1;HazTrajSeed=7;returnEventTimes="TRUE";doCFs="FALSE";StatsFxns="doCoxME";rcmdbatch=1;batchdirnm="BigResults/Equip-ByTrialDate";saveNm="Equip-ByTrialDate";nsims=1;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;
 }
 load('data/vaccProp1.Rdata')
 
@@ -29,9 +29,16 @@ saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", rcmdbatch),'.Rdat
 simArgs <- list(batch=batch, parms=parms, N=nsims, verbFreq=10, vaccProp=vaccProp, returnEventTimes=returnEventTimes,
                 simNums=simNumStart:simNumEnd)
 
+hazT <- NA
+if(!is.na(HazTrajSeed)) {
+    hazT <- setClusHaz(makePop(parms))$hazT
+    save(hazT, file=paste0('BigResults/Equip-ByTrialDate/hazT',HazTrajSeed,'.Rdata'))
+}
+
 system.time(sim <- simNtrialsWRP(simArgs))
-sim <- list(sim=sim, parms=parms, batch=batch, rcmdbatch=rcmdbatch)
+sim <- list(sim=sim, parms=parms, batch=batch, rcmdbatch=rcmdbatch, hazT=hazT)
 save(sim, file = saveFl)
 
 rm(list=ls(all=T))
 gc()
+
