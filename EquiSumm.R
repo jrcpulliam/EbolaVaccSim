@@ -63,17 +63,32 @@ fall[, infAvertSAE := caseTotNT - (caseTot+nsae)]
 fall[, infAvertSAEprop := infAvertSAE/caseTotNT]
 
 labsToShow <- c('RCTgs--TU','SWCT-none', 'VRpop','RCT-none')
-ltys <- c('VRpop'=2, 'RCT-none' = 3, 'RCTgs--TU'=1, 'SWCT-none'=1)
-cols <- c('VRpop'='dark green', 'RCT-none' = 'purple', 'RCTgs--TU'="#333BFF", 'SWCT-none'='orange')
+ltys <- c('VRpop'=2, 'RCT-none' = 3, 'RCTgs--TU'=1, 'SWCT-none'=1, 'NTpop'=2)
+cols <- c('VRpop'='dark green', 'RCT-none' = 'purple', 'RCTgs--TU'="#333BFF", 'SWCT-none'='orange', 'NTpop' = 'red')
 
 ftmp <- fall[lab %in% labsToShow & grepl('Final',cat)]
 ftmp$catn <- factor(ftmp$cat)
 ftmp[, catn:=factor(catn, labels = c('1yr w/o rollout','1yr w/ rollout'))]
 
 ####################################################################################################
+## set up hazard trajectories
+rect <- data.table(xmin=as.Date(infAvertPow[,unique(trialStartDate)]), ymin=-Inf, ymax=Inf)
+rect[,xmax :=xmin+24*7]
+eb <- theme(
+    ## axis.line=element_blank(),axis.text.x=element_blank(),
+    #axis.text.y=element_blank(),
+    axis.ticks=element_blank(),
+    axis.title.x=element_blank(),
+    axis.title.y=element_blank(),legend.position="none",
+    panel.background=element_blank(),
+    panel.border=element_blank(),panel.grid.major=element_blank(),
+    panel.grid.minor=element_blank(),plot.background=element_blank())
+ip0 <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date(limits=as.Date(c('2014-08-01','2015-10-01'))) + labs(ylab='relative hazard')
+####################################################################################################
+
+####################################################################################################
 ## power vs infections averted
-ip <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date() +
-    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+ip <- ip0 + eb + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
 
 infAvertPow <- fall[!lab %in% c('NTpop'), list(pow = mean(vaccGood), infAvert = mean(infAvert), infAvertSAE = mean(infAvertSAE),
                                                   infAvertprop = mean(infAvertprop), infAvertSAEprop = mean(infAvertSAEprop)), list(propInTrial, trialStartDate, cat, lab)]
@@ -81,23 +96,6 @@ infAvertPow[lab=='VRpop', pow:=0]
 infAvertPow[,infAvertpropVR := infAvertprop/infAvertprop[lab=='VRpop'], list(propInTrial,trialStartDate,cat)]
 
 infAvertLab <- "infections averted relative to not performing any trial"
-
-####################################################################################################
-## set up hazard trajectories
-ymax <- hazT[,max(clusHaz)]
-rect <- data.table(xmin=as.Date(infAvertPow[,unique(trialStartDate)]), ymin=-Inf, ymax=Inf)
-rect[,xmax :=xmin+24*7]
-eb <- theme(
-    ## axis.line=element_blank(),axis.text.x=element_blank(),
-    axis.text.y=element_blank(),
-    axis.ticks=element_blank(),
-    axis.title.x=element_blank(),
-    axis.title.y=element_blank(),legend.position="none",
-    panel.background=element_blank(),
-    panel.border=element_blank(),panel.grid.major=element_blank(),
-    panel.grid.minor=element_blank(),plot.background=element_blank())
-ip <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date() ##+
-####################################################################################################
 
 ## density of infections averted by endtime, trial start date & % in trial
 for(ii in 1:2) {
@@ -124,19 +122,39 @@ for(ii in 1:2) {
     graphics.off()
 }
 
-rect[,ymax:=ymax*c(1,.9,.8,.7)]
-ip <- ip + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+ymaxHaz <- hazT[,max(clusHaz)]
+rect[,ymax:=ymaxHaz*c(1,.9,.8,.7)]
+ip1 <- ip0 + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+
+## ethicline contours
+tmp <- infAvertPow[cat=='allFinalEV' & lab %in% labsToShow]
+ias <- pretty(tmp$infAvert, n = 50)
+pows <- seq(0,1,l=50)
+contt <- data.table(expand.grid(ia=ias, pow=pows))
+infPpow <- 20
+contt[, merit:= ia/infPpow + pow/.1] ## every infPpow infections is worth 10% power
+contt[pow<.3, merit:= ia/infPpow+.3/.1] ## don't penalize less power under 30% power since it's so insignificant anyways
+v <- ggplot(contt, aes(ia,pow,z=merit)) +
+    geom_tile(aes(fill=merit))+ stat_contour() + scale_fill_gradient(low = "brown", high = "white")
 
 ## Basic plot
-pdf(file.path(figdir, 'infAvert pow.pdf'), w = 10, h = 8)
-p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvert, pow, colour = lab, linetype = lab)) +
-    geom_point() + facet_grid(propInTrial~trialStartDate) + 
-        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-            xlab(infAvertLab) + theme(legend.position='top')
-                geom_vline(aes(xintercept=infAvert), data = infAvertPow[lab=='VRpop'], col = 'dark green')
-multiplot(ip, p, layout = matrix(c(1, rep(2,3)), ncol=1))
-dev.off()
-
+jpeg(file.path(figdir, 'infAvert pow.jpeg'), w = 10, h = 8, units = 'in', res = 200)
+p <- ggplot() +
+    geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "red", high = "yellow") +
+        stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = 'gray') +
+            geom_point(data = infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvert, pow, colour = lab, linetype = lab, size = 1.5)) + 
+                facet_grid(propInTrial~trialStartDate) + 
+                    scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
+                        xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +# guides(guide_legend(label.position='top')) +
+                            ##                        geom_vline(aes(xintercept=infAvert), data = infAvertPow[lab=='VRpop'], col = 'dark green') +
+                            geom_segment(data = infAvertPow[lab=='VRpop'&cat=='allFinalEV'],
+                                         aes(x = infAvert, y = .3, xend = 0, yend = .3+.1/infPpow*infAvert)) +
+                                             geom_segment(data = infAvertPow[lab=='VRpop'&cat=='allFinalEV'],
+                                                          aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
+                                                              coord_cartesian(ylim=c(0,1)) + guides(size=F)
+print(multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1)))
+graphics.off()
+ 
 ## by proportion of infections averted
 pdf(file.path(figdir, 'infAvertprop pow.pdf'), w = 10, h = 8)
     p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertprop, pow, colour = lab, linetype = lab)) +
@@ -144,7 +162,7 @@ pdf(file.path(figdir, 'infAvertprop pow.pdf'), w = 10, h = 8)
             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
                         xlab(paste('proportion of ', infAvertLab)) +
                             geom_vline(aes(xintercept=infAvertprop), data = infAvertPow[lab=='VRpop'], col = 'dark green')
-multiplot(ip, p, layout = matrix(c(1, rep(2,3)), ncol=1))
+multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
 dev.off()
 
 ## by proportion of avertable infections averted
@@ -152,99 +170,52 @@ pdf(file.path(figdir, 'infAvertpropVR pow.pdf'), w = 10, h = 8)
 p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertpropVR, pow, colour = lab, linetype = lab)) +
     geom_point() + facet_grid(propInTrial~trialStartDate) + 
         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-            xlab(paste('proportion of avertable (from VR) deaths averted'))
-multiplot(ip, p, layout = matrix(c(1, rep(2,3)), ncol=1))
+            xlab(paste('proportion of avertable (from VR) deaths averted')) +
+                geom_vline(aes(xintercept=infAvertpropVR), data = infAvertPow[lab=='VRpop'], col = 'dark green')
+multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
 dev.off()
-              
+
+
+
 ####################################################################################################
 ## Figures
 ####################################################################################################
-fall[,unique(lab)]
+labsToShow <- c('RCTgs--TU','SWCT-none', 'VRpop','RCT-none', 'NTpop')
+ftmp <- fall[lab %in% labsToShow & grepl('Final',cat)]
+ftmp$catn <- factor(ftmp$cat)
+ftmp[, catn:=factor(catn, labels = c('1yr w/o rollout','1yr w/ rollout'))]
 
+ty <- theme(axis.text.y=element_blank(),
+            axis.title.y=element_blank())
 
 ## pit facets, tsd pages
 pdf(file.path(figdir, 'case dens.pdf'))
-for(ts in ftmp[,unique(trialStartDate)]) {
+for(jj in 1:4) {
+    ts <- ft[,unique(trialStartDate)][jj]
     p <- ggplot(ftmp[trialStartDate==ts], aes(caseTot, colour = lab, linetype = lab)) +
-        geom_density() + facet_wrap(~propInTrial, ncol=1) + labs(title=paste0('trial starts ', ts)) +
-            scale_color_manual(values=groupcols) + scale_linetype_manual(values = ltys) +
-                xlab("total cases by 1 year post start date")
-    print(p+thsb)
+        geom_density() + facet_wrap(~propInTrial, ncol=1, scales='free_y') + 
+            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+            xlab("total infections by 1 year post start date")
+    ip2 <- ip + geom_rect(data=rect[jj], aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+    multiplot(ip2, p+ty, layout = matrix(c(1, rep(2,3)), ncol=1))
 }
 dev.off()
 
+ymaxHaz <- hazT[,max(clusHaz)]
+rect[,ymax:=ymaxHaz*c(1,.9,.8,.7)]
+ip1 <- ip + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
 ## pit pages, tsd facets
 pdf(file.path(figdir, 'caseXpitXtsd.pdf'))
-for(ts in ftmp[,unique(propInTrial)]) {
+for(jj in 1:4) {
+    ts <- ft[,unique(propInTrial)][jj]
     p <- ggplot(ftmp[propInTrial==ts], aes(caseTot, colour = lab, linetype = lab)) +
-        geom_density() + facet_wrap(~trialStartDate, ncol=1) + labs(title=paste0('proportion cases in trial ', ts)) +
-            scale_color_manual(values=groupcols) + scale_linetype_manual(values = ltys) +
-                xlab("total cases by 1 year post start date")
-    print(p+thsb)
+        geom_density() + facet_wrap(~trialStartDate, ncol=1, scales='free_y') + labs(title=paste0('proportion cases in trial ', ts)) +
+            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+                xlab("total infections by 1 year post start date")
+    multiplot(ip1, p+ty, layout = matrix(c(1, rep(2,3)), ncol=1))
 }
 dev.off()
 
-
-
-####################################################################################################
-## Difference between matched counterfactuals and factuals
-
-## Merge (big merger but worth it in speed later)
-fin <- merge(finit, fincfs, by ='simNum', all.y=F, allow.cartesian = T)
-class(fin$simNum) <- class(fin$cc)<- 'integer'
-setkey(fin, gs, ord.x, simNum, cf, cat)
-
-## Get difference between caseTot
-ctot <- fin[cat %in% c('allFinalEV', 'allFinal_noEV'), 
-            list(cc, vaccGood, vaccBad, tcal, caseTotvsCF = caseTot.x - caseTot.y, caseTotF = caseTot.x, caseTotCF = caseTot.y),             list(gs, ord.x, simNum, cf, cat)]
-setkey(ctot, simNum, cc, cf)
-satr <- CJ(simNum = 1:max(ctot$simNum), cc = 1:max(ctot$cc), cf = c('NTpop','VRpop'))
-ctot <- ctot[satr, allow.cartesian=T]## Merge to make sure that empty columns exist
-ctot
-
-## SEGAULT HERE
-## Get difference between caseTot
-## [1] below is because rows are replicated by cf, except for cf & caseTot.y & SAE
-ctot <- fin[cat %in% c('allFinalEV', 'allFinal_noEV'), 
-            list(cc[1], vaccGood[1], vaccBad[1], tcal[1],
-                 caseTotF = caseTot.x[1],
-                 caseTotNT = caseTot.y[cf=='NTpop'],
-                 caseTotVR = caseTot.y[cf=='VRpop']), 
-            list(gs, ord.x, simNum, cat)]
-ctot
-
-## ctot[, list(ctF = mean(caseTotF),
-##             ctCF = mean(caseTotCF),
-##             diff = mean(caseTotvsCF)),
-##      list(gs, ord.x, simNum, cf, cat)]
-
-## cs <- ctot[order(cat), list(ctF = mean(caseTotF), ctCF = mean(caseTotCF), diff = mean(caseTotvsCF), 
-##                             power = mean(vaccGood), tcal = mean(tcal)), 
-##            list(gs, ord.x, cf, cat)]
-## save(cs, file = file.path('Results','cs.Rdata'))
-
-## load(file = file.path('Results','cs.Rdata'))
-## class(cs$gs) <- 'logical'
-## setkey(cs, gs, ord.x)
-
-## cs[, lab:=paste0(c('gs','')[as.numeric(gs) + 1], 'RCT-',c('none','TU')[as.numeric(ord.x=='TU') + 1])]
-## cs[, lab:=factor(lab)]
-
-## pdf(file.path(figdir, 'test.pdf')
-## plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
-## cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
-## legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
-## abline(v = cs[cf=='NTpop', ctCF], lty=2)
-## abline(v = cs[cf=='VRpop', ctCF], lty=2)
-## dev.off()
-
-## pdf(file.path(figdir, 'test.pdf')
-## plot(0,0, type = 'n', bty = 'n', ylim = c(0,.5), xlim = cs[.(T, 'TU'), range(ctF,ctCF)], las = 1, xlab='cases', ylab = 'power')
-## cs[cf=='NTpop' & cat=='allFinalEV', points(ctF, power, pch = 15, cex = 2, col = as.numeric(lab))]
-## legend('bottom', leg = cs[, unique(lab)], col = cs[, as.numeric(unique(lab))], bty = 'n', pch = 15)
-## abline(v = cs[cf=='NTpop', ctCF], lty=2)
-## abline(v = cs[cf=='VRpop', ctCF], lty=2)
-## dev.off()
 
 ## break down what's happening before trial & after trial (due to roll out)
 ## parse out false pos/negative from correct identifications

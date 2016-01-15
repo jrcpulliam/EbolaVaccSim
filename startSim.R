@@ -29,11 +29,11 @@ saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", rcmdbatch),'.Rdat
 simArgs <- list(batch=batch, parms=parms, N=nsims, verbFreq=10, vaccProp=vaccProp, returnEventTimes=returnEventTimes,
                 simNums=simNumStart:simNumEnd)
 
-hazT <- NA
-if(!is.na(HazTrajSeed)) {
-    hazT <- setClusHaz(makePop(parms))$hazT
-    save(hazT, file=paste0('BigResults/Equip-ByTrialDate/hazT',HazTrajSeed,'.Rdata'))
-}
+## hazT <- NA
+## if(!is.na(HazTrajSeed)) {
+##     hazT <- setClusHaz(makePop(parms))$hazT
+##     save(hazT, file=paste0('BigResults/Equip-ByTrialDate/hazT',HazTrajSeed,'.Rdata'))
+## }
 
 system.time(sim <- simNtrialsWRP(simArgs))
 sim <- list(sim=sim, parms=parms, batch=batch, rcmdbatch=rcmdbatch, hazT=hazT)
