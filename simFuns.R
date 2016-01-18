@@ -56,6 +56,7 @@ makeParms <- function(
     trialStartDate <- as.Date(trialStartDate)
     if(maxDurationDay < delayUnit*numClus) stop('maxDurationDay too short. Need enough time to rollout vaccines to all clusters')
     if(gsDesArgs$k>1 & length(StatsFxns)>1) stop('Cannot apply multiple statistical functions for simulations of sequential designs since trial progression is conditional on analysis')
+    if(!avHaz %in% c('','xClus','xClusxTime','xTime')) stop('invalid avHaz input')
     if(trial=='FRCT') delayUnit <- delayUnit/2 ## rolling out vaccines as quickly as you would if you were vaccinating whole clusters
     if(gs) {
         gsBounds <- do.call(gsDesign, gsDesArgs)

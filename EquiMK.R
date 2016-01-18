@@ -3,8 +3,10 @@ if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVa
 if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
- 
-thing <- 'Equip-ByTrialDate'
+
+doCFs <- F
+
+thing <- paste0('Equip-ByTrialDate', 'CFs'[doCFs])
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -20,7 +22,7 @@ sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
 sdates <- sdates[1:length(sdates) %% 2 ==1]
 ## sdates <- '2015-02-18'
 
-doCFs <- F
+
 if(doCFs) { 
     gs <- F
     ord <- 'TU'
@@ -45,17 +47,19 @@ parmsMat <- as.data.table(expand.grid(
   , vaccPropStrg='vaccProp1'
   , numCFs = 1
   , HazTrajSeed = 7
+    , avHaz = c('', 'xTime','xClus','xClusxTime')
 ))
 parmsMat$returnEventTimes <- TRUE
 parmsMat$doCFs <- doCFs
 parmsMat <- parmsMat[order(trial)]
 parmsMat$StatsFxns <- 'doCoxME'
 parmsMat[trial=='SWCT', StatsFxns:='doRelabel']
-
 parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(trial=='SWCT' & gs)] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(delayUnit==0 & ord=='TU')] ## ordering is meaningless with simultaneous instant vacc
 parmsMat <- parmsMat[ !(delayUnit==0 & trial=='FRCT')]  ## FRCT = RCT when delayUnit=0
+parmsMat <- parmsMat[order(avHaz)]
+
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 nmtmp <- thing
@@ -68,7 +72,7 @@ nrow(parmsMat)
 parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 
-parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff)]
+parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff, avHaz, trialStartDate, propInTrial)]
 
 nrow(parmsMat)
 jbs <- NULL
@@ -79,9 +83,9 @@ jn <- 0
 ## fls <- list.files(batchdirnm, pattern='.Rdata')
 ## numDone <- as.numeric(sapply(fls, function(x) { x <- sub(thing,'',x); x <- sub('.Rdata','',x); x <- as.numeric(x)}))
 
-parmsMatDo <- parmsMat#[!rcmdbatch %in% numDone]
+parmsMatDo <- parmsMat[avHaz=='xClusxTime']
 nrow(parmsMatDo)
-sink(paste0('SLsims.txt'))
+sink(paste0('SLsims','CFs'[doCFs],'.txt'))
 for(ii in parmsMatDo$rcmdbatch) {
     cmd <- "R CMD BATCH '--no-restore --no-save --args"
     cmd <- addParm(cmd, parmsMatDo, ii)

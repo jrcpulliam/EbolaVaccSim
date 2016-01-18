@@ -131,30 +131,33 @@ tmp <- infAvertPow[cat=='allFinalEV' & lab %in% labsToShow]
 ias <- pretty(tmp$infAvert, n = 50)
 pows <- seq(0,1,l=50)
 contt <- data.table(expand.grid(ia=ias, pow=pows))
-infPpow <- 20
-contt[, merit:= ia/infPpow + pow/.1] ## every infPpow infections is worth 10% power
-contt[pow<.3, merit:= ia/infPpow+.3/.1] ## don't penalize less power under 30% power since it's so insignificant anyways
-v <- ggplot(contt, aes(ia,pow,z=merit)) +
-    geom_tile(aes(fill=merit))+ stat_contour() + scale_fill_gradient(low = "brown", high = "white")
+for(ii in 1:3) {
+    infPpow <- c(100, 200, 300)[ii]
+    contt[, merit:= ia/infPpow + pow] ## every infPpow infections is worth 10% power
+    contt[pow<.3, merit:= ia/infPpow+.3] ## don't penalize less power under 30% power since it's so insignificant anyways
+    v <- ggplot(contt, aes(ia,pow,z=merit)) +
+        geom_tile(aes(fill=merit))+ stat_contour() + scale_fill_gradient(low = "brown", high = "white")
 
-## Basic plot
-jpeg(file.path(figdir, 'infAvert pow.jpeg'), w = 10, h = 8, units = 'in', res = 200)
-p <- ggplot() +
-    geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "red", high = "yellow") +
-        stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = 'gray') +
-            geom_point(data = infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvert, pow, colour = lab, linetype = lab, size = 1.5)) + 
-                facet_grid(propInTrial~trialStartDate) + 
-                    scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
-                        xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +# guides(guide_legend(label.position='top')) +
-                            ##                        geom_vline(aes(xintercept=infAvert), data = infAvertPow[lab=='VRpop'], col = 'dark green') +
-                            geom_segment(data = infAvertPow[lab=='VRpop'&cat=='allFinalEV'],
-                                         aes(x = infAvert, y = .3, xend = 0, yend = .3+.1/infPpow*infAvert)) +
-                                             geom_segment(data = infAvertPow[lab=='VRpop'&cat=='allFinalEV'],
-                                                          aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
-                                                              coord_cartesian(ylim=c(0,1)) + guides(size=F)
-print(multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1)))
-graphics.off()
- 
+    ## Basic plot
+    jpeg(file.path(figdir, paste0('infAvert pow', infPpow/10, '.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+    p <- ggplot() +
+        geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "brown", high = "pink") +
+            stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) +
+                geom_point(data = infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvert, pow, colour = lab, linetype = lab, size = 1.5)) + 
+                    facet_grid(propInTrial~trialStartDate) + 
+                        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
+                            xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +
+                                ##                        geom_vline(aes(xintercept=infAvert), data = infAvertPow[lab=='VRpop'], col = 'dark green') +
+                                geom_segment(data = infAvertPow[lab=='VRpop'&cat=='allFinalEV'],
+                                             aes(x = infAvert, y = .3, xend = 0, yend = .3+1/infPpow*infAvert)) +
+                                                 geom_segment(data = infAvertPow[lab=='VRpop'&cat=='allFinalEV'],
+                                                              aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
+                                                                  coord_cartesian(ylim=c(0,1)) + guides(size=F) +
+                                                                      labs(title=paste(infPpow/10, 'infections := 10% power \n<30% power := negligible'))
+    print(multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1)))
+    graphics.off()
+}
+
 ## by proportion of infections averted
 pdf(file.path(figdir, 'infAvertprop pow.pdf'), w = 10, h = 8)
     p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertprop, pow, colour = lab, linetype = lab)) +
