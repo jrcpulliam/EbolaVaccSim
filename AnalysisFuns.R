@@ -176,8 +176,9 @@ finInfoFxn <- function(parms) {
 
 simNtrials <- function(batch = 1, parms=makeParms(), N = 2, 
                        simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
-                       verbFreq=10, vaccProp=NA) {
+                       returnEventTimes = T, verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
+    EventTimes <- NULL
     for(ss in 1:N) {
         simNum <- simNums[ss]
         set.seed(simNum)
@@ -205,11 +206,14 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.table(sim = ss, simNum = simNum, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
+        browser()
+        if(returnEventTimes) EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
         ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-    return(list(finMods=finMods, finInfo=finInfo))
+    if(!as.logical(returnEventTimes)) EventTimes <- NULL
+    return(list(finMods=finMods, finInfo=finInfo, EventTimes))
 }
 
 ## Simulate counterfactuals, similar to above but no analyses. Only tracking infections for No Trial

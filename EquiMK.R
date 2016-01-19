@@ -78,12 +78,12 @@ nrow(parmsMat)
 jbs <- NULL
 jn <- 0
 
-## thing <- 'Equip-rand3pit'
-## batchdirnm <- file.path('BigResults',thing)
-## fls <- list.files(batchdirnm, pattern='.Rdata')
-## numDone <- as.numeric(sapply(fls, function(x) { x <- sub(thing,'',x); x <- sub('.Rdata','',x); x <- as.numeric(x)}))
 
-parmsMatDo <- parmsMat[avHaz=='xClusxTime']
+batchdirnm <- file.path('BigResults',thing)
+fls <- list.files(batchdirnm, pattern=thing)
+fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
+
+parmsMatDo <- parmsMat[!rcmdbatch %in% fns]
 nrow(parmsMatDo)
 sink(paste0('SLsims','CFs'[doCFs],'.txt'))
 for(ii in parmsMatDo$rcmdbatch) {

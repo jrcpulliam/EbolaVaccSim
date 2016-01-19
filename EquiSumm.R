@@ -16,9 +16,7 @@ thing <- 'Equip-ByTrialDate' ## 'Equip-rand3pit'
 ## out <- extractSims(thing, verb=0)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
-          list(trial, gs, ord, delayUnit, propInTrial, trialStartDate)]
-finTrials[tcal<168 & vaccEff>0, list(nsim=length(tcal), tcalMean = mean(tcal), power = mean(vaccGood)),
-          list(trial, gs, ord, delayUnit)]
+          list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)]
 ## finInfo has 4 categories for each simulation in finTrials (all=all cases by trial end date,
 ## analyzed = all analyzed cases by trial end date, allFinalEV/no_EV = all cases by stop date w/ or
 ## w/o end vaccine rollout)
@@ -32,6 +30,8 @@ dir.create(figdir)
 load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
 vaccProp[, simNum:=1:length(vaccEff)]
+
+fincfs2 <- extractCFs(thingCFs, verb=1)
 
 thingCFs <- paste0(thing, 'CFs') ##'Equip-cfs-3pit'
 ## fincfs <- extractCFs(thingCFs, verb=0)
