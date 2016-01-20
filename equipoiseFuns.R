@@ -28,61 +28,6 @@ equipFxn <- function(N=1
 
 ## equipFxn(10)
 
- 
-####################################################################################################
-## Build counterfactual simulation sets for comparison with factual simulations
-## Important to make sure that they match the seeds (can use indivHaz at end to do a check)
-cfSims <- function(parms, batch=1) {
-    ## *V*accine *r*ollout simulation; *N*o *t*rial counter-factual simulation
-    parms <- within(parms, {
-        NTpopH <- copy(popH)
-        NTpopH <- within(NTpopH, {
-            infectDay <- vaccDay <- immuneDay <- Inf
-            vacc <- immune <- F
-        })
-        VRpop <- NTpop <- copy(pop)
-        NTpop <- within(NTpop, {
-            infectDay <- vaccDay <- immuneDay <- Inf
-        })
-    })
-    ## ##############################
-    ## risk-prioritized roll-out, i.e. no randomization
-    ## force order to be that of TU-risk-prioritized-RCT
-    parmsVR <- copy(parms)
-    if(parmsVR$ord!='TU') {
-        parmsVR$ord <- 'TU'
-        parmsVR <- reordRCT(parmsVR)
-    }
-    parms$VRpopH <- parmsVR$popH ## to avoid rewriting reordFxns with whichDo
-    rm(parmsVR)
-    parms <- setSWCTvaccDays(parms, whichDo='VRpop') ## set vaccination days
-    parms <- setImmuneDays(parms, whichDo='VRpop')   ## set immune days
-    parms$EventTimesLs <- list()
-    ## CONTROL SEEDS HERE
-    for(cc in 1:parms$numCFs) {
-        if(parms$verbose>0 & (cc %% 20 == 0)) print(paste('on',cc,'of',parms$numCFs))
-        for(cf in c('NTpop','VRpop')) {
-            if(cc==1)  {
-                parms$EventTimesLs[[cf]] <- list()
-                length(parms$EventTimesLs[[cf]]) <- parms$numCFs
-                tmpSeed <- parms$simInfSeedpop
-            }
-            tmp <- simInfection(parms, whichDo=cf, cfNum=cc, RNGseed = tmpSeed) ## simulate infection again
-            parms$EventTimesLs[[cf]][[cc]] <- data.table(batch = batch, cf=cf, cc=cc, tmp$indivEventDays )
-            ## CONTROL SEEDS HERE TOO
-            if(cf=='NTpop') ## use seed for VRpop to minimize variation b/w counterfactuals
-                tmpSeed <- tmp$simInfSeedNTpop else tmpSeed = NULL ## NULL triggers a new seed for next step of cc
-        }
-    }
-    for(cf in c('NTpop','VRpop')) parms$EventTimesLs[[cf]] <- rbindlist(parms$EventTimesLs[[cf]])
-    parms$EventTimesLs <- rbindlist(parms$EventTimesLs)
-    parms$EventTimesLs[,cc:=factor(cc, levels=1:parms$numCFs)]
-    ## parms$EventTimesLs[, sum(infectDay<Inf), list(cf,cc)] ## be careful with 0's if there are some
-    ## with(parms$EventTimesLs, xtabs( ~cc + cf))
-    return(parms)
-}
-## parms$VRpopH[idByClus %in% c(1,151)]
-
 ## Need distinct set of counterfactuals for these parameters only (which determine population,
 ## hazard, & maximum rollout speed ). Others excluded here only affect trial design.
 CFparms <- c('trialStartDate'

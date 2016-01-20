@@ -13,7 +13,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=3;trial="RCT";gs=FALSE;ord="none";trialStartDate="2015-02-01";propInTrial=0.2;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties=TRUE;vaccPropStrg="vaccProp1";numCFs=1;HazTrajSeed=7;avHaz="";returnEventTimes=TRUE;doCFs=TRUE;StatsFxns="doCoxME";rcmdbatch=1587;batchdirnm="BigResults/Equip-ByTrialDate";saveNm="Equip-ByTrialDate";nsims=1;reordLag=14;nboot=20;simNumStart=171;simNumEnd=255;
+batch=1;trial="RCT";gs="FALSE";ord="TU";trialStartDate="2014-10-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="";returnEventTimes="TRUE";StatsFxns="doCoxME";rcmdbatch=1921;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=2;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;
 }
 load('data/vaccProp1.Rdata')
 
@@ -39,7 +39,8 @@ if(!is.na(HazTrajSeed)) {
     ##    save(hazT, file=paste0('BigResults/Equip-ByTrialDate/hazT',HazTrajSeed,'.Rdata'))
 }
 
-system.time(sim <- simNtrialsWRP(simArgs))
+sapply(c('simFuns.R','AnalysisFuns.R', 'MungeFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R','equipoiseFuns.R'), source)
+system.time(sim <- do.call(simNtrials, simArgs))
 sim <- list(sim=sim, parms=parms, batch=batch, rcmdbatch=rcmdbatch, hazT=hazT)
 save(sim, file = saveFl)
 
@@ -60,3 +61,7 @@ gc()
 
 ## JP notes
 ## provide people a tool to draw a curve infection spending tool themselves and then compare different designs. state assumptions & turn it into a curve (shiny)
+
+## LAM notes
+
+## calculate power / inf spent for all trials, plot that over scenarios; might need to show absolute power too still

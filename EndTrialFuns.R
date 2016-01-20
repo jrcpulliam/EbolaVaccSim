@@ -2,33 +2,35 @@
 ## Vaccinate control groups once vaccine efficacy identified. Wrapper around below functions
 endT <- function(parms) {
     if(parms$verbose>30) browser()
-    if(with(parms, delayUnit==0 & tail(intStats$vaccGood,1))) { ## if the vaccine is good on the stop date
-        ## instantly vaccinate everyone 1 week after trial ends
+    if(!parms$trial %in% c('NT','VR')) {
+        if(with(parms, delayUnit==0 & tail(intStats$vaccGood,1))) { ## if the vaccine is good on the stop date
+            ## instantly vaccinate everyone 1 week after trial ends
+            parms <- within(parms, {
+                EVpopH <- copy(popH)
+                EVpopH[vaccDay > endTrialDay, vaccDay := tail(intStats$tcal,1) + instVaccDelay]
+            })
+        }else{ ## run one of the below functions on them
+            endFXN <- get(paste0('end', parms$trial))
+            parms <- endFXN(parms) ## if vaccGood (if statements internal)
+            parms <- badVaccEndT(parms) ## if vaccBad (if statements internal)
+        }
         parms <- within(parms, {
-            EVpopH <- copy(popH)
-            EVpopH[vaccDay > endTrialDay, vaccDay := tail(intStats$tcal,1) + instVaccDelay]
+            ## Reset immune indices
+            EVpopH[, immuneDay := vaccDay + immunoDelay] 
+            EVpopH[, vacc := day >= vaccDay]
+            EVpopH[, immune := day >= immuneDay]
+            ## copy pop, but change vaccDays & immuneDays for simInfection below
+            EVpop <- copy(pop) 
+            EVpop[, vaccDay := EVpopH[day==0, vaccDay]]
+            EVpop[, immuneDay := EVpopH[day==0, immuneDay]]
         })
-    }else{ ## run one of the below functions on them
-        endFXN <- get(paste0('end', parms$trial))
-        parms <- endFXN(parms) ## if vaccGood (if statements internal)
-        parms <- badVaccEndT(parms) ## if vaccBad (if statements internal)
+        ## do infection process again post-end of trial if not SWCT (which proceeds as normal)
+        if(with(parms, tail(intStats[, vaccGood | vaccBad],1))) { 
+            parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
+        }
+        ## calculate # infected for various permutations
+        parms <- makeSurvDat(parms, whichDo='EVpop') ## don't make stActiveEV because not analyzing (just vacc rollout data)
     }
-    parms <- within(parms, {
-        ## Reset immune indices
-        EVpopH[, immuneDay := vaccDay + immunoDelay] 
-        EVpopH[, vacc := day >= vaccDay]
-        EVpopH[, immune := day >= immuneDay]
-        ## copy pop, but change vaccDays & immuneDays for simInfection below
-        EVpop <- copy(pop) 
-        EVpop[, vaccDay := EVpopH[day==0, vaccDay]]
-        EVpop[, immuneDay := EVpopH[day==0, immuneDay]]
-    })
-    ## do infection process again post-end of trial if not SWCT (which proceeds as normal)
-    if(with(parms, tail(intStats[, vaccGood | vaccBad],1))) { 
-        parms <- simInfection(parms, whichDo = 'EVpop', startInfectingDay = parms$endTrialDay)
-    }
-    ## calculate # infected for various permutations
-    parms <- makeSurvDat(parms, whichDo='EVpop') ## don't make stActiveEV because not analyzing (just vacc rollout data)
     return(parms)
 }
 

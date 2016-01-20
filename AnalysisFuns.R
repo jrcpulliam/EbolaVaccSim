@@ -53,65 +53,69 @@ getEndResults <- function(parms, bump = T) {
     trialStopped <- F
     analysisNum <- 0
     parms$intStats <- list()
-    ## loop over sequential analyses (only do loop once for non-sequential analysis)
-    while(!trialStopped) { 
-        analysisNum <- analysisNum+1 ## iterate
-        if(verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
-        analysisDay <- parms$intTab[analysisNum, tcal]
-        tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
-        if(verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
-        ## Bump in case of 0-event arms
-        if(!testZeros(tmpCSD)) { ## >0 events in each arm
-            parmsE <- parms
-            parmsE$bump <- F
-        }else{ ## at least 1 arm has 0 events
-            parmsE <- infBump(parms, censorDay=analysisDay)
-            parmsE$bump <- T
-            tmpCSDE <- censSurvDat(parmsE, censorDay = analysisDay)
-            if(verbose>2) print(tmpCSDE[, list(numInfected=sum(infected)), immuneGrp])
+    if(parms$doTrial) { ## if doing a trial
+        ## loop over sequential analyses (only do loop once for non-sequential analysis)
+        while(!trialStopped) { 
+            analysisNum <- analysisNum+1 ## iterate
+            if(verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
+            analysisDay <- parms$intTab[analysisNum, tcal]
+            tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
+            if(verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
+            ## Bump in case of 0-event arms
+            if(!testZeros(tmpCSD)) { ## >0 events in each arm
+                parmsE <- parms
+                parmsE$bump <- F
+            }else{ ## at least 1 arm has 0 events
+                parmsE <- infBump(parms, censorDay=analysisDay)
+                parmsE$bump <- T
+                tmpCSDE <- censSurvDat(parmsE, censorDay = analysisDay)
+                if(verbose>2) print(tmpCSDE[, list(numInfected=sum(infected)), immuneGrp])
+            }
+            parms <- within(parms, {
+                ## Call analysis functions
+                intStats[[analysisNum]] <- doStats(parmsE, tmpCSDE, analysisNum=analysisNum)
+                ## Use negative z, since we think about crossing upper Z threshold as identifying
+                ## positive vaccine, yet HR < 1 is equivaleynt.  use first StatsFxns item to determine stopping
+                ## (usually CoxME), could vectorize this later but confusing to have different vaccination rollout
+                ## strategies for one simulation due to different stopping times by different analyses
+                ## 
+                ## for GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
+                if(gs) {
+                    intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
+                    intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), 
+                                                     intTab[analysisNum])
+                    intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
+                    intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
+                }else{
+                    intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), 
+                                                     intTab[analysisNum])
+                    intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, p < .05 & mean>0] ]
+                    intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, p < .05 & mean <0] ]
+                }
+                intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]
+                intStats[[analysisNum]][, vaccCases := tmpCSD[immuneGrp==1,sum(infected)]]
+            })
+            earlyStop <- parms$intStats[[analysisNum]][, vaccGood | vaccBad]
+            ## Determine whether trial stopped for boundary crossing or last analysis
+            if(earlyStop | analysisNum==nrow(parms$intTab)) trialStopped <- T
         }
         parms <- within(parms, {
-            ## Call analysis functions
-            intStats[[analysisNum]] <- doStats(parmsE, tmpCSDE, analysisNum=analysisNum)
-            ## Use negative z, since we think about crossing upper Z threshold as identifying
-            ## positive vaccine, yet HR < 1 is equivaleynt.  use first StatsFxns item to determine stopping
-            ## (usually CoxME), could vectorize this later but confusing to have different vaccination rollout
-            ## strategies for one simulation due to different stopping times by different analyses
-            ## 
-            ## for GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
-            if(gs) {
-                intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
-                intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), 
-                                                 intTab[analysisNum])
-                intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
-                intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
+            ## Make intStats into one data table
+            if(gsDesArgs$k>1) {
+                intStats <- rbindlist(intStats)
             }else{
-                intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), 
-                                                 intTab[analysisNum])
-                intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, p < .05 & mean>0] ]
-                intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, p < .05 & mean <0] ]
+                intStats <- intStats[[1]]
             }
-            intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]
-            intStats[[analysisNum]][, vaccCases := tmpCSD[immuneGrp==1,sum(infected)]]
+            if(tail(intStats[, vaccGood | vaccBad],1)) {
+                endTrialDay <- tail(intStats$tcal, 1) ## when trial stopped (two-sided)
+                firstVaccDayAfterTrialEnd <- min(daySeqLong[daySeqLong>endTrialDay])
+            }else{
+                endTrialDay <- maxDurationDay ## or maximum duration
+            }
         })
-        earlyStop <- parms$intStats[[analysisNum]][, vaccGood | vaccBad]
-        ## Determine whether trial stopped for boundary crossing or last analysis
-        if(earlyStop | analysisNum==nrow(parms$intTab)) trialStopped <- T
+    }else{
+        parms$endTrialDay <- NA ## no trial so no endday
     }
-    parms <- within(parms, {
-        ## Make intStats into one data table
-        if(gsDesArgs$k>1) {
-            intStats <- rbindlist(intStats)
-        }else{
-            intStats <- intStats[[1]]
-        }
-        if(tail(intStats[, vaccGood | vaccBad],1)) {
-            endTrialDay <- tail(intStats$tcal, 1) ## when trial stopped (two-sided)
-            firstVaccDayAfterTrialEnd <- min(daySeqLong[daySeqLong>endTrialDay])
-        }else{
-            endTrialDay <- maxDurationDay ## or maximum duration
-        }
-    })
     return(parms)
 }
 
@@ -155,11 +159,14 @@ finInfoFxn <- function(parms) {
     tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
         compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
                         atDay=atDay, verbose=verbose)
-    compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
-                        , whichDo = c('stActive', 'st','stEV', 'st')
-                        , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
-                        , cf = F
-                          )
+    if(parms$doTrial) {
+        compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
+                            , whichDo = c('stActive', 'st','stEV', 'st')
+                            , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
+                              )
+    }else{
+        compTab <- data.table(atDay = parms$trackUntilDay, whichDo = 'st', lab = 'allFinalEV')
+    }
     for(ii in 1:nrow(compTab)) {
         finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
         if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
@@ -175,15 +182,14 @@ finInfoFxn <- function(parms) {
 }
 
 indivLevRes <- function(parms) within(parms, {
-browser()
     Spop <- pop[,list(indiv,cluster, indivRR)] ## indiv chars
     SpopH <- popH[idByClus==1,list(cluster, day, Date, clusHaz)] ## cluster chars
-    if(doCFs) toDo <- c('NTpop','VRpop')
-    if(!doCFs) toDo <- c('pop','EVpop')
+    toDo <- c('pop','EVpop')
+    if(!doTrial)   toDo <- 'pop'
     for(tmpnm in toDo) {
         tmp <- get(tmpnm)
         tmpSM <- tmp[,list(indiv, vaccDay, infectDay, SAE)] ## indiv events
-        assign(paste0(tmpnm,'Events'), tmpSM)
+        assign(paste0('S',tmpnm,'Events'), tmpSM)
     }
 })
 
@@ -191,7 +197,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
                        returnEventTimes=T, simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
                        verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
-    popEvents <- EVpopEvents <- popH <- pop <- data.table()
+    SpopEvents <- SEVpopEvents <- SpopH <- Spop <- data.table()
     for(ss in 1:N) {
         simNum <- simNums[ss]
         set.seed(simNum)
@@ -204,7 +210,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         }
         res <- simTrial(parms)
         res <- makeSurvDat(res)
-        res <- makeGEEDat(res)
+        res <- makeGEEDat(res) ## probably unnecessary to do these lines for !doTrial if tweak the code a bit later
         res <- activeFXN(res)
         res <- gsTimeCalc(res)
         ## plotSTA(res$stActive) ## look at person-time for each data structure
@@ -215,70 +221,25 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         res <- indivLevRes(res)
         ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
         finTmp <- data.table(sim = ss, simNum = simNum, 
-                             vaccEff=parms$vaccEff, pSAE=parms$pSAE, res$intStats[analysis==max(res$intStats$analysis)]) 
-        finMods <- rbind(finMods, finTmp)
+                             vaccEff=parms$vaccEff, pSAE=parms$pSAE)
+        if(res$doTrial) finTmp <- data.table(finTmp, res$intStats[analysis==max(res$intStats$analysis)]) ## add analysis if doing a study
+        finMods <- rbind(finMods, finTmp) ## model table
         finITmp <- data.table(sim = ss, simNum = simNum, res$finInfo)
-        finInfo <- rbind(finInfo, finITmp)
+        finInfo <- rbind(finInfo, finITmp) ## cases table
         if(returnEventTimes) {
-            pop <- rbind(pop, data.table(sim=ss, simNum=simNum, res$Spop))
-            popH <- rbind(popH, data.table(sim=ss, simNum=simNum, res$SpopH))
-            popEvents <- rbind(popEvents, data.table(sim=ss, simNum=simNum, res$popEvents))
-            EVpopEvents <- rbind(EVpopEvents, data.table(sim=ss, simNum=simNum, res$EVpopEvents))
+            Spop <- rbind(Spop, data.table(sim=ss, simNum=simNum, res$Spop))
+            SpopH <- rbind(SpopH, data.table(sim=ss, simNum=simNum, res$SpopH))
+            SpopEvents <- rbind(SpopEvents, data.table(sim=ss, simNum=simNum, res$SpopEvents))
+            if(res$doTrial) SEVpopEvents <- rbind(SEVpopEvents, data.table(sim=ss, simNum=simNum, res$SEVpopEvents))
         }
         ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-    pops <- list(pop=pop,popH=popH, popEvents=popEvents, EVpopEvents=EVpopEvents)
-    return(list(finMods=finMods, finInfo=finInfo, pops = pops))
+    Spops <- list(Spop=Spop,SpopH=SpopH, SpopEvents=SpopEvents, SEVpopEvents=SEVpopEvents)
+    return(list(finMods=finMods, finInfo=finInfo, Spops = Spops))
 }
 
-## Simulate counterfactuals, similar to above but no analyses. Only tracking infections for No Trial
-## & Vaccine Rollout coutnerfactuals. Do more than one simInfection for each population.
-simN_CFs <- function(batch = 1, parms=makeParms(), N = 2, 
-                     simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
-                     returnEventTimes = T, verbFreq=10, vaccProp=NA) {
-    finInfo <- data.frame(NULL)
-    popEvents <- EVpopEvents <- popH <- pop <- data.table()
-    for(ss in 1:N) {
-        simNum <- simNums[ss]
-        set.seed(simNum)
-        if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
-        if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
-        if(parms$verbose==2) browser()
-        if(!is.na(vaccProp)[1]) { ## set vaccine properties to value from pre-determined bayesian prior deviate
-            parms$vaccEff <- vaccProp[simNum, vaccEff]
-            parms$pSAE <- vaccProp[simNum, pSAE]
-        }
-        res <- simTrial(parms)
-        res <- cfSims(res, batch=batch)
-browser()
-        res <- indivLevRes(res)
-
-        if(returnEventTimes) {
-            pop <- rbind(pop, data.table(sim=ss, simNum=simNum, res$Spop))
-            popH <- rbind(popH, data.table(sim=ss, simNum=simNum, res$SpopH))
-            NTpopEvents <- rbind(NTpopEvents, data.table(sim=ss, simNum=simNum, res$NTpopEvents))
-            VRpopEvents <- rbind(VRpopEvents, data.table(sim=ss, simNum=simNum, res$VRpopEvents))
-        }
-
-        EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
-        rm(res); gc()
-    }
-    finInfo <- EventTimes[order(ss,batch,cc), list(caseTot = sum(infectDay<Inf), saeTot = sum(SAE)), list(simNum, ss, batch, cc, cf)]
-    if(!as.logical(returnEventTimes)) EventTimes <- NULL
-    return(list(finInfo=finInfo, EventTimes=EventTimes, parms=parms))
-}
-
-## Wrapper to determine whether simulating factuals with analyses, or counterfactuals with only infection times
-simNtrialsWRP <- function(input) {
-    if(parms$doCFs) {
-        do.call(simN_CFs, args = input)
-    }else{
-        do.call(simNtrials, args = within(input, {returnEventTimes <- NULL}))
-    }
-}
-## system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
 
 ## ####################################################################################################
 ## ## To show that RNGs line up between counterfactuals & factuals for first simulation & with

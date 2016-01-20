@@ -1,10 +1,10 @@
-require(blme); require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); require(msm)
+require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); require(msm)
 load('data/createHT.Rdata')
 options(deparse.max.lines=10)
 
 yearToDays <- 1/365.25
 monthToDays <- 1/30
-trialTypes <- c('RCT','FRCT','SWCT','CRCT')
+trialTypes <- c('RCT','FRCT','SWCT','CRCT','VR','NT')
 makeParms <- function(
     trial='RCT'
   , trialStartDate = '2015-02-01' ## converted to date below    
@@ -67,6 +67,7 @@ makeParms <- function(
             return(sum(sampSizes*cumHazs))
         })
     }
+    doTrial <- !(trial %in% c('VR','NT'))
     ## if(!is.null(vaccProp)) {
     ##     vaccEff <- vaccProp[numInBatch, vaccEff]
     ##     pSAE <- vaccProp[numInBatch, pSAE]
@@ -179,7 +180,7 @@ reordPop <- function(parms) { ## wrapper around other functions below
     })
 }
 
-reordSWCT <- reordFRCT <- reordRCT <- function(parms) within(parms, {
+reordNT <- reordVR <- reordSWCT <- reordFRCT <- reordRCT <- function(parms) within(parms, {
     if(verbose>10) browser()
     if(ord=='none') { ## should already be random but do it agan for good measure (debugging randomziation)
         clusIncRank <- sample(1:numClus, numClus, replace = F)
@@ -247,7 +248,7 @@ setVaccDays <- function(parms) { ## wrapper around other functions below
     parms <- setVaccFXN(parms)
     return(parms)
 }
-setSWCTvaccDays <- function(parms, whichDo='pop') within(parms, {
+setVRvaccDays <- setSWCTvaccDays <- function(parms, whichDo='pop') within(parms, {
     tmpstrg <- paste0(whichDo, 'H')
     tmpH <- copy(get(tmpstrg))
     tmpH$vaccDay <- delayUnit*(tmpH[,cluster]-1)
@@ -262,11 +263,15 @@ setCRCTvaccDays <- function(parms) within(parms, {
     popH$vaccDay <- Inf
     popH[cluster <= numClus/2, vaccDay := delayUnit*(cluster-1)] ## first half of clusters (1 per pair) get vaccinated in sequence
 })
+setNTvaccDays <- function(parms) within(parms, {
+    popH$vaccDay <- Inf
+})
 ## To check ordering works
 ## p1 <- setHazs(makePop(makeParms(clusSize=2, weeklyDecay=.9, weeklyDecayVar=.2, ord='TU', trial='SWCT',small=T)))
 ## setVaccDays(p1)$popH[,list(cluster,clusHaz, day,vacc,immune)]
 ## p1 <- setVaccDays(p1)
 ## p1$popH[idByClus==1,list(cluster,clusHaz, day,vacc,immune)]
+
 setImmuneDays <- function(parms, whichDo='pop') within(parms, {
     tmpstrgH <- paste0(whichDo, 'H')
     tmpH <- copy(get(tmpstrgH))
