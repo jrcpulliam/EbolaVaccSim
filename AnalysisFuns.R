@@ -174,11 +174,24 @@ finInfoFxn <- function(parms) {
     return(parms)
 }
 
+indivLevRes <- function(parms) within(parms, {
+browser()
+    Spop <- pop[,list(indiv,cluster, indivRR)] ## indiv chars
+    SpopH <- popH[idByClus==1,list(cluster, day, Date, clusHaz)] ## cluster chars
+    if(doCFs) toDo <- c('NTpop','VRpop')
+    if(!doCFs) toDo <- c('pop','EVpop')
+    for(tmpnm in toDo) {
+        tmp <- get(tmpnm)
+        tmpSM <- tmp[,list(indiv, vaccDay, infectDay, SAE)] ## indiv events
+        assign(paste0(tmpnm,'Events'), tmpSM)
+    }
+})
+
 simNtrials <- function(batch = 1, parms=makeParms(), N = 2, 
-                       simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
-                       returnEventTimes = T, verbFreq=10, vaccProp=NA) {
+                       returnEventTimes=T, simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
+                       verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
-    EventTimes <- NULL
+    popEvents <- EVpopEvents <- popH <- pop <- data.table()
     for(ss in 1:N) {
         simNum <- simNums[ss]
         set.seed(simNum)
@@ -198,22 +211,26 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
         res <- endT(res)
-        ##      res <- cfSims(res)
         res <- finInfoFxn(res)
+        res <- indivLevRes(res)
         ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
         finTmp <- data.table(sim = ss, simNum = simNum, 
                              vaccEff=parms$vaccEff, pSAE=parms$pSAE, res$intStats[analysis==max(res$intStats$analysis)]) 
         finMods <- rbind(finMods, finTmp)
         finITmp <- data.table(sim = ss, simNum = simNum, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
-        browser()
-        if(returnEventTimes) EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
+        if(returnEventTimes) {
+            pop <- rbind(pop, data.table(sim=ss, simNum=simNum, res$Spop))
+            popH <- rbind(popH, data.table(sim=ss, simNum=simNum, res$SpopH))
+            popEvents <- rbind(popEvents, data.table(sim=ss, simNum=simNum, res$popEvents))
+            EVpopEvents <- rbind(EVpopEvents, data.table(sim=ss, simNum=simNum, res$EVpopEvents))
+        }
         ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-    if(!as.logical(returnEventTimes)) EventTimes <- NULL
-    return(list(finMods=finMods, finInfo=finInfo, EventTimes))
+    pops <- list(pop=pop,popH=popH, popEvents=popEvents, EVpopEvents=EVpopEvents)
+    return(list(finMods=finMods, finInfo=finInfo, pops = pops))
 }
 
 ## Simulate counterfactuals, similar to above but no analyses. Only tracking infections for No Trial
@@ -222,7 +239,7 @@ simN_CFs <- function(batch = 1, parms=makeParms(), N = 2,
                      simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
                      returnEventTimes = T, verbFreq=10, vaccProp=NA) {
     finInfo <- data.frame(NULL)
-    EventTimes <- NULL
+    popEvents <- EVpopEvents <- popH <- pop <- data.table()
     for(ss in 1:N) {
         simNum <- simNums[ss]
         set.seed(simNum)
@@ -235,6 +252,16 @@ simN_CFs <- function(batch = 1, parms=makeParms(), N = 2,
         }
         res <- simTrial(parms)
         res <- cfSims(res, batch=batch)
+browser()
+        res <- indivLevRes(res)
+
+        if(returnEventTimes) {
+            pop <- rbind(pop, data.table(sim=ss, simNum=simNum, res$Spop))
+            popH <- rbind(popH, data.table(sim=ss, simNum=simNum, res$SpopH))
+            NTpopEvents <- rbind(NTpopEvents, data.table(sim=ss, simNum=simNum, res$NTpopEvents))
+            VRpopEvents <- rbind(VRpopEvents, data.table(sim=ss, simNum=simNum, res$VRpopEvents))
+        }
+
         EventTimes <- rbind(EventTimes, data.table(ss = ss, simNum = simNum, res$EventTimes))
         rm(res); gc()
     }

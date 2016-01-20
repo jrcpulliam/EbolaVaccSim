@@ -17,6 +17,10 @@ thing <- 'Equip-ByTrialDate' ## 'Equip-rand3pit'
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
           list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)]
+cols <- c('gs','trial','ord','delayUnit','avHaz')
+for (col in cols) set(finTrials, j=col, value=as.factor(finTrials[[col]]))
+summary(finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
+          list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)][V3<2040])
 ## finInfo has 4 categories for each simulation in finTrials (all=all cases by trial end date,
 ## analyzed = all analyzed cases by trial end date, allFinalEV/no_EV = all cases by stop date w/ or
 ## w/o end vaccine rollout)

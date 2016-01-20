@@ -1,5 +1,6 @@
 require(blme); require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); require(msm)
 load('data/createHT.Rdata')
+options(deparse.max.lines=10)
 
 yearToDays <- 1/365.25
 monthToDays <- 1/30

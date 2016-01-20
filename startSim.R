@@ -13,7 +13,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=3;trial="SWCT";gs="FALSE";ord="none";trialStartDate="2015-02-01";propInTrial=0.025;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";numCFs=1;HazTrajSeed=7;avHaz="";returnEventTimes="TRUE";doCFs="FALSE";StatsFxns="doRelabel";rcmdbatch=1587;batchdirnm="BigResults/Equip-ByTrialDate";saveNm="Equip-ByTrialDate";nsims=85;reordLag=14;nboot=200;simNumStart=171;simNumEnd=255;
+batch=3;trial="RCT";gs=FALSE;ord="none";trialStartDate="2015-02-01";propInTrial=0.2;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties=TRUE;vaccPropStrg="vaccProp1";numCFs=1;HazTrajSeed=7;avHaz="";returnEventTimes=TRUE;doCFs=TRUE;StatsFxns="doCoxME";rcmdbatch=1587;batchdirnm="BigResults/Equip-ByTrialDate";saveNm="Equip-ByTrialDate";nsims=1;reordLag=14;nboot=20;simNumStart=171;simNumEnd=255;
 }
 load('data/vaccProp1.Rdata')
 
@@ -31,7 +31,7 @@ simArgs <- list(batch=batch, parms=parms, N=nsims, verbFreq=10, vaccProp=vaccPro
 
 hazT <- NA
 if(!is.na(HazTrajSeed)) {
-    rnorm(1)
+#    rnorm(1)
     hazT <- setClusHaz(makePop(parms))$hazT
     ## pdf('Figures/tst.pdf')
     ## ggplot(hazT) + geom_line(aes(Date,clusHaz, col=factor(cluster)))

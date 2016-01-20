@@ -6,7 +6,7 @@ sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 
 doCFs <- F
 
-thing <- paste0('Equip-ByTrialDate', 'CFs'[doCFs])
+thing <- paste0('Equip-indivL', 'CFs'[doCFs])
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -79,12 +79,14 @@ jbs <- NULL
 jn <- 0
 
 
-batchdirnm <- file.path('BigResults',thing)
-fls <- list.files(batchdirnm, pattern=thing)
-fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
+## batchdirnm <- file.path('BigResults',thing)
+## fls <- list.files(batchdirnm, pattern=thing)
+## fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
+## parmsMatDo <- parmsMat[!rcmdbatch %in% fns]
 
-parmsMatDo <- parmsMat[!rcmdbatch %in% fns]
+parmsMatDo <- parmsMat[trialStartDate %in% sdates[1:2] & trial=='RCT' & ord=='TU' & gs==T]
 nrow(parmsMatDo)
+nrow(parmsMatDo)/24
 sink(paste0('SLsims','CFs'[doCFs],'.txt'))
 for(ii in parmsMatDo$rcmdbatch) {
     cmd <- "R CMD BATCH '--no-restore --no-save --args"
