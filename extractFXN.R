@@ -1,19 +1,25 @@
+popNms <- c("Spop", "SpopH", "SpopEvents", "SEVpopEvents")
 dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 
                             'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate'
                           , 'weeklyDecay', 'cvWeeklyDecay', 'cvClus', 'cvClusTime', 'avHaz'
                                    )
+
 ## Extract from simulations from multiple cores
 extractSims <- function(thing
                       , dparms = dparms0
+                      , extractIndivLev = F
                       , doSave=T
                       , verbose = 0
+                      , maxbatches = NA
+                      , indivLev = F
                         ) {
     if(verbose==1) browser()
     batchdirnm <- file.path('BigResults',thing)
     fls <- list.files(batchdirnm, pattern='.Rdata', full.names = T)
     nbatch <- length(fls)
     print(paste0('extracting from ', nbatch, ' files'))
-    finInfoList <- finModList <- parmsList <- list(NULL)
+    Spops <- finInfoList <- finModList <- parmsList <- list(NULL)
+    if(!is.na(maxbatches)) nbatch <- maxbatches
     for(ii in 1:nbatch) {
         if(ii%%100 ==0) print(ii)
         ff <- fls[ii]
@@ -24,12 +30,24 @@ extractSims <- function(thing
             parmsList[[ii]] <- data.table(nbatch = ii, t(unlist(sim$parms[dparms])))
             finModList[[ii]] <- data.table(nbatch = ii, sim$sim$finMods)
             finInfoList[[ii]] <- data.table(nbatch = ii, sim$sim$finInfo)
+            if(indivLev) {
+                for(pp in popNms) Spops[[pp]][[ii]] <- data.table(nbatch = ii, sim$sim$Spops[[pp]])
+                browser()
+                
+            }
         }
     }
     if(verbose==2) browser()
     parmsDT <- rbindlist(parmsList, use.names = T, fill = T)
     finTrials <- merge(rbindlist(finModList, fill=T), parmsDT, by = c('nbatch'))
     finInfo <- merge(rbindlist(finInfoList, fill=T), parmsDT, by = c('nbatch'))
+    for(pp in popNms) Spops[[pp]] <- rbindlist(Spops[[pp]])
+    Spops <- within(Spops, {
+        setkey(Spop, sim, simNum, cluster, indiv)
+        setkey(SpopH, sim, simNum, cluster)
+        setkey(SpopEvents, sim, indiv)
+        setkey(SEVpopEvents, sim, indiv)
+    })
     ## print(finTrials[,list(tcalMean = mean(tcal), power = mean(vaccGood), falsePos = mean(vaccGood|vaccBad)), 
     ##                 list(vaccEff, trial, gs, ord, delayUnit)]
     ## Coverage
@@ -48,7 +66,7 @@ extractSims <- function(thing
     back <- c('nbatch','sim')
     setcolorder(finTrials, c(setdiff(names(finTrials), back), back))
     if(doSave) {
-        save(finTrials, finInfo, file=file.path('BigResults', paste0(thing, '.Rdata')))
+        save(finTrials, finInfo, Spops, file=file.path('BigResults', paste0(thing, '.Rdata')))
     }
     return(list(finTrials=finTrials, finInfo=finInfo))
 }
@@ -124,41 +142,4 @@ makePowTable <- function(finTrials, verbose=0, doSave=T) {
     if(doSave)
         save(pf, file=file.path('Results',paste0('pf_',thing,'.Rdata')))
     return(pf)
-}
-
-## Extract from simulations from multiple cores
-extractCFs <- function(thing
-                     , dparms = dparms0
-                       , doEventTimes = F
-                      , doSave=T
-                      , verbose = 0
-                        ) {
-    if(verbose==1) browser()
-    batchdirnm <- file.path('BigResults',thing)
-    fls <- list.files(batchdirnm, pattern='.Rdata', full.names = T)
-    nbatch <- length(fls)
-    print(paste0('extracting from ', nbatch, ' files'))
-    eventTimeList <- finInfoList <- finModList <- parmsList <- list(NULL)
-    for(ii in 1:nbatch) {
-        if(ii%%100 ==0) print(ii)
-        ff <- fls[ii]
-        if(exists('sim')) rm(sim)
-        load(ff)
-        if(exists('sim')) {
-            sim$parms[['trialStartDate']] <- as.character(sim$parms[['trialStartDate']])
-            parmsList[[ii]] <- data.table(nbatch = ii, t(unlist(sim$parms[dparms])))
-            finInfoList[[ii]] <- data.table(nbatch = ii, sim$sim$finInfo)
-            if(doEventTimes) eventTimeList[[ii]] <- data.table(nbatch = ii, sim$sim$EventTimes)            
-        }
-    }
-    if(verbose==2) browser()
-    parmsDT <- rbindlist(parmsList, use.names = T, fill = T)
-    fincfs <- merge(rbindlist(finInfoList), parmsDT, by = c('nbatch'))
-    eventTimeList <- rbindlist(eventTimeList, use.names = T, fill = T)
-    class(fincfs$cc) <- 'numeric'
-    if(doSave) {
-        if(doEventTimes) save(fincfs, eventTimeList, file=file.path('BigResults', paste0(thing, '.Rdata')))
-        if(!doEventTimes) save(fincfs, file=file.path('BigResults', paste0(thing, '.Rdata')))        
-    }
-    return(fincfs)
 }

@@ -5,18 +5,53 @@ if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/Ebola
 rm(list=ls(all=T))
 require(RColorBrewer); require(boot); require(data.table); require(vioplot); require(ggplot2); require(grid); require(reshape2)
 ## Simulate SWCT vs RCT vs CRCT for SL
-sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R'), source)
-source('ggplotTheme.R')
-source('data/plotIncCountry.R')
-source('multiplot.R')
+sapply(c('multiplot.R','simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R','ggplotTheme.R','data/plotIncCountry.R'), source)
 
 ####################################################################################################
 ## extract factuals
-thing <- 'Equip-ByTrialDate' ## 'Equip-rand3pit'
-## out <- extractSims(thing, verb=0)
+thing <- 'Equip-indivL'
+# out <- extractSims(thing, verb=0, maxbatches=50)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
           list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)]
+
+nrow(Spops$SEVpopEvents)/10^6
+Spops[[1]] <- NULL
+attach(Spops)
+setkey(Spop, nbatch, sim, simNum, indiv, cluster)
+setkey(SpopH, nbatch, sim, simNum, cluster)
+setkey(SpopEvents, nbatch, sim, simNum, indiv)
+setkey(SEVpopEvents, nbatch, sim, simNum, indiv)
+
+## get first hazard & indivRR for every infected individual
+unqvars <- c('nbatch', 'sim', 'simNum')
+SpopH[, avHaz:= mean(clusHaz), list(nbatch, nbatch, sim, simNum, cluster)]
+SpopH[, haz0:= clusHaz[day==0], list(nbatch, sim, simNum, cluster)]
+
+quantcut <- function(x, qs = seq(0,1, l = 6)) as.numeric(cut(x, quantile(x, qs), include.lowest = T))
+
+Spop <- merge(Spop, SpopH[day==0, list(nbatch, sim, simNum, cluster, haz0, avHaz)], by = c(unqvars, 'cluster'))
+Spop[,haz0Q:=quantcut(haz0), unqvars] ## quantiles within simulations
+Spop[,ihaz0Q:=quantcut(haz0*indivRR), unqvars]
+hazBrks <- 10^c(-12:0)
+Spop[,haz0Cat:=cut(haz0, hazBrks, include.lowest = T)] ## absolute breaks in hazard
+Spop[,ihaz0Cat:=cut(haz0*indivRR, hazBrks, include.lowest = T)]
+
+##
+trackUntilDay <- finInfo[cat=='allFinalEV',atDay][1]
+infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(nbatch, sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+saePop <- merge(SEVpopEvents[SAE>0, list(nbatch, sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+
+vtmp <- merge(infPop[,list(caseTot = .N), unqvars], finInfo[cat=='allFinalEV', list(nbatch, sim, simNum, caseTot)], by=unqvars)
+vtmp[, range(caseTot.x-caseTot.y)] ## should match
+
+infPopQ <- infPop[, .N, c(unqvars,'haz0Q')] ## table the number of infections by quantile
+setkey(infPopQ, nbatch, sim, simNum, haz0Q)
+
+infPopCat <- infPop[, .N, c(unqvars,'haz0Cat')] ## table the number of infections by quantile
+setkey(infPopCat, nbatch, sim, simNum, haz0Cat)
+
+
 cols <- c('gs','trial','ord','delayUnit','avHaz')
 for (col in cols) set(finTrials, j=col, value=as.factor(finTrials[[col]]))
 summary(finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
@@ -35,14 +70,6 @@ load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
 vaccProp[, simNum:=1:length(vaccEff)]
 
-fincfs2 <- extractCFs(thingCFs, verb=1)
-
-thingCFs <- paste0(thing, 'CFs') ##'Equip-cfs-3pit'
-## fincfs <- extractCFs(thingCFs, verb=0)
-load(file=file.path('BigResults',paste0(thingCFs, '.Rdata')))
-fincfs <- merge(fincfs, vaccProp, by = 'simNum', all.y=F) ## copy vaccProp in there (should do this in analysisFuns.R later
-class(fincfs$cc) <- 'numeric'
-setnames(fincfs, 'saeTot','nsae')
 
 setkey(finInfo, gs, ord, trial, propInTrial, simNum, trialStartDate, cat)
 setkey(finTrials, gs, ord, trial, propInTrial, simNum, trialStartDate)

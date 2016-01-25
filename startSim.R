@@ -13,7 +13,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=1;trial="RCT";gs="FALSE";ord="TU";trialStartDate="2014-10-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="";returnEventTimes="TRUE";StatsFxns="doCoxME";rcmdbatch=1921;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=2;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;
+batch=1;trial="RCT";gs="FALSE";ord="none";trialStartDate="2014-10-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="";returnEventTimes="TRUE";StatsFxns="doCoxME";rcmdbatch=1921;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=2;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;
 }
 load('data/vaccProp1.Rdata')
 
@@ -39,7 +39,6 @@ if(!is.na(HazTrajSeed)) {
     ##    save(hazT, file=paste0('BigResults/Equip-ByTrialDate/hazT',HazTrajSeed,'.Rdata'))
 }
 
-sapply(c('simFuns.R','AnalysisFuns.R', 'MungeFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R','equipoiseFuns.R'), source)
 system.time(sim <- do.call(simNtrials, simArgs))
 sim <- list(sim=sim, parms=parms, batch=batch, rcmdbatch=rcmdbatch, hazT=hazT)
 save(sim, file = saveFl)
@@ -65,3 +64,6 @@ gc()
 ## LAM notes
 
 ## calculate power / inf spent for all trials, plot that over scenarios; might need to show absolute power too still
+## excess risk taken on distribution, ppl above a certain threshold should be given a choice regardless of info provided
+## informed consent, choice to be given experimental vaccine vs being randomized, working in altruism
+## what does a trialist do with our framework, how can they decide who is at what level? simple BMJ version with suspected inf risk & CFR
