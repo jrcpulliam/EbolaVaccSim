@@ -1,7 +1,6 @@
 popNms <- c("Spop", "SpopH", "SpopEvents", "SEVpopEvents")
 dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 
-                            'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate'
-                          , 'weeklyDecay', 'cvWeeklyDecay', 'cvClus', 'cvClusTime', 'avHaz'
+                            'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate', 'HazTrajSeed'                          
                                    )
 
 quantcut <- function(x, qs = seq(0,1, l = 6)) {

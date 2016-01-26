@@ -13,7 +13,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=1;trial="RCT";gs="FALSE";ord="none";trialStartDate="2014-10-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="";returnEventTimes="TRUE";StatsFxns="doCoxME";rcmdbatch=1921;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=2;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;
+batch=1;trial="SWCT";gs="FALSE";ord="none";trialStartDate="2015-04-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="xTime";returnEventTimes="TRUE";StatsFxns="doRelabel";rcmdbatch=4393;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=85;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;
 }
 load('data/vaccProp1.Rdata')
 
@@ -36,7 +36,7 @@ if(!is.na(HazTrajSeed)) {
     ## pdf('Figures/tst.pdf')
     ## ggplot(hazT) + geom_line(aes(Date,clusHaz, col=factor(cluster)))
     ## dev.off()
-    ##    save(hazT, file=paste0('BigResults/Equip-ByTrialDate/hazT',HazTrajSeed,'.Rdata'))
+    ##    save(hazT, file=paste0('BigResults/Equip-indivL/hazT',HazTrajSeed,'.Rdata'))
 }
 
 system.time(sim <- do.call(simNtrials, simArgs))

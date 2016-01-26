@@ -91,14 +91,14 @@ nrow(parmsMat)
 jbs <- NULL
 jn <- 0
 
-## batchdirnm <- file.path('BigResults',thing)
-## fls <- list.files(batchdirnm, pattern=thing)
-## fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
-## parmsMatDo <- parmsMat[!rcmdbatch %in% fns]
+batchdirnm <- file.path('BigResults',thing)
+fls <- list.files(batchdirnm, pattern=thing)
+fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
+parmsMatDo <- parmsMat[!rcmdbatch %in% fns] ## 174
 
 ## parmsMatDo <- parmsMat[trialStartDate %in% sdates[1:2] & trial=='RCT' & ord=='TU' & gs==T]
 # parmsMatDo <- rbind(parmsMat[trial=='VR'][1],parmsMat[trial=='NT'][1],parmsMat[trial=='RCT'][1],parmsMat[trial=='SWCT'][1])
-parmsMatDo <- parmsMat
+## parmsMatDo <- parmsMat
 nrow(parmsMatDo)
 sink('SLsims.txt')
 for(ii in parmsMatDo$rcmdbatch) {
