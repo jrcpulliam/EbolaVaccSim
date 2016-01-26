@@ -16,47 +16,7 @@ load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
           list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)]
 
-nrow(Spops$SEVpopEvents)/10^6
-Spops[[1]] <- NULL
-attach(Spops)
-setkey(Spop, nbatch, sim, simNum, indiv, cluster)
-setkey(SpopH, nbatch, sim, simNum, cluster)
-setkey(SpopEvents, nbatch, sim, simNum, indiv)
-setkey(SEVpopEvents, nbatch, sim, simNum, indiv)
 
-## get first hazard & indivRR for every infected individual
-unqvars <- c('nbatch', 'sim', 'simNum')
-SpopH[, avHaz:= mean(clusHaz), list(nbatch, nbatch, sim, simNum, cluster)]
-SpopH[, haz0:= clusHaz[day==0], list(nbatch, sim, simNum, cluster)]
-
-quantcut <- function(x, qs = seq(0,1, l = 6)) as.numeric(cut(x, quantile(x, qs), include.lowest = T))
-
-Spop <- merge(Spop, SpopH[day==0, list(nbatch, sim, simNum, cluster, haz0, avHaz)], by = c(unqvars, 'cluster'))
-Spop[,haz0Q:=quantcut(haz0), unqvars] ## quantiles within simulations
-Spop[,ihaz0Q:=quantcut(haz0*indivRR), unqvars]
-hazBrks <- 10^c(-12:0)
-Spop[,haz0Cat:=cut(haz0, hazBrks, include.lowest = T)] ## absolute breaks in hazard
-Spop[,ihaz0Cat:=cut(haz0*indivRR, hazBrks, include.lowest = T)]
-
-##
-trackUntilDay <- finInfo[cat=='allFinalEV',atDay][1]
-infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(nbatch, sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-saePop <- merge(SEVpopEvents[SAE>0, list(nbatch, sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-
-vtmp <- merge(infPop[,list(caseTot = .N), unqvars], finInfo[cat=='allFinalEV', list(nbatch, sim, simNum, caseTot)], by=unqvars)
-vtmp[, range(caseTot.x-caseTot.y)] ## should match
-
-infPopQ <- infPop[, .N, c(unqvars,'haz0Q')] ## table the number of infections by quantile
-setkey(infPopQ, nbatch, sim, simNum, haz0Q)
-
-infPopCat <- infPop[, .N, c(unqvars,'haz0Cat')] ## table the number of infections by quantile
-setkey(infPopCat, nbatch, sim, simNum, haz0Cat)
-
-
-cols <- c('gs','trial','ord','delayUnit','avHaz')
-for (col in cols) set(finTrials, j=col, value=as.factor(finTrials[[col]]))
-summary(finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
-          list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)][V3<2040])
 ## finInfo has 4 categories for each simulation in finTrials (all=all cases by trial end date,
 ## analyzed = all analyzed cases by trial end date, allFinalEV/no_EV = all cases by stop date w/ or
 ## w/o end vaccine rollout)

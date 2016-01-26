@@ -4,7 +4,7 @@ dparms0 <- c('trial','gs','doSL','propInTrial','nbsize',
                           , 'weeklyDecay', 'cvWeeklyDecay', 'cvClus', 'cvClusTime', 'avHaz'
                                    )
 
-quantcut <- function(x, qs = seq(0,1, l = 6)) as.numeric(cut(x, quantile(x, qs), include.lowest = T))
+quantcut <- function(x, qs = seq(0,1, l = 6)) as.numeric(cut(x, unique(quantile(x, qs)), include.lowest = T))
 
 extractOneSim <- function(fileNm
                         , dparms = dparms0
@@ -96,16 +96,20 @@ extractSims <- function(thing
     if(!is.na(maxbatches)) {
         nbatch <- maxbatches
         fls <- fls[1:nbatch]
+        fls <- fls[235]
     }
     print(paste0('extracting from ', nbatch, ' files'))
     resList <- list()
-    tmp <- mclapply(fls, extractOneSim, indivLev = indivLev, mc.cores=mc.cores)
+    tmp <- mclapply(fls, extractOneSim, indivLev = indivLev, verbose=0, mc.cores=mc.cores)
+
     length(resList) <- length(tmp[[1]])
     names(resList) <- names(tmp[[1]])
+
     for(vv in names(resList)) {
         resList[[vv]] <- rbindlist(lapply(tmp, function(x) {x[[vv]]}))
         if(vv!='parms') setkey(resList[[vv]], nbatch ,sim, simNum)
     }
+
     resList <- within(resList, {
         ## Coverage
         finTrials[, cvr := lci < vaccEff & uci > vaccEff]
