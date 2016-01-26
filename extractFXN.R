@@ -4,6 +4,8 @@ dparms0 <- c('trial','gs','doSL','propInTrial','nbsize',
                           , 'weeklyDecay', 'cvWeeklyDecay', 'cvClus', 'cvClusTime', 'avHaz'
                                    )
 
+quantcut <- function(x, qs = seq(0,1, l = 6)) as.numeric(cut(x, quantile(x, qs), include.lowest = T))
+
 ## Extract from simulations from multiple cores
 extractSims <- function(thing
                       , dparms = dparms0
@@ -11,7 +13,7 @@ extractSims <- function(thing
                       , doSave=T
                       , verbose = 0
                       , maxbatches = NA
-                      , indivLev = F
+                      , indivLev = F, hazBrks = 10^c(-12:0)
                         ) {
     if(verbose==1) browser()
     batchdirnm <- file.path('BigResults',thing)
@@ -31,9 +33,68 @@ extractSims <- function(thing
             finModList[[ii]] <- data.table(nbatch = ii, sim$sim$finMods)
             finInfoList[[ii]] <- data.table(nbatch = ii, sim$sim$finInfo)
             if(indivLev) {
-                for(pp in popNms) Spops[[pp]][[ii]] <- data.table(nbatch = ii, sim$sim$Spops[[pp]])
-                browser()
-                
+                ## for(pp in popNms) Spops[[pp]][[ii]] <- data.table(nbatch = ii, sim$sim$Spops[[pp]])
+                riskStratList <- with(sim$sim$Spops, {
+                    browser()
+                    ## 
+
+####################################################################################################
+                    setkey(Spop, sim, simNum, indiv, cluster)
+                    setkey(SpopH, sim, simNum, cluster)
+                    setkey(SpopEvents, sim, simNum, indiv)
+                    setkey(SEVpopEvents, sim, simNum, indiv)
+
+                    ## get first hazard & indivRR for every infected individual
+                    unqvars <- c('sim', 'simNum')
+                    SpopH[, avHaz:= mean(clusHaz), list(sim, simNum, cluster)]
+                    SpopH[, haz0:= clusHaz[day==0], list(sim, simNum, cluster)]
+
+                    Spop <- merge(Spop, SpopH[day==0, list(sim, simNum, cluster, haz0, avHaz)], by = c(unqvars, 'cluster'))
+                    Spop[,haz0Q:=quantcut(haz0), unqvars] ## quantiles *within* simulations
+                    Spop[,ihaz0Q:=quantcut(haz0*indivRR), unqvars]
+
+                    Spop[,haz0Cat:=cut(haz0, hazBrks, include.lowest = T)] ## absolute breaks in hazard
+                    Spop[,ihaz0Cat:=cut(haz0*indivRR, hazBrks, include.lowest = T)]
+
+                    ## number infected & SAE overall, with individual level data tracked
+                    trackUntilDay <- sim$sim$finInfo[cat=='allFinalEV',atDay][1]
+                    infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    saePop <- merge(SEVpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    infPop_noEV <- merge(SpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    saePop_noEV <- merge(SpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    ## To check that individual-level data match pop-aggregate compare infPop & finInfo
+                    ## vtmp <- merge(infPop[,list(caseTot = .N), unqvars], 
+                    ##               sim$sim$finInfo[cat=='allFinalEV', list(sim, simNum, caseTot)], by=unqvars)
+                    ## vtmp[, range(caseTot.x-caseTot.y)] ## should match
+                    ## vtmp <- merge(infPop_noEV[,list(caseTot = .N), unqvars], 
+                    ##               sim$sim$finInfo[cat=='allFinal_noEV', list(sim, simNum, caseTot)], by=unqvars)
+                    ## vtmp[, range(caseTot.x-caseTot.y)] ## should match
+
+                    ## table the number of infections by each type
+                    vars <- c('haz0Q', 'haz0Cat', 'ihaz0Cat')
+                    tabNms <- c()
+                            for(vv in vars) {
+
+                                itmp <- merge( infPop_noEV[,.N, c(unqvars,vv)]
+                                            , infPop[,.N, c(unqvars,vv)]
+                                            , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+
+                                stmp <- merge( saePop_noEV[,.N, c(unqvars,vv)]
+                                            , saePop[,.N, c(unqvars,vv)]
+                                            , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+
+tmp <- merge(itmp, stmp, by = c('sim','simNum',vv), suffixes = c('inf','sae'))
+
+                                Nnms <- colnames(tmp)[grepl('N_',colnames(tmp))]
+                                for (col in Nnms) set(tmp, which(is.na(tmp[[col]])), col, 0)
+
+
+
+
+####################################################################################################
+                    ## 
+
+                } )
             }
         }
     }
