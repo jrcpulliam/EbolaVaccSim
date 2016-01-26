@@ -112,6 +112,15 @@ tmp[,catn:='no rollout']
 ftmp <- rbind(ftmp,tmp)
 
 ## density of infections averted by endtime, trial start date & % in trial
+nmtmp <- 'infAvert dens .1 2014-10 Pos.pdf'
+pdf(file.path(figdir, nmtmp), w=10, h = 8)
+p <- ggplot(ftmp[posv==T & trialStartDate=='2014-10-01' & propInTrial==.1], aes(infAvert, colour = lab, linetype = lab)) +
+    geom_density() + facet_grid(~catn) + 
+        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + xlab(infAvertLab)
+print(p)
+graphics.off()
+
+## density of infections averted by endtime, trial start date & % in trial
 for(ii in 1:2) {
     if(ii==1) {
         ft <- ftmp[posv==T]
@@ -136,40 +145,12 @@ for(ii in 1:2) {
     graphics.off()
 }
 
-
-## density of infections averted by endtime, trial start date & % in trial
-for(ii in 1:2) {
-    if(ii==1) {
-        ft <- ftmp[posv==T]
-        nmtmp <- 'infAvert dens Pos.pdf'
-    }else{
-        ft <- ftmp
-        nmtmp <- 'infAvert dens.pdf'
-    }        
-    pdf(file.path(figdir, nmtmp), w=10, h = 8)
-    p <- ggplot(ft[trialStartDate=='2014-10-01' & propInTrial==.1], aes(infAvert, colour = lab, linetype = lab)) +
-        geom_density() + facet_grid(~catn) + 
-            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-                                        #                scale_x_continuous(limits=c(-100,600)) + 
-                xlab(infAvertLab)
-    ip1 <- ip + geom_rect(data=rect[jj], aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
-    multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
-    graphics.off()
-}
-
-finit[avHaz=='' & cat=='allFinal_noEV' & trial=='RCT' & trialStartDate=='2014-10-01' & propInTrial==.1 & sim ==85 & simNum==2040, 
-      list(nbatch, sim, simNum, trial, ord, gs, infAvert, vaccEff) ]
-
-parmsMat[c(792,816,840,864)]
-
-finit[nbatch==792 & sim==85 & simNum==2040 & trial=='RCT']
-
 ymaxHaz <- hazT[,max(clusHaz)]
 rect[,ymax:=ymaxHaz*c(1,.9,.8,.7)]
 ip1 <- ip0 + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
 
 ## ethicline contours
-tmp <- infAvertPow[cat=='allFinalEV' & lab %in% labsToShow]
+tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
 ias <- pretty(tmp$infAvert, n = 50)
 pows <- seq(0,1,l=50)
 contt <- data.table(expand.grid(ia=ias, pow=pows))
@@ -177,22 +158,21 @@ for(ii in 1:3) {
     infPpow <- c(100, 200, 300)[ii]
     contt[, merit:= ia/infPpow + pow] ## every infPpow infections is worth 10% power
     contt[pow<.3, merit:= ia/infPpow+.3] ## don't penalize less power under 30% power since it's so insignificant anyways
-    v <- ggplot(contt, aes(ia,pow,z=merit)) +
-        geom_tile(aes(fill=merit))+ stat_contour() + scale_fill_gradient(low = "brown", high = "white")
-
     ## Basic plot
     jpeg(file.path(figdir, paste0('infAvert pow', infPpow/10, '.jpeg')), w = 10, h = 8, units = 'in', res = 200)
     p <- ggplot() +
-        geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "brown", high = "pink") +
+        ## fill
+        geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "beige", high = "brown") +
             stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) +
-                geom_point(data = infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvert, pow, colour = lab, linetype = lab, size = 1.5)) + 
+                ## points
+                geom_point(data = tmp, aes(infAvert, pow, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
                     facet_grid(propInTrial~trialStartDate) + 
                         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
                             xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +
-                                ##                        geom_vline(aes(xintercept=infAvert), data = infAvertPow[lab=='VR'], col = 'dark green') +
-                                geom_segment(data = infAvertPow[lab=='VR'&cat=='allFinalEV'],
+                                ## isoclines
+                                geom_segment(data = tmp[lab=='VR'],
                                              aes(x = infAvert, y = .3, xend = 0, yend = .3+1/infPpow*infAvert)) +
-                                                 geom_segment(data = infAvertPow[lab=='VR'&cat=='allFinalEV'],
+                                                 geom_segment(data = tmp[lab=='VR'],
                                                               aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
                                                                   coord_cartesian(ylim=c(0,1)) + guides(size=F) +
                                                                       labs(title=paste(infPpow/10, 'infections := 10% power \n<30% power := negligible'))
