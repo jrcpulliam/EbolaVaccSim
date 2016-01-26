@@ -11,7 +11,6 @@ sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
 ## extract factuals
 thing <- 'Equip-indivL'
 out <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
-
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
           list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)]

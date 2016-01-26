@@ -4,12 +4,16 @@ dparms0 <- c('trial','gs','doSL','propInTrial','nbsize',
                           , 'weeklyDecay', 'cvWeeklyDecay', 'cvClus', 'cvClusTime', 'avHaz'
                                    )
 
-quantcut <- function(x, qs = seq(0,1, l = 6)) as.numeric(cut(x, unique(quantile(x, qs)), include.lowest = T))
+quantcut <- function(x, qs = seq(0,1, l = 6)) {
+    brks <- unique(quantile(x, qs))
+    if(length(brks)==1) brks <- brks*c(.99,1/.99) ## in case it's one number, just make an interval that includes it
+    return(as.numeric(cut(x, brks, include.lowest = T)))
+}
 
 extractOneSim <- function(fileNm
                         , dparms = dparms0
                         , verbose = 0
-                        , verbFreq = 5
+                        , verbFreq = 100
                         , indivLev = F, hazBrks = 10^c(-12:0)
                           ) {
     load(fileNm)
@@ -29,7 +33,8 @@ extractOneSim <- function(fileNm
                 setkey(Spop, sim, simNum, indiv, cluster)
                 setkey(SpopH, sim, simNum, cluster)
                 setkey(SpopEvents, sim, simNum, indiv)
-                setkey(SEVpopEvents, sim, simNum, indiv)
+                notCF <- nrow(SEVpopEvents)>0
+                if(notCF) setkey(SEVpopEvents, sim, simNum, indiv)
                 ## get first hazard & indivRR for every infected individual
                 unqvars <- c('sim', 'simNum')
                 SpopH[, avHaz:= mean(clusHaz), list(sim, simNum, cluster)]
@@ -41,8 +46,10 @@ extractOneSim <- function(fileNm
                 Spop[,ihaz0Cat:=cut(haz0*indivRR, hazBrks, include.lowest = T)]
                 ## number infected & SAE overall, with individual level data tracked
                 trackUntilDay <- sim$sim$finInfo[cat=='allFinalEV',atDay][1]
-                infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-                saePop <- merge(SEVpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                if(notCF) {
+                    infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    saePop <- merge(SEVpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                }
                 infPop_noEV <- merge(SpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
                 saePop_noEV <- merge(SpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
                 ## ##################################################
@@ -58,12 +65,17 @@ extractOneSim <- function(fileNm
                 vars <- c('haz0Q', 'haz0Cat', 'ihaz0Cat')
                 riskStratList <- list()
                 for(vv in vars) {
-                    itmp <- merge( infPop_noEV[,.N, c(unqvars,vv)] ## infection tallies by risk level
-                                , infPop[,.N, c(unqvars,vv)]
-                                , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
-                    stmp <- merge( saePop_noEV[,.N, c(unqvars,vv)] ## sae tallies by risk level
-                                , saePop[,.N, c(unqvars,vv)]
-                                , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+                    if(notCF) {
+                        itmp <- merge(infPop_noEV[,.N, c(unqvars,vv)] ## infection tallies by risk level
+                                    , infPop[,.N, c(unqvars,vv)]
+                                    , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+                        stmp <- merge( saePop_noEV[,.N, c(unqvars,vv)] ## sae tallies by risk level
+                                    , saePop[,.N, c(unqvars,vv)]
+                                    , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+                    }else{
+                        itmp <- infPop_noEV[,list(N_noEV = .N), c(unqvars,vv)]
+                        stmp <- saePop_noEV[,list(N_noEV = .N), c(unqvars,vv)]
+                    }
                     tmp <- merge(itmp, stmp, by = c('sim','simNum',vv), suffixes = c('inf','sae'))
                     Nnms <- colnames(tmp)[grepl('N_',colnames(tmp))]
                     for (col in Nnms) set(tmp, which(is.na(tmp[[col]])), col, 0)
@@ -96,17 +108,17 @@ extractSims <- function(thing
     if(!is.na(maxbatches)) {
         nbatch <- maxbatches
         fls <- fls[1:nbatch]
-        fls <- fls[235]
     }
     print(paste0('extracting from ', nbatch, ' files'))
     resList <- list()
     tmp <- mclapply(fls, extractOneSim, indivLev = indivLev, verbose=0, mc.cores=mc.cores)
+    ## tmp <- mclapply(fls[[5340]], extractOneSim, indivLev = indivLev, verbose=1, mc.cores=mc.cores)
 
     length(resList) <- length(tmp[[1]])
     names(resList) <- names(tmp[[1]])
 
     for(vv in names(resList)) {
-        resList[[vv]] <- rbindlist(lapply(tmp, function(x) {x[[vv]]}))
+        resList[[vv]] <- rbindlist(lapply(tmp, function(x) {x[[vv]]}), fill=T)
         if(vv!='parms') setkey(resList[[vv]], nbatch ,sim, simNum)
     }
 
@@ -119,8 +131,8 @@ extractSims <- function(thing
         finTrials[RH==Inf, PHU:=1] ## otheriwse gives NaN for Inf/(Inf+1)
         finTrials[, stopped:=vaccGood|vaccBad]
         ## finTrials[,list(vaccEff,mean,PHU)] ## NEED TO AVERAGE BIAS ON PHU scale 
-        print("Distribution of finTrials$err")
-        print(finTrials[, table(err)]) ## -1 couldn't fit coxme, so fit coxph instead, 1 couldn't fit anything at all
+        print("Distribution of finTrials$err") ## -1 couldn't fit coxme, so fit coxph instead, 1 couldn't fit anything at all
+        print(finTrials[, table(err)])         ## >1 is # of times got NA for permuted/bootstrapped statistic
     })
     if(doSave) {
         save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
