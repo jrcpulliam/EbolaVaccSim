@@ -2,15 +2,16 @@ if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/Ebol
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
-rm(list=ls(all=T))
-require(RColorBrewer); require(boot); require(data.table); require(vioplot); require(ggplot2); require(grid); require(reshape2)
+rm(list=ls(all=T)); gc()
+require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
 ## Simulate SWCT vs RCT vs CRCT for SL
-sapply(c('multiplot.R','simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R', 'extractFXN.R','ggplotTheme.R','data/plotIncCountry.R'), source)
+sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
 
 ####################################################################################################
 ## extract factuals
 thing <- 'Equip-indivL'
-# out <- extractSims(thing, verb=0, maxbatches=50)
+out <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
+
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 finTrials[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
           list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz)]
