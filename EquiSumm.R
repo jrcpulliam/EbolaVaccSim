@@ -3,7 +3,7 @@ if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVa
 if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
 rm(list=ls(all=T)); gc()
-require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
+require(optiRum); require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
 
@@ -18,57 +18,10 @@ figdir <- file.path('Figures', thing)
 dir.create(figdir)
 
 ## resList <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
-## load(file=file.path('BigResults',paste0(thing, '.Rdata')))
-## attach(resList)
-
-## parms[,c('nbsize','weeklyDecay','cvWeeklyDecay','cvClus','cvClusTime'):=NULL]
-## finInfo[,1:9,with=F]
-## finTrials[,1:9,with=F]
-
-## ## merge all trial-level info
-## finit <- merge(parms, merge(finInfo, finTrials, all.x=T), all.y=T, by = 'nbatch')
-
-## finit[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
-##           list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz, cat)]
-## cols <- c('trial', 'gs', 'ord', 'delayUnit', 'propInTrial', 'trialStartDate', 'avHaz', 'cat')
-## finit[, (cols):=lapply(.SD, as.factor), .SDcols=cols]
-## ## make sure all simulations completed (2040 of each)
-## nsms <- finit[, .N, list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz, cat)]
-## cols <- c('trial', 'gs', 'ord', 'delayUnit', 'propInTrial', 'trialStartDate', 'avHaz', 'cat')
-## nsms[, (cols):=lapply(.SD, as.factor), .SDcols=cols]
-## summary(nsms[N<2040]) ## SWCT's are missing results, working on this
-
-## finit[, posv:= vaccEff>0] ## positive vaccine efficacy simulations
-## names(finit)
-## finit[,list(trial, sim, simNum, cat, caseTot)]
-
-## ## Figure out how to match trials
-## finit[,.N,list(nbatch, sim, simNum, cat)] ## full unique
-## finit[trial=='NT',.N,list(propInTrial, trialStartDate, avHaz, sim, simNum)] ## unique CF
-## finit[trial=='VR',.N,list(propInTrial, trialStartDate, avHaz, sim, simNum)] ## unique CF
-## finit[cat=='allFinalEV',.N,list(propInTrial, trialStartDate, avHaz, sim, simNum)] ## matched scenarios (i.e. 7 factuals/2cfs)
-
-## finit[, c('caseTotNT','caseTotVR'):=as.numeric(NA)]
-## ## EV
-## finit[cat=='allFinalEV', caseTotNT:=caseTot[trial=='NT'], list(propInTrial, trialStartDate, avHaz, sim, simNum)]
-## finit[cat=='allFinalEV', caseTotVR:=caseTot[trial=='VR'], list(propInTrial, trialStartDate, avHaz, sim, simNum)]
-## ## noEV
-## finit[(trial %in% c('RCT','SWCT') & cat=='allFinal_noEV')|(trial=='NT' & cat=='allFinalEV'), caseTotNT:=caseTot[trial=='NT'],
-##       list(propInTrial, trialStartDate, avHaz, sim, simNum)] #     
-## finit[(trial %in% c('RCT','SWCT') & cat=='allFinal_noEV')|(trial=='VR' & cat=='allFinalEV'), caseTotVR:=caseTot[trial=='VR'],
-##       list(propInTrial, trialStartDate, avHaz, sim, simNum)] #     
-## ## inf Avert
-## finit[, infAvert := caseTotNT - caseTot]
-## finit[, list(propInTrial, trialStartDate, avHaz, sim, simNum, trial, gs, ord, cat, caseTot, caseTotNT, caseTotVR, infAvert)] #     
-## finit[, infAvertProp := infAvert/caseTotNT]
-## finit[, infAvertableProp := infAvert/(caseTotNT-caseTotVR)]
-## finit[, lab:=trial]
-## finit[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
-## finit[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
-## finit[,unique(lab)]
-## finit[,lab:=as.factor(lab)]
-## save(finit, file=file.path('BigResults',paste0(thing, '_finit.Rdata')))
-load(file=file.path('BigResults',paste0(thing, '_finit.Rdata')))
+## resList <- procResList(resList)
+load(file=file.path('BigResults',paste0(thing, '.Rdata')))
+attach(resList)
+names(resList)
 
 ltys <- labsToShow <- finit[, levels(lab)]
 names(ltys) <- ltys
@@ -97,8 +50,8 @@ ip <- ip0 + eb + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=
 ## power vs infections averted
 
 infAvertPow <- finit[grepl('Final',cat) & trial!='NT', list(.N, pow = mean(vaccGood), infAvert = mean(infAvert), 
-                         infAvertProp = mean(infAvertProp)), #infAvertableProp = mean(infAvertableProp)), 
-                     list(propInTrial, trialStartDate, cat, lab, avHaz)]
+                         infAvertProp = mean(infAvertProp)), ## infAvertableProp = mean(infAvertableProp, na.rm=T)), 
+                     list(propInTrial, trialStartDate, cat, lab, avHaz)] 
 infAvertPow[lab=='VR', pow:=0]
 infAvertLab <- "infections averted relative to not performing any trial"
 
@@ -180,69 +133,70 @@ for(ii in 1:3) {
     graphics.off()
 }
 
-## by proportion of infections averted
-pdf(file.path(figdir, 'infAvertprop pow.pdf'), w = 10, h = 8)
-    p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertprop, pow, colour = lab, linetype = lab)) +
+tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
+## by Proportion of infections averted
+pdf(file.path(figdir, 'infAvertProp pow.pdf'), w = 10, h = 8)
+    p <- ggplot(tmp, aes(infAvertProp, pow, shape = lab, colour = lab, linetype = lab)) +
         geom_point() + facet_grid(propInTrial~trialStartDate) + 
             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
                         xlab(paste('proportion of ', infAvertLab)) +
-                            geom_vline(aes(xintercept=infAvertprop), data = infAvertPow[lab=='VR'], col = 'dark green')
+                            geom_vline(aes(xintercept=infAvertProp), data = tmp[lab=='VR'], col = 'dark green')
 multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
 dev.off()
 
-## by proportion of avertable infections averted
-pdf(file.path(figdir, 'infAvertpropVR pow.pdf'), w = 10, h = 8)
-p <- ggplot(infAvertPow[cat=='allFinalEV' & lab %in% labsToShow], aes(infAvertpropVR, pow, colour = lab, linetype = lab)) +
-    geom_point() + facet_grid(propInTrial~trialStartDate) + 
-        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-            xlab(paste('proportion of avertable (from VR) deaths averted')) +
-                geom_vline(aes(xintercept=infAvertpropVR), data = infAvertPow[lab=='VR'], col = 'dark green')
-multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
-dev.off()
-
-
-
 ####################################################################################################
-## Figures
-####################################################################################################
-labsToShow <- c('RCTgs--TU','SWCT-none', 'VR','RCT-none', 'NT')
-ftmp <- finit[lab %in% labsToShow & grepl('Final',cat)]
-ftmp$catn <- factor(ftmp$cat)
-ftmp[, catn:=factor(catn, labels = c('1yr w/o rollout','1yr w/ rollout'))]
+## individual level stuff
 
-ty <- theme(axis.text.y=element_blank(),
-            axis.title.y=element_blank())
+shc <- CJ.dt(unique(strat_haz0Cat[,list(nbatch, simNum)]), data.table(haz0Cat = strat_haz0Cat[,unique(haz0Cat)]))
+setkey(shc, nbatch, simNum, haz0Cat)
+setkey(strat_haz0Cat, nbatch, simNum, haz0Cat)
+setkey(shc, nbatch, simNum, haz0Cat)
+shc <- merge(shc, strat_haz0Cat, all=T) ##
+shc[is.na(N_noEVinf), N_noEVinf:=0] ## replace NA's with 0s
+shc[is.na(N_noEVsae), N_noEVsae:=0]
+shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(N_EVinf), N_EVinf:=0] ## replace NAs w 0s only if a factual (otherwise should be NA
+shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(N_EVsae), N_EVsae:=0]
+setkey(shc, nbatch, simNum, haz0Cat)
 
-## pit facets, tsd pages
-pdf(file.path(figdir, 'case dens.pdf'))
-for(jj in 1:4) {
-    ts <- ft[,unique(trialStartDate)][jj]
-    p <- ggplot(ftmp[trialStartDate==ts], aes(caseTot, colour = lab, linetype = lab)) +
-        geom_density() + facet_wrap(~propInTrial, ncol=1, scales='free_y') + 
-            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-            xlab("total infections by 1 year post start date")
-    ip2 <- ip + geom_rect(data=rect[jj], aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
-    multiplot(ip2, p+ty, layout = matrix(c(1, rep(2,3)), ncol=1))
-}
-dev.off()
-
-ymaxHaz <- hazT[,max(clusHaz)]
-rect[,ymax:=ymaxHaz*c(1,.9,.8,.7)]
-ip1 <- ip + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
-## pit pages, tsd facets
-pdf(file.path(figdir, 'caseXpitXtsd.pdf'))
-for(jj in 1:4) {
-    ts <- ft[,unique(propInTrial)][jj]
-    p <- ggplot(ftmp[propInTrial==ts], aes(caseTot, colour = lab, linetype = lab)) +
-        geom_density() + facet_wrap(~trialStartDate, ncol=1, scales='free_y') + labs(title=paste0('proportion cases in trial ', ts)) +
-            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-                xlab("total infections by 1 year post start date")
-    multiplot(ip1, p+ty, layout = matrix(c(1, rep(2,3)), ncol=1))
-}
-dev.off()
+shc <- merge(parms, shc, all.y=T, by = c('nbatch'))
+shc <- merge(shc, finTrials[,list(nbatch, simNum, vaccGood, tcal)], by = c('nbatch','simNum'))
+setkey(shc, nbatch, simNum, haz0Cat)
 
 
-## break down what's happening before trial & after trial (due to roll out)
-## parse out false pos/negative from correct identifications
-## is there a simple linear relationship between equipoise & power? (medium risk vs high risk group, do you lose more info than equipoise gained)
-## post-vacc rollout period may modulate linearity of this relationship
+shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz)] # number of hazard categories
+shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz, haz0Cat)] # down to unique
+
+shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, haz0Cat)] ## 7 simulation types
+unique(parms[propInTrial==.025 & trialStartDate=='2014-10-01' & avHaz==''][,2:12,with=F])
+
+shc[, N_NT:= N_noEVinf[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, haz0Cat)]
+shc[, N_VR:= N_noEVinf[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, haz0Cat)]
+shc[, infAvert := N_NT - N_EVinf]
+shc[, infAvert_noEV := N_NT - N_noEVinf]
+shc[, infAvertProp := infAvert/N_NT]
+shc[, infAvert_noEVProp := infAvert_noEV/N_NT]
+
+shc[, lab:=trial]
+shc[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
+shc[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
+shc[,lab:=as.factor(lab)]
+
+infAvertPow <- shc[trial!='NT', list(.N, infAvert = mean(infAvert), infAvertProp = mean(infAvertProp)
+                   , infAvert_noEV = mean(infAvert_noEV), infAvert_noEVProp = mean(infAvert_noEVProp)), 
+                     list(propInTrial, trialStartDate, lab, avHaz, haz0Cat)]
+
+infAvertPow <- merge(infAvertPow
+    , finit[cat=='allFinalEV' & trial!='NT', list(.N, power=mean(vaccGood)), list(propInTrial, trialStartDate, lab, avHaz)]
+    , by = c('propInTrial', 'trialStartDate', 'lab', 'avHaz'))
+infAvertPow[lab=='VR', power:=0]
+
+infAvertLab <- "infections averted relative to not performing any trial"
+
+pdf(file.path(figdir, 'riskstrat.pdf'), w = 10, h = 8)
+p <- ggplot(shc[avHaz=='' & trialStartDate=='2014-10-01']) + 
+geom_point(aes(N_EVinf
+
+graphics.off()
+
+
+

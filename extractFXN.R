@@ -1,5 +1,5 @@
 popNms <- c("Spop", "SpopH", "SpopEvents", "SEVpopEvents")
-dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 
+dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 'avHaz',
                             'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate', 'HazTrajSeed'                          
                                    )
 
@@ -19,26 +19,24 @@ extractOneSim <- function(fileNm
     riskStratList <-  finInfoList <- finModList <- parmsList <- list(NULL)
     if(exists('sim')) {
         if(verbose==1) browser()
-
         nbatch <- as.numeric(gsub("[^0-9]", "", fileNm))
         if(nbatch %% verbFreq == 0) print(nbatch)
-        
         sim$parms[['trialStartDate']] <- as.character(sim$parms[['trialStartDate']])
         parmsList <- data.table(nbatch = nbatch, t(unlist(sim$parms[dparms])))
         finModList <- data.table(nbatch = nbatch, sim$sim$finMods)
         finInfoList <- data.table(nbatch = nbatch, sim$sim$finInfo)
         if(indivLev) {
             riskStratList <- with(sim$sim$Spops, {
-                setkey(Spop, sim, simNum, indiv, cluster)
-                setkey(SpopH, sim, simNum, cluster)
-                setkey(SpopEvents, sim, simNum, indiv)
+                setkey(Spop, simNum, indiv, cluster)
+                setkey(SpopH, simNum, cluster)
+                setkey(SpopEvents, simNum, indiv)
                 notCF <- nrow(SEVpopEvents)>0
-                if(notCF) setkey(SEVpopEvents, sim, simNum, indiv)
+                if(notCF) setkey(SEVpopEvents, simNum, indiv)
                 ## get first hazard & indivRR for every infected individual
-                unqvars <- c('sim', 'simNum')
-                SpopH[, avHaz:= mean(clusHaz), list(sim, simNum, cluster)]
-                SpopH[, haz0:= clusHaz[day==0], list(sim, simNum, cluster)]
-                Spop <- merge(Spop, SpopH[day==0, list(sim, simNum, cluster, haz0, avHaz)], by = c(unqvars, 'cluster'))
+                unqvars <- c('simNum')
+                SpopH[, avHaz:= mean(clusHaz), list(simNum, cluster)]
+                SpopH[, haz0:= clusHaz[day==0], list(simNum, cluster)]
+                Spop <- merge(Spop, SpopH[day==0, list(simNum, cluster, haz0, avHaz)], by = c(unqvars, 'cluster'))
                 Spop[,haz0Q:=quantcut(haz0), unqvars] ## quantiles *within* simulations
                 Spop[,ihaz0Q:=quantcut(haz0*indivRR), unqvars]
                 Spop[,haz0Cat:=cut(haz0, hazBrks, include.lowest = T)] ## absolute breaks in hazard
@@ -46,18 +44,18 @@ extractOneSim <- function(fileNm
                 ## number infected & SAE overall, with individual level data tracked
                 trackUntilDay <- sim$sim$finInfo[cat=='allFinalEV',atDay][1]
                 if(notCF) {
-                    infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-                    saePop <- merge(SEVpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                    saePop <- merge(SEVpopEvents[SAE>0, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
                 }
-                infPop_noEV <- merge(SpopEvents[infectDay<trackUntilDay, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-                saePop_noEV <- merge(SpopEvents[SAE>0, list(sim, simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                infPop_noEV <- merge(SpopEvents[infectDay<trackUntilDay, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+                saePop_noEV <- merge(SpopEvents[SAE>0, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
                 ## ##################################################
                 ## To check that individual-level data match pop-aggregate compare infPop & finInfo
                 ## vtmp <- merge(infPop[,list(caseTot = .N), unqvars], 
-                ##               sim$sim$finInfo[cat=='allFinalEV', list(sim, simNum, caseTot)], by=unqvars)
+                ##               sim$sim$finInfo[cat=='allFinalEV', list(simNum, caseTot)], by=unqvars)
                 ## vtmp[, range(caseTot.x-caseTot.y)] ## should match
                 ## vtmp <- merge(infPop_noEV[,list(caseTot = .N), unqvars], 
-                ##               sim$sim$finInfo[cat=='allFinal_noEV', list(sim, simNum, caseTot)], by=unqvars)
+                ##               sim$sim$finInfo[cat=='allFinal_noEV', list(simNum, caseTot)], by=unqvars)
                 ## vtmp[, range(caseTot.x-caseTot.y)] ## should match
                 ## ##################################################
                 ## table the number of infections by each type
@@ -67,15 +65,15 @@ extractOneSim <- function(fileNm
                     if(notCF) {
                         itmp <- merge(infPop_noEV[,.N, c(unqvars,vv)] ## infection tallies by risk level
                                     , infPop[,.N, c(unqvars,vv)]
-                                    , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+                                    , by = c('simNum',vv), all=T, suffixes = c('_EV','_noEV'))
                         stmp <- merge( saePop_noEV[,.N, c(unqvars,vv)] ## sae tallies by risk level
                                     , saePop[,.N, c(unqvars,vv)]
-                                    , by = c('sim','simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+                                    , by = c('simNum',vv), all=T, suffixes = c('_EV','_noEV'))
                     }else{
                         itmp <- infPop_noEV[,list(N_noEV = .N), c(unqvars,vv)]
                         stmp <- saePop_noEV[,list(N_noEV = .N), c(unqvars,vv)]
                     }
-                    tmp <- merge(itmp, stmp, by = c('sim','simNum',vv), suffixes = c('inf','sae'))
+                    tmp <- merge(itmp, stmp, by = c('simNum',vv), suffixes = c('inf','sae'), all=T)
                     Nnms <- colnames(tmp)[grepl('N_',colnames(tmp))]
                     for (col in Nnms) set(tmp, which(is.na(tmp[[col]])), col, 0)
                     tmp$nbatch <- nbatch
@@ -88,6 +86,8 @@ extractOneSim <- function(fileNm
     }
     essence <- list(parms=parmsList, finTrials=finModList, finInfo=finInfoList)
     essence <- c(essence, riskStratList)
+    ## sim only used for managing within core-batches so delete it
+    for(vv in names(essence)) if('sim' %in% names(essence[[vv]])) essence[[vv]]$sim <- NULL 
     return(essence)
 }
 
@@ -102,7 +102,7 @@ extractSims <- function(thing
                         ) {
     if(verbose==1) browser()
     batchdirnm <- file.path('BigResults',thing)
-    fls <- list.files(batchdirnm, pattern='.Rdata', full.names = T)
+    fls <- list.files(batchdirnm, pattern=thing, full.names = T)
     nbatch <- length(fls)
     if(!is.na(maxbatches)) {
         nbatch <- maxbatches
@@ -115,13 +115,20 @@ extractSims <- function(thing
 
     length(resList) <- length(tmp[[1]])
     names(resList) <- names(tmp[[1]])
-
     for(vv in names(resList)) {
         resList[[vv]] <- rbindlist(lapply(tmp, function(x) {x[[vv]]}), fill=T)
-        if(vv!='parms') setkey(resList[[vv]], nbatch ,sim, simNum)
+        if(vv!='parms') setkey(resList[[vv]], nbatch ,simNum)
     }
 
+    if(doSave) {
+        save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
+    }
+    return(resList)
+}
+
+procResList <- function(resList, verbose = 0, doSave=T) {
     resList <- within(resList, {
+        if(verbose>0) browser()
         ## Coverage
         finTrials[, cvr := lci < vaccEff & uci > vaccEff]
         ## Bias, must be done on RH/(RH+1) scale to deal with Inf & 0 RH's
@@ -132,6 +139,49 @@ extractSims <- function(thing
         ## finTrials[,list(vaccEff,mean,PHU)] ## NEED TO AVERAGE BIAS ON PHU scale 
         print("Distribution of finTrials$err") ## -1 couldn't fit coxme, so fit coxph instead, 1 couldn't fit anything at all
         print(finTrials[, table(err)])         ## >1 is # of times got NA for permuted/bootstrapped statistic
+
+        ## merge all trial-level info
+        finit <- merge(parms, merge(finInfo, finTrials, all.x=T), all.y=T, by = 'nbatch')
+
+        finit[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
+              list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz, cat)]
+        cols <- c('trial', 'gs', 'ord', 'delayUnit', 'propInTrial', 'trialStartDate', 'avHaz', 'cat')
+        finit[, (cols):=lapply(.SD, as.factor), .SDcols=cols]
+        rm(cols)
+        ## make sure all simulations completed (2040 of each)
+        ## nsms <- finit[, .N, list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz, cat)]
+        ## cols <- c('trial', 'gs', 'ord', 'delayUnit', 'propInTrial', 'trialStartDate', 'avHaz', 'cat')
+        ## nsms[, (cols):=lapply(.SD, as.factor), .SDcols=cols]
+        ## summary(nsms[N<2040]) ## SWCT's are missing results, working on this
+
+        finit[, posv:= vaccEff>0] ## positive vaccine efficacy simulations
+        ## names(finit)
+        finit[,list(trial, simNum, cat, caseTot)]
+
+        ## Figure out how to match trials
+        finit[,.N,list(nbatch, simNum, cat)] ## full unique
+        finit[trial=='NT',.N,list(propInTrial, trialStartDate, avHaz, simNum)] ## unique CF
+        finit[trial=='VR',.N,list(propInTrial, trialStartDate, avHaz, simNum)] ## unique CF
+        finit[cat=='allFinalEV',.N,list(propInTrial, trialStartDate, avHaz, simNum)] ## matched scenarios (i.e. 7 factuals/2cfs)
+
+        finit[, c('caseTotNT','caseTotVR'):=as.numeric(NA)]
+        ## EV
+        finit[cat=='allFinalEV', caseTotNT:=caseTot[trial=='NT'], list(propInTrial, trialStartDate, avHaz, simNum)]
+        finit[cat=='allFinalEV', caseTotVR:=caseTot[trial=='VR'], list(propInTrial, trialStartDate, avHaz, simNum)]
+        ## noEV
+        finit[(trial %in% c('RCT','SWCT') & cat=='allFinal_noEV')|(trial=='NT' & cat=='allFinalEV'), caseTotNT:=caseTot[trial=='NT'],
+              list(propInTrial, trialStartDate, avHaz, simNum)] #     
+        finit[(trial %in% c('RCT','SWCT') & cat=='allFinal_noEV')|(trial=='VR' & cat=='allFinalEV'), caseTotVR:=caseTot[trial=='VR'],
+              list(propInTrial, trialStartDate, avHaz, simNum)] #     
+        ## inf Avert
+        finit[, infAvert := caseTotNT - caseTot]
+        finit[, list(propInTrial, trialStartDate, avHaz, simNum, trial, gs, ord, cat, caseTot, caseTotNT, caseTotVR, infAvert)] #     
+        finit[, infAvertProp := infAvert/caseTotNT]
+        finit[, infAvertableProp := infAvert/(caseTotNT-caseTotVR)]
+        finit[, lab:=trial]
+        finit[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
+        finit[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
+        finit[,lab:=as.factor(lab)]
     })
     if(doSave) {
         save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
