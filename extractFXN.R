@@ -13,7 +13,7 @@ extractOneSim <- function(fileNm
                         , dparms = dparms0
                         , verbose = 0
                         , verbFreq = 100
-                        , indivLev = F, hazBrks = 10^c(-12:0)
+                        , indivLev = F, hazBrks = 10^seq(-12,1, by = 1)
                           ) {
     load(fileNm)
     riskStratList <-  finInfoList <- finModList <- parmsList <- list(NULL)
@@ -43,12 +43,17 @@ extractOneSim <- function(fileNm
                 Spop[,ihaz0Cat:=cut(haz0*indivRR, hazBrks, include.lowest = T)]
                 ## number infected & SAE overall, with individual level data tracked
                 trackUntilDay <- sim$sim$finInfo[cat=='allFinalEV',atDay][1]
+
                 if(notCF) {
-                    infPop <- merge(SEVpopEvents[infectDay<trackUntilDay, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-                    saePop <- merge(SEVpopEvents[SAE>0, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+
+                    infPop_EV <- merge(SEVpopEvents[, list(simNum, indiv, infectDay)], Spop, by=c(unqvars,'indiv'))
+                    saePop_EV <- merge(SEVpopEvents[, list(simNum, indiv, SAE)], Spop, by=c(unqvars,'indiv'))
                 }
-                infPop_noEV <- merge(SpopEvents[infectDay<trackUntilDay, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
-                saePop_noEV <- merge(SpopEvents[SAE>0, list(simNum, indiv)], Spop, by=c(unqvars,'indiv'))
+
+                infPop_noEV <- merge(SpopEvents[, list(simNum, indiv, infectDay)], Spop, by=c(unqvars,'indiv'))
+                saePop_noEV <- merge(SpopEvents[, list(simNum, indiv, SAE)], Spop, by=c(unqvars,'indiv'))
+
+
                 ## ##################################################
                 ## To check that individual-level data match pop-aggregate compare infPop & finInfo
                 ## vtmp <- merge(infPop[,list(caseTot = .N), unqvars], 
@@ -63,15 +68,16 @@ extractOneSim <- function(fileNm
                 riskStratList <- list()
                 for(vv in vars) {
                     if(notCF) {
-                        itmp <- merge(infPop_noEV[,.N, c(unqvars,vv)] ## infection tallies by risk level
-                                    , infPop[,.N, c(unqvars,vv)]
+                        ## infection tallies by risk level at beginning of trial
+                        itmp <- merge(infPop_EV[,list(.N, Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv)] 
+                                    , infPop_noEV[,list(Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv)] 
                                     , by = c('simNum',vv), all=T, suffixes = c('_EV','_noEV'))
-                        stmp <- merge( saePop_noEV[,.N, c(unqvars,vv)] ## sae tallies by risk level
-                                    , saePop[,.N, c(unqvars,vv)]
+                        stmp <- merge(saePop_EV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv)] 
+                                    , saePop_noEV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv)] 
                                     , by = c('simNum',vv), all=T, suffixes = c('_EV','_noEV'))
                     }else{
-                        itmp <- infPop_noEV[,list(N_noEV = .N), c(unqvars,vv)]
-                        stmp <- saePop_noEV[,list(N_noEV = .N), c(unqvars,vv)]
+                        itmp <- infPop_noEV[,list(.N, Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv)] 
+                        stmp <- saePop_noEV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv)] 
                     }
                     tmp <- merge(itmp, stmp, by = c('simNum',vv), suffixes = c('inf','sae'), all=T)
                     Nnms <- colnames(tmp)[grepl('N_',colnames(tmp))]
