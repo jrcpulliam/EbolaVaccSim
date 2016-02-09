@@ -106,7 +106,7 @@ ip1 <- ip0 + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
 
 ## ethicline contours
 tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
-ias <- pretty(tmp$infAvert, n = 50)
+ias <- pretty(tmp$infAvert_EV, n = 50)
 pows <- seq(0,1,l=50)
 contt <- data.table(expand.grid(ia=ias, pow=pows))
 for(ii in 1:3) {
@@ -120,7 +120,7 @@ for(ii in 1:3) {
         geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "beige", high = "brown") +
             stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) +
                 ## points
-                geom_point(data = tmp, aes(infAvert, pow, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
+                geom_point(data = tmp, aes(infAvert_EV, pow, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
                     facet_grid(propInTrial~trialStartDate) + 
                         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
                             xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +
@@ -149,78 +149,73 @@ dev.off()
 ####################################################################################################
 ## individual level stuff
 
-## fill in all hazard levels just so there aren't any issing ones, which can mess with things later
-
+####################################################################################################
+## fill in all hazard levels just so there aren't any missing ones, which can mess with things later
 infAvertLab <- "infections averted relative to not performing any trial"
 
-
-tmp <- infAvertPow[avHaz=='' & trialStartDate=='2014-10-01']# & propInTrial==.1]
-pdf(file.path(figdir, 'riskstrat.pdf'), w = 10, h = 8)
-p <- ggplot(tmp) + geom_density(aes(infAvert, colour=lab, linetype=lab)) + facet_wrap(~ihaz0Cat)
-print(p)
-graphics.off()
- 
+pdf(file.path(figdir, 'risk-stratified EV all trials & dates.pdf'), w = 10, h = 8)
 tmp <- infAvertPow[avHaz=='' & trialStartDate=='2014-10-01'& !ihaz0Cat %in% levels(ihaz0Cat)[c(1:6,12:13)]]
-pdf(file.path(figdir, 'riskstrat.pdf'), w = 10, h = 8)
-p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, shape = lab, colour=lab, linetype=lab)) + facet_grid(ihaz0Cat~propInTrial)
+p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, shape = lab, colour=lab, linetype=lab)) + facet_grid(ihaz0Cat~propInTrial) + 
+    xlab('infections spent (EV)') + ylab('power fraction within strata')
 print(p)
 graphics.off()
 
-            ##        p <- ggplot(ft[trialStartDate==ts], aes(infAvert, colour = lab, linetype = lab)) +
-            ## geom_density() + labs(title=paste0('trial starts ', ts)) +
-            ##     ## facet_wrap(~propInTrial, ncol=1) +
-            ##     facet_grid(catn~propInTrial) +                 
-            ##         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+####################################################################################################
+## Compare RCT-gs-rp vs SWCT 
+pdf(file.path(figdir, 'PoP vs infSpent RCT-gs-rp vs SWCT.pdf'), w = 8, h = 5)
+tmp <- infAvertPow[avHaz=='' & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,12:13)] & propInTrial==.05 & lab %in% c('SWCT','RCT-gs-rp')]
+p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, colour=ihaz0Cat, shape=lab, size = 2)) + facet_grid(lab~trialStartDate) + 
+    xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
+print(p)
+graphics.off()
 
-tmp <- infAvertPow[avHaz=='' & propInTrial==.1]
-## ethicline contours
-ias <- pretty(tmp$infAvert, n = 50)
-pows <- seq(0,1,l=50)
-contt <- data.table(expand.grid(ia=ias, pow=pows))
-for(ii in 1:3) {
-    infPpow <- c(100, 200, 300)[ii]
-    contt[, merit:= ia/infPpow + pow] ## every infPpow infections is worth 10% power
-    contt[pow<.3, merit:= ia/infPpow+.3] ## don't penalize less power under 30% power since it's so insignificant anyways
-    ## Basic plot
-    jpeg(file.path(figdir, paste0('infAvert pow', infPpow/10, '.jpeg')), w = 10, h = 8, units = 'in', res = 200)
-    p <- ggplot() +
-        ## ## fill
-        ## geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "beige", high = "brown") +
-        ##     stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) +
-                ## points
-                geom_point(data = tmp, aes(infAvert, powfrac_EV, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
-                    facet_grid(ihaz0Cat~trialStartDate) + 
-                        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
-                            xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') ## +
-    ##                             ## isoclines
-    ##                             geom_segment(data = tmp[lab=='VR'],
-    ##                                          aes(x = infAvert, y = .3, xend = 0, yend = .3+1/infPpow*infAvert)) +
-    ##                                              geom_segment(data = tmp[lab=='VR'],
-    ##                                                           aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
-    ##                                                               coord_cartesian(ylim=c(0,1)) + guides(size=F) +
-    ##                                                                   labs(title=paste(infPpow/10, 'infections := 10% power \n<30% power := negligible'))
-    ## print(multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1)))
-                                print(p)
-    graphics.off()
-}
+## no end vaccination
+pdf(file.path(figdir, 'PoP_noEV vs infSpent_noEV RCT-gs-rp vs SWCT.pdf'), w = 8, h = 5)
+p <- ggplot(tmp) + geom_point(aes(infSpent_noEV, powfrac_noEV, colour=ihaz0Cat, shape=lab, size = 2)) + facet_wrap(~trialStartDate, nc=4) + 
+    xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
+print(p)
+graphics.off()
+####################################################################################################
 
-tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:2,12:13)]]
+infAvertPow[,hazLab:=as.numeric(haz0
+tmp <- infAvertPow[avHaz=='' & propInTrial==.05 & lab %in%  c('SWCT','RCT-gs-rp')]
+tmp <- rbind(tmp[, list(trialStartDate, hazLab, lab, avHaz, type = 'avert', val = infAvertPC_EV)],
+             tmp[, list(trialStartDate, hazLab, lab, avHaz, type = 'spent', val = infSpentPC_EV)])
+pdf(file.path(figdir, 'per capita risk averted by strata.pdf'), w = 8, h = 5)
+p <- ggplot(tmp) + geom_bar(aes(hazLab, val, fill = type), stat='identity', position='dodge') + facet_wrap(lab~trialStartDate, nc=4)  +
+    xlab('per capita risk') + xlab('hazard level') + scale_color_manual(values=c('red','blue'))
+print(p)
+graphics.off()
+
+
+
+jpeg(file.path(figdir, paste0('infSpentPC_EV versus PoP.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)] & lab!='VR']
+p <- ggplot() +
+    geom_point(data = tmp, aes(infSpentPC_EV, powfrac_EV, shape = lab, colour = ihaz0Cat, size = 1.5)) + 
+        facet_grid(~trialStartDate) + scale_colour_manual(values=rev(brewer.pal(n=length(unique(tmp$ihaz0Cat)), "Spectral"))) +
+                xlab('per capita risk spent') + ylab('fraction of information from hazard class') 
+print(p)
+graphics.off()
+
+## proportion of avertable infections averted
+jpeg(file.path(figdir, paste0('proportion avertable averted versus PoP.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)] & lab!='VR']
+tmp[,pAvert:=infAvert_EV/(infAvert_EV+infSpent_EV)]
+p <- ggplot() +
+    geom_point(data = tmp, aes(pAvert, powfrac_EV, shape = lab, colour = ihaz0Cat, size = 1.5)) + 
+        facet_grid(~trialStartDate) + scale_colour_manual(values=rev(brewer.pal(n=length(unique(tmp$ihaz0Cat)), "Spectral"))) +
+                xlab('proportion avertable infections averted') + ylab('fraction of information from hazard class')  + xlim(0,1)
+print(p)
+graphics.off()
+
 jpeg(file.path(figdir, paste0('infSpent_EV pow.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:2,12:13)]]
 p <- ggplot() +
     geom_point(data = tmp, aes(pow_per_infSpent_EV, power, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
         facet_grid(ihaz0Cat~trialStartDate) + 
             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + xlim(-.1,.4) + 
                 xlab('power / infection not averted') + theme(legend.position='top', legend.box='horizontal') ## +
-print(p)
-graphics.off()
-
-tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)]]
-jpeg(file.path(figdir, paste0('infSpentPC_EV pow.jpeg')), w = 10, h = 8, units = 'in', res = 200)
-p <- ggplot() +
-    geom_point(data = tmp, aes(infSpentPC_EV, powfrac_EV, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
-        facet_grid(ihaz0Cat~trialStartDate) + 
-            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + #xlim(-.1,.4) + 
-                xlab('per capita risk spent') + ylab('fraction of information from hazard class') + theme(legend.position='top', legend.box='horizontal') ## +
 print(p)
 graphics.off()
 
