@@ -195,6 +195,102 @@ procResList <- function(resList, verbose = 0, doSave=T) {
     return(resList)
 }
 
+## Make a data table of risk-strata level info on infections spent/averted & power contributed by
+## that group within the trial
+makeInfPow <- function(resList) within(resList, {
+
+    shc <- CJ.dt(unique(strat_ihaz0Cat[,list(nbatch, simNum)]), data.table(ihaz0Cat = strat_ihaz0Cat[,unique(ihaz0Cat)]))
+    setkey(shc, nbatch, simNum, ihaz0Cat)
+    setkey(strat_ihaz0Cat, nbatch, simNum, ihaz0Cat)
+    setkey(shc, nbatch, simNum, ihaz0Cat)
+    shc <- merge(shc, strat_ihaz0Cat, all=T) ##
+
+    shc[is.na(Ninf_noEV), Ninf_noEV:=0] ## replace NA's with 0s
+    shc[is.na(Nsae_noEV), Nsae_noEV:=0] ## replace NA's with 0s
+    shc[is.na(N), N:=0]
+    ## replace NAs w 0s only if a factual (otherwise should be NA
+    shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Ninf_EV), Ninf_EV:=0] 
+    shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Ninf_noEV), Ninf_noEV:=0] 
+    shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Nsae_EV), Nsae_EV:=0]
+    shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Nsae_noEV), Nsae_noEV:=0]
+    shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Ninf), Ninf:=0]
+    shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Nsae), Nsae:=0]
+    shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch], Ninf_EV:=Ninf]
+    shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch], Ninf_noEV:=Ninf]
+    shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch], Nsae_EV:=Nsae]
+    shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch], Nsae_noEV:=Nsae]
+    shc$Ninf <- NULL
+    shc$Nsae <- NULL
+
+    setkey(shc, nbatch, simNum, ihaz0Cat)
+
+    shc <- merge(parms, shc, all.y=T, by = c('nbatch'))
+    shc <- merge(shc, finTrials[,list(nbatch, simNum, vaccGood, tcal)], by = c('nbatch','simNum'))
+    setkey(shc, nbatch, simNum, ihaz0Cat)
+
+
+    shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz)] # number of hazard categories
+    shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz, ihaz0Cat)] # down to unique
+
+    shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)] ## 7 simulation types
+    unique(parms[propInTrial==.025 & trialStartDate=='2014-10-01' & avHaz==''][,2:12,with=F])
+
+    shc[, N_NT:= Ninf_noEV[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+    shc[, N_VR:= Ninf_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+    ## Averted infections
+    shc[, infAvert_EV := N_NT - Ninf_EV]
+    shc[, infAvert_noEV := N_NT - Ninf_noEV]
+    shc[, infAvertPC_EV := infAvert_EV/N]
+    shc[, infAvertPC_noEV := infAvert_noEV/N]
+    shc[is.nan(infAvertPC_EV), infAvertPC_EV := 0]
+    shc[is.nan(infAvertPC_noEV),infAvertPC_noEV := 0]
+    ## shc[, infAvertProp_EV := infAvert_EV /N_NT]
+    ## shc[, infAvertProp_noEV := infAvert_noEV /N_NT]
+    ## Spent infections
+    shc[, infSpent_EV := Ninf_EV - N_VR]
+    shc[, infSpent_noEV := Ninf_noEV - N_VR]
+    shc[, infSpentPC_EV := infSpent_EV/N]
+    shc[, infSpentPC_noEV := infSpent_noEV/N]
+    shc[is.nan(infSpentPC_EV), infSpentPC_EV := 0]
+    shc[is.nan(infSpentPC_noEV),infSpentPC_noEV := 0]
+    ## shc[, infSpentProp_EV := infSpent_EV /N_NT]
+    ## shc[, infSpentProp_noEV := infSpent_noEV /N_NT]
+
+    shc[, lab:=trial]
+    shc[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
+    shc[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
+    shc[,lab:=as.factor(lab)]
+
+    ## **Eventually want fraction of infections that were used in analysis? not sure think about
+    shc[, NinfFrac_EV := Ninf_EV/sum(Ninf_EV), list(propInTrial, trialStartDate, simNum, nbatch, lab, avHaz)]
+    shc[, NinfFrac_noEV := Ninf_noEV/sum(Ninf_noEV), list(propInTrial, trialStartDate, simNum, nbatch, lab, avHaz)]
+    
+    infAvertPow <- shc[trial!='NT', list(.N
+                         , infAvert_EV = mean(infAvert_EV), infAvert_noEV = mean(infAvert_noEV)
+                         , infAvertPC_EV = mean(infAvertPC_EV), infAvertPC_noEV = mean(infAvertPC_noEV)
+                         , infSpent_EV = mean(infSpent_EV), infSpent_noEV = mean(infSpent_noEV)
+                         , infSpentPC_EV = mean(infSpentPC_EV), infSpentPC_noEV = mean(infSpentPC_noEV) 
+                         , NinfFrac_EV = mean(NinfFrac_EV), NinfFrac_noEV = mean(NinfFrac_noEV)),
+                       ##infAvertProp = mean(infAvertProp),  infAvert_noEVProp = mean(infAvert_noEVProp)
+                       list(propInTrial, trialStartDate, lab, avHaz, ihaz0Cat)]
+
+    infAvertPow <- merge(infAvertPow
+                       , finit[cat=='allFinalEV' & trial!='NT', list(.N, power=mean(vaccGood)), list(propInTrial, trialStartDate, lab, avHaz)]
+                       , by = c('propInTrial', 'trialStartDate', 'lab', 'avHaz'))
+    infAvertPow[lab=='VR', power:=0]
+
+    infAvertPow[, powfrac_EV:= NinfFrac_EV * power]
+    infAvertPow[, powfrac_noEV:= NinfFrac_noEV * power]
+    infAvertPow[lab=='VR', c('powfrac_EV', 'powfrac_noEV') := 0]
+    infAvertPow[, pow_per_infSpent_EV:=powfrac_EV/infSpent_EV]
+    infAvertPow[, pow_per_infSpent_noEV:=powfrac_noEV/infSpent_noEV]
+    if(doSave) {
+        save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
+    }
+})
+
+
+
 makePowTable <- function(finTrials, verbose=0, doSave=T) {
     if(verbose==1) browser()
     pf <- finTrials[, list(

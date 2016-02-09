@@ -19,6 +19,7 @@ dir.create(figdir)
 
 ## resList <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
 ## resList <- procResList(resList)
+## resList <- makeInfPow(resList)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 attach(resList)
 names(resList)
@@ -37,6 +38,7 @@ eb <- theme(
     ## axis.line=element_blank(),axis.text.x=element_blank(),
     #axis.text.y=element_blank(),
     axis.ticks=element_blank(),
+
     axis.title.x=element_blank(),
     axis.title.y=element_blank(),legend.position="none",
     panel.background=element_blank(),
@@ -149,98 +151,14 @@ dev.off()
 
 ## fill in all hazard levels just so there aren't any issing ones, which can mess with things later
 
-shc <- CJ.dt(unique(strat_ihaz0Cat[,list(nbatch, simNum)]), data.table(ihaz0Cat = strat_ihaz0Cat[,unique(ihaz0Cat)]))
-setkey(shc, nbatch, simNum, ihaz0Cat)
-setkey(strat_ihaz0Cat, nbatch, simNum, ihaz0Cat)
-setkey(shc, nbatch, simNum, ihaz0Cat)
-shc <- merge(shc, strat_ihaz0Cat, all=T) ##
-
-shc[is.na(Ninf_noEV), Ninf_noEV:=0] ## replace NA's with 0s
-shc[is.na(Nsae_noEV), Nsae_noEV:=0] ## replace NA's with 0s
-shc[is.na(N), N:=0]
-## replace NAs w 0s only if a factual (otherwise should be NA
-shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Ninf_EV), Ninf_EV:=0] 
-shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Ninf_noEV), Ninf_noEV:=0] 
-shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Nsae_EV), Nsae_EV:=0]
-shc[!nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Nsae_noEV), Nsae_noEV:=0]
-shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Ninf), Ninf:=0]
-shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch] & is.na(Nsae), Nsae:=0]
-shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch], c('Ninf_EV', 'Ninf_noEV'):=c(Ninf,Ninf)]
-shc[nbatch %in% parms[trial %in% c('NT','VR'), nbatch], c('Nsae_EV', 'Nsae_noEV'):=c(Nsae,Nsae)]
-shc$Ninf <- NULL
-shc$Nsae <- NULL
-
-setkey(shc, nbatch, simNum, ihaz0Cat)
-
-shc <- merge(parms, shc, all.y=T, by = c('nbatch'))
-shc <- merge(shc, finTrials[,list(nbatch, simNum, vaccGood, tcal)], by = c('nbatch','simNum'))
-setkey(shc, nbatch, simNum, ihaz0Cat)
-
-
-shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz)] # number of hazard categories
-shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz, ihaz0Cat)] # down to unique
-
-shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)] ## 7 simulation types
-unique(parms[propInTrial==.025 & trialStartDate=='2014-10-01' & avHaz==''][,2:12,with=F])
-
-shc[, N_NT:= Ninf_noEV[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
-shc[, N_VR:= Ninf_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
-## Averted infections
-shc[, infAvert_EV := N_NT - Ninf_EV]
-shc[, infAvert_noEV := N_NT - Ninf_noEV]
-shc[, infAvertPC_EV := infAvert_EV/N]
-shc[, infAvertPC_noEV := infAvert_noEV/N]
-shc[is.nan(infAvertPC_EV), infAvertPC_EV := 0]
-shc[is.nan(infAvertPC_noEV),infAvertPC_noEV := 0]
-## shc[, infAvertProp_EV := infAvert_EV /N_NT]
-## shc[, infAvertProp_noEV := infAvert_noEV /N_NT]
-## Spent infections
-shc[, infSpent_EV := Ninf_EV - N_VR]
-shc[, infSpent_noEV := Ninf_noEV - N_VR]
-shc[, infSpentPC_EV := infSpent_EV/N]
-shc[, infSpentPC_noEV := infSpent_noEV/N]
-shc[is.nan(infSpentPC_EV), infSpentPC_EV := 0]
-shc[is.nan(infSpentPC_noEV),infSpentPC_noEV := 0]
-## shc[, infSpentProp_EV := infSpent_EV /N_NT]
-## shc[, infSpentProp_noEV := infSpent_noEV /N_NT]
-
-shc[, lab:=trial]
-shc[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
-shc[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
-shc[,lab:=as.factor(lab)]
-
-## **Eventually want fraction of infections that were used in analysis? not sure think about
-shc[, NinfFrac_EV := Ninf_EV/sum(Ninf_EV), list(propInTrial, trialStartDate, simNum, nbatch, lab, avHaz)]
-shc[, NinfFrac_noEV := Ninf_noEV/sum(Ninf_noEV), list(propInTrial, trialStartDate, simNum, nbatch, lab, avHaz)]
-    
-infAvertPow <- shc[trial!='NT', list(.N
-                     , infAvert_EV = mean(infAvert_EV), infAvert_noEV = mean(infAvert_noEV)
-                     , infAvertPC_EV = mean(infAvertPC_EV), infAvertPC_noEV = mean(infAvertPC_noEV)
-                     , infSpent_EV = mean(infSpent_EV), infSpent_noEV = mean(infSpent_noEV)
-                     , infSpentPC_EV = mean(infSpentPC_EV), infSpentPC_noEV = mean(infSpentPC_noEV) 
-                      , NinfFrac_EV = mean(NinfFrac_EV), NinfFrac_noEV = mean(NinfFrac_noEV)),
-                       ##infAvertProp = mean(infAvertProp),  infAvert_noEVProp = mean(infAvert_noEVProp)
-                   list(propInTrial, trialStartDate, lab, avHaz, ihaz0Cat)]
-
-infAvertPow <- merge(infAvertPow
-    , finit[cat=='allFinalEV' & trial!='NT', list(.N, power=mean(vaccGood)), list(propInTrial, trialStartDate, lab, avHaz)]
-    , by = c('propInTrial', 'trialStartDate', 'lab', 'avHaz'))
-infAvertPow[lab=='VR', power:=0]
-
-infAvertPow[, powfrac_EV:= NinfFrac_EV * power]
-infAvertPow[, powfrac_noEV:= NinfFrac_noEV * power]
-infAvertPow[lab=='VR', c('powfrac_EV', 'powfrac_noEV') := 0]
-infAvertPow[, pow_per_infSpent_EV:=powfrac_EV/infSpent_EV]
-infAvertPow[, pow_per_infSpent_noEV:=powfrac_noEV/infSpent_noEV]
-
 infAvertLab <- "infections averted relative to not performing any trial"
+
 
 tmp <- infAvertPow[avHaz=='' & trialStartDate=='2014-10-01']# & propInTrial==.1]
 pdf(file.path(figdir, 'riskstrat.pdf'), w = 10, h = 8)
 p <- ggplot(tmp) + geom_density(aes(infAvert, colour=lab, linetype=lab)) + facet_wrap(~ihaz0Cat)
 print(p)
 graphics.off()
-
  
 tmp <- infAvertPow[avHaz=='' & trialStartDate=='2014-10-01'& !ihaz0Cat %in% levels(ihaz0Cat)[c(1:6,12:13)]]
 pdf(file.path(figdir, 'riskstrat.pdf'), w = 10, h = 8)
@@ -253,7 +171,6 @@ graphics.off()
             ##     ## facet_wrap(~propInTrial, ncol=1) +
             ##     facet_grid(catn~propInTrial) +                 
             ##         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-
 
 tmp <- infAvertPow[avHaz=='' & propInTrial==.1]
 ## ethicline contours
@@ -287,12 +204,9 @@ for(ii in 1:3) {
     graphics.off()
 }
 
-
 tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:2,12:13)]]
-## Basic plot
 jpeg(file.path(figdir, paste0('infSpent_EV pow.jpeg')), w = 10, h = 8, units = 'in', res = 200)
 p <- ggplot() +
-    ## points
     geom_point(data = tmp, aes(pow_per_infSpent_EV, power, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
         facet_grid(ihaz0Cat~trialStartDate) + 
             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + xlim(-.1,.4) + 
@@ -300,12 +214,9 @@ p <- ggplot() +
 print(p)
 graphics.off()
 
-
 tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)]]
-## Basic plot
 jpeg(file.path(figdir, paste0('infSpentPC_EV pow.jpeg')), w = 10, h = 8, units = 'in', res = 200)
 p <- ggplot() +
-    ## points
     geom_point(data = tmp, aes(infSpentPC_EV, powfrac_EV, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
         facet_grid(ihaz0Cat~trialStartDate) + 
             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + #xlim(-.1,.4) + 
@@ -313,3 +224,23 @@ p <- ggplot() +
 print(p)
 graphics.off()
 
+
+tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)]]
+## Basic plot
+jpeg(file.path(figdir, paste0('infAvertPC_EV pow.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+p <- ggplot() +
+    ## points
+    geom_point(data = tmp, aes(infAvertPC_EV, powfrac_EV, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
+        facet_grid(ihaz0Cat~trialStartDate) + 
+            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + xlim(-.05,.15) + 
+                xlab('per capita risk averted') + ylab('fraction of information from hazard class') + theme(legend.position='top', legend.box='horizontal') ## +
+print(p)
+
+graphics.off()
+
+## per capita incidence averted & spent always add up to same value for given strata across designs.
+rowSums(tmp[trialStartDate=='2014-10-01' & ihaz0Cat=='(0.01,0.1]', list(infAvertPC_noEV, infSpentPC_noEV)])
+
+## add error bars to inf spent & frac of information
+## try fraction of information per person on y-axis
+## show inf spent/averted on same plot
