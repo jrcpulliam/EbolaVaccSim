@@ -177,16 +177,16 @@ print(p)
 graphics.off()
 ####################################################################################################
 
-infAvertPow[,hazLab:=as.numeric(haz0
-tmp <- infAvertPow[avHaz=='' & propInTrial==.05 & lab %in%  c('SWCT','RCT-gs-rp')]
-tmp <- rbind(tmp[, list(trialStartDate, hazLab, lab, avHaz, type = 'avert', val = infAvertPC_EV)],
-             tmp[, list(trialStartDate, hazLab, lab, avHaz, type = 'spent', val = infSpentPC_EV)])
+infAvertPow[,hazLab:=as.numeric(ihaz0Cat)]
+tmp0 <- infAvertPow[avHaz=='' & propInTrial==.05 & lab %in%  c('SWCT','RCT-gs-rp')]
+tmp <- rbind(tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'avert', val = infAvertPC_EV)],
+             tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'spent', val = infSpentPC_EV)])
 pdf(file.path(figdir, 'per capita risk averted by strata.pdf'), w = 8, h = 5)
 p <- ggplot(tmp) + geom_bar(aes(hazLab, val, fill = type), stat='identity', position='dodge') + facet_wrap(lab~trialStartDate, nc=4)  +
     xlab('per capita risk') + xlab('hazard level') + scale_color_manual(values=c('red','blue'))
 print(p)
 graphics.off()
-
+## ** CHANGED extractFXn to haz0cat, should change back to ihaz0cat ****
 
 
 jpeg(file.path(figdir, paste0('infSpentPC_EV versus PoP.jpeg')), w = 10, h = 8, units = 'in', res = 200)
