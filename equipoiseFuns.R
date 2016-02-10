@@ -48,3 +48,4 @@ CFparms <- c('trialStartDate'
            , 'cvWeeklyDecay'
            , 'hazIntUnit'
            , 'reordLag')
+

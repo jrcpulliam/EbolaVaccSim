@@ -199,11 +199,11 @@ procResList <- function(resList, verbose = 0, doSave=T) {
 ## that group within the trial
 makeInfPow <- function(resList, doSave=T) within(resList, {
 
-    shc <- CJ.dt(unique(strat_haz0Cat[,list(nbatch, simNum)]), data.table(haz0Cat = strat_haz0Cat[,unique(haz0Cat)]))
-    setkey(shc, nbatch, simNum, haz0Cat)
-    setkey(strat_haz0Cat, nbatch, simNum, haz0Cat)
-    setkey(shc, nbatch, simNum, haz0Cat)
-    shc <- merge(shc, strat_haz0Cat, all=T) ##
+    shc <- CJ.dt(unique(strat_ihaz0Cat[,list(nbatch, simNum)]), data.table(ihaz0Cat = strat_ihaz0Cat[,unique(ihaz0Cat)]))
+    setkey(shc, nbatch, simNum, ihaz0Cat)
+    setkey(strat_ihaz0Cat, nbatch, simNum, ihaz0Cat)
+    setkey(shc, nbatch, simNum, ihaz0Cat)
+    shc <- merge(shc, strat_ihaz0Cat, all=T) ##
 
     shc[is.na(Ninf_noEV), Ninf_noEV:=0] ## replace NA's with 0s
     shc[is.na(Nsae_noEV), Nsae_noEV:=0] ## replace NA's with 0s
@@ -222,21 +222,21 @@ makeInfPow <- function(resList, doSave=T) within(resList, {
     shc$Ninf <- NULL
     shc$Nsae <- NULL
 
-    setkey(shc, nbatch, simNum, haz0Cat)
+    setkey(shc, nbatch, simNum, ihaz0Cat)
 
     shc <- merge(parms, shc, all.y=T, by = c('nbatch'))
     shc <- merge(shc, finTrials[,list(nbatch, simNum, vaccGood, tcal)], by = c('nbatch','simNum'))
-    setkey(shc, nbatch, simNum, haz0Cat)
+    setkey(shc, nbatch, simNum, ihaz0Cat)
 
 
     shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz)] # number of hazard categories
-    shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz, haz0Cat)] # down to unique
+    shc[,.N, list(propInTrial, ord, gs, trialStartDate, trial, simNum, nbatch, avHaz, ihaz0Cat)] # down to unique
 
-    shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, haz0Cat)] ## 7 simulation types
+    shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)] ## 7 simulation types
     unique(parms[propInTrial==.025 & trialStartDate=='2014-10-01' & avHaz==''][,2:12,with=F])
 
-    shc[, N_NT:= Ninf_noEV[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, haz0Cat)]
-    shc[, N_VR:= Ninf_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, haz0Cat)]
+    shc[, N_NT:= Ninf_noEV[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+    shc[, N_VR:= Ninf_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
     ## Averted infections
     shc[, infAvert_EV := N_NT - Ninf_EV]
     shc[, infAvert_noEV := N_NT - Ninf_noEV]
@@ -272,7 +272,7 @@ makeInfPow <- function(resList, doSave=T) within(resList, {
                          , infSpentPC_EV = mean(infSpentPC_EV), infSpentPC_noEV = mean(infSpentPC_noEV) 
                          , NinfFrac_EV = mean(NinfFrac_EV), NinfFrac_noEV = mean(NinfFrac_noEV)),
                        ##infAvertProp = mean(infAvertProp),  infAvert_noEVProp = mean(infAvert_noEVProp)
-                       list(propInTrial, trialStartDate, lab, avHaz, haz0Cat)]
+                       list(propInTrial, trialStartDate, lab, avHaz, ihaz0Cat)]
 
     infAvertPow <- merge(infAvertPow
                        , finit[cat=='allFinalEV' & trial!='NT', list(.N, power=mean(vaccGood)), list(propInTrial, trialStartDate, lab, avHaz)]

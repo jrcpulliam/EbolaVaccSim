@@ -1,7 +1,7 @@
 if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
-if(grepl('login1', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/work/EbolaVaccSim/')
+if(grepl('login1', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
 rm(list=ls(all=T)); gc()
 require(optiRum); require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
@@ -176,21 +176,35 @@ p <- ggplot(tmp) + geom_point(aes(infSpent_noEV, powfrac_noEV, colour=ihaz0Cat, 
     xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
 print(p)
 graphics.off()
-####################################################################################################
 
+####################################################################################################
+## Averted vs Spent
 infAvertPow[,hazLab:=as.numeric(ihaz0Cat)]
 tmp0 <- infAvertPow[avHaz=='' & propInTrial==.05 & lab %in%  c('SWCT','RCT-gs-rp')]
-tmp <- rbind(tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'avert', val = infAvertPC_EV)],
-             tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'spent', val = infSpentPC_EV)])
+tmp <- rbind(tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'avert_____', val = infAvertPC_EV)],
+             tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'spent_____', val = infSpentPC_EV)],
+             tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'avert_noEV', val = infAvertPC_noEV)],
+             tmp0[, list(trialStartDate, hazLab, lab, avHaz, type = 'spent_noEV', val = infSpentPC_noEV)])
 pdf(file.path(figdir, 'per capita risk averted by strata.pdf'), w = 8, h = 5)
-p <- ggplot(tmp) + geom_bar(aes(hazLab, val, fill = type), stat='identity', position='dodge') + facet_wrap(lab~trialStartDate, nc=4)  +
-    xlab('per capita risk') + xlab('hazard level') + scale_color_manual(values=c('red','blue'))
+p <- ggplot(tmp[!grepl('noEV',type)]) + geom_bar(aes(hazLab, val, fill = type), stat='identity', position='dodge') + facet_wrap(lab~trialStartDate, nc=4)  +
+    guides(fill = guide_legend(keywidth = 3, keyheight = 1)) +
+    ylab('per capita risk') + xlab('hazard level') + scale_color_manual(values=c('blue','red'))
+print(p)
+p <- ggplot(tmp[grepl('noEV',type)]) + geom_bar(aes(hazLab, val, fill = type), stat='identity', position='dodge') + facet_wrap(lab~trialStartDate, nc=4)  +
+    guides(fill = guide_legend(keywidth = 3, keyheight = 1)) +
+    ylab('per capita risk') + xlab('hazard level') + scale_color_manual(values=c('red','blue'))
 print(p)
 graphics.off()
-## ** CHANGED extractFXn to haz0cat, should change back to ihaz0cat ****
 
-
-jpeg(file.path(figdir, paste0('infSpentPC_EV versus PoP.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+pdf(file.path(figdir, 'per capita risk averted by strata.pdf'), w = 8, h = 5)
+p <- ggplot(tmp[!grepl('noEV',type)]) + geom_bar(aes(hazLab, val, fill = type), stat='identity', position='dodge') + facet_wrap(lab~trialStartDate, nc=4)  +
+    guides(fill = guide_legend(keywidth = 3, keyheight = 1)) +
+    ylab('per capita risk') + xlab('hazard level') + scale_color_manual(values=c('blue','red'))
+print(p)
+graph
+####################################################################################################
+## frac of power vs infections spent 1
+jpeg(file.path(figdir, paste0('infSpentPC_EV versus PoP v1.jpeg')), w = 10, h = 8, units = 'in', res = 200)
 tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)] & lab!='VR']
 p <- ggplot() +
     geom_point(data = tmp, aes(infSpentPC_EV, powfrac_EV, shape = lab, colour = ihaz0Cat, size = 1.5)) + 
@@ -198,6 +212,26 @@ p <- ggplot() +
                 xlab('per capita risk spent') + ylab('fraction of information from hazard class') 
 print(p)
 graphics.off()
+## 2
+jpeg(file.path(figdir, paste0('infSpentPC_EV versus PoP v2.jpeg')), w = 12, h = 10, units = 'in', res = 200)
+tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)] & lab!='VR']
+p <- ggplot() +
+    geom_point(data = tmp, aes(infSpentPC_EV, powfrac_EV, shape = lab, colour = lab, size = 1.5)) + 
+        facet_grid(ihaz0Cat~trialStartDate) + #scale_colour_manual('Pastel1') +
+                xlab('per capita risk spent') + ylab('fraction of information from hazard class') 
+print(p)
+graphics.off()
+
+## 3
+jpeg(file.path(figdir, paste0('infSpentPC_EV versus PoPPC v3.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+tmp <- infAvertPow[avHaz=='' & propInTrial==.1 & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,13)] & lab!='VR']
+p <- ggplot() +
+    geom_point(data = tmp, aes(infSpentPC_EV, pow_per_infSpent_EV, shape = lab, colour = ihaz0Cat, size = 1.5)) + 
+        facet_grid(~trialStartDate) + scale_colour_manual(values=rev(brewer.pal(n=length(unique(tmp$ihaz0Cat)), "Spectral"))) +
+                xlab('per capita risk spent') + ylab('fraction of information from hazard class') 
+print(p)
+graphics.off()
+####################################################################################################
 
 ## proportion of avertable infections averted
 jpeg(file.path(figdir, paste0('proportion avertable averted versus PoP.jpeg')), w = 10, h = 8, units = 'in', res = 200)
@@ -240,3 +274,9 @@ rowSums(tmp[trialStartDate=='2014-10-01' & ihaz0Cat=='(0.01,0.1]', list(infAvert
 ## add error bars to inf spent & frac of information
 ## try fraction of information per person on y-axis
 ## show inf spent/averted on same plot
+
+## equipoise perturbed plot
+## histogram within strata groups
+## look at risk by person/strata by treatment assignment for trials
+## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
+
