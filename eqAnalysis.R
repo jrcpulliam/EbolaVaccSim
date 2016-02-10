@@ -14,6 +14,8 @@ eqd[, contCFR := infRisk * cfr]
 eqd[, excessCFR := contCFR - vaccCFR]
 eqd <- eqd[rev(order(cfr))]
 
+eqd[infRisk==.05 & probVaccWorks==.5 & efficacy==.8 & cfr== .7]
+
 cols <- colorRampPalette(c('blue','purple','red'))(length(unique(eqd$cfr)))
 
 pdf('~/Desktop/eq.pdf', w =6.5, h = 4)
