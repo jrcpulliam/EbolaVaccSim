@@ -18,13 +18,19 @@ vaccProp[, simNum:=1:length(vaccEff)]
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 
-## batchdirnm <- file.path('BigResults',thing)
-## fls <- list.files(batchdirnm, pattern=thing, full.names = T)
-## eos <- extractOneSim(fls[1], indivLev=T, verbose = 0)
+batchdirnm <- file.path('BigResults',thing)
+fls <- list.files(batchdirnm, pattern=thing, full.names = T)
+fls <- fls[grepl(2305,fls)]
+eos <- extractOneSim(fls[1], indivLev=T, verbose = 2)
 
 ## resList <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
-## resList <- procResList(resList)
-## resList <- makeInfPow(resList)
+## resList <- procResList(resList, verb=0)
+## save(resList, file=file.path('BigResults',paste0(thing, '.Rdata')))
+
+nbtd <- resList$parms[propInTrial==.05 & avHaz=='xClus' & trialStartDate=='2014-10-01', nbatch]
+resList <- makeInfPow(resList, verb=2, nbatchDo=nbtd)
+names(resList)
+
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 attach(resList)
 names(resList)
@@ -284,3 +290,5 @@ rowSums(tmp[trialStartDate=='2014-10-01' & ihaz0Cat=='(0.01,0.1]', list(infAvert
 ## look at risk by person/strata by treatment assignment for trials
 ## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
 
+##########
+resList$infAvertPow
