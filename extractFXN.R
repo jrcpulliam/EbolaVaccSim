@@ -18,7 +18,7 @@ extractOneSim <- function(fileNm
     load(fileNm)
     riskStratList <-  finInfoList <- finModList <- parmsList <- list(NULL)
     if(exists('sim')) {
-        if(verbose==1) browser()
+        if(verbose>2) browser()
         nbatch <- as.numeric(gsub("[^0-9]", "", fileNm))
         if(nbatch %% verbFreq == 0) print(nbatch)
         sim$parms[['trialStartDate']] <- as.character(sim$parms[['trialStartDate']])
@@ -34,6 +34,7 @@ extractOneSim <- function(fileNm
                 if(notCF) setkey(SEVpopEvents, simNum, indiv)
                 ## get first hazard & indivRR for every infected individual
                 unqvars <- c('simNum')
+                if(verbose>1) browser()
                 SpopH[, avHaz:= mean(clusHaz), list(simNum, cluster)]
                 SpopH[, haz0:= clusHaz[day==0], list(simNum, cluster)]
                 Spop <- merge(Spop, SpopH[day==0, list(simNum, cluster, haz0, avHaz)], by = c(unqvars, 'cluster'))
@@ -42,17 +43,20 @@ extractOneSim <- function(fileNm
                 Spop[,haz0Cat:=cut(haz0, hazBrks, include.lowest = T)] ## absolute breaks in hazard
                 Spop[,ihaz0Cat:=cut(haz0*indivRR, hazBrks, include.lowest = T)]
                 ## number infected & SAE overall, with individual level data tracked
-                trackUntilDay <- sim$sim$finInfo[cat=='allFinalEV',atDay][1]
+                trackUntilDay <- unique(sim$sim$finInfo[cat=='allFinalEV',atDay])#[1]
+                if(length(trackUntilDay)>1) stop('different trackUntilDays between simulation runs')
+
+                infPop_noEV <- merge(SpopEvents[, list(simNum, indiv, vaccDay_noEV = vaccDay, infectDay)], Spop, by=c(unqvars,'indiv'))
+                saePop_noEV <- merge(SpopEvents[, list(simNum, indiv, vaccDay_noEV = vaccDay, SAE)], Spop, by=c(unqvars,'indiv'))
 
                 if(notCF) {
-
-                    infPop_EV <- merge(SEVpopEvents[, list(simNum, indiv, infectDay)], Spop, by=c(unqvars,'indiv'))
-                    saePop_EV <- merge(SEVpopEvents[, list(simNum, indiv, SAE)], Spop, by=c(unqvars,'indiv'))
+                    infPop_EV <- merge(SEVpopEvents[, list(simNum, indiv, vaccDay_EV = vaccDay, infectDay)], Spop, by=c(unqvars,'indiv'))
+                    saePop_EV <- merge(SEVpopEvents[, list(simNum, indiv, vaccDay_EV = vaccDay, SAE)], Spop, by=c(unqvars,'indiv'))
+                    ## add randomized vaccination day (pre-post trial rollout, to allow comparison of
+                    ## excess risk by randomization assignment & initial risk strata)
+                    infPop_EV <- merge(infPop_EV, infPop_noEV[,list(simNum, indiv, vaccDay_noEV)], by = c(unqvars,'indiv')) 
+                    saePop_EV <- merge(saePop_EV, saePop_noEV[,list(simNum, indiv, vaccDay_noEV)], by = c(unqvars,'indiv'))
                 }
-
-                infPop_noEV <- merge(SpopEvents[, list(simNum, indiv, infectDay)], Spop, by=c(unqvars,'indiv'))
-                saePop_noEV <- merge(SpopEvents[, list(simNum, indiv, SAE)], Spop, by=c(unqvars,'indiv'))
-
 
                 ## ##################################################
                 ## To check that individual-level data match pop-aggregate compare infPop & finInfo
@@ -69,17 +73,21 @@ extractOneSim <- function(fileNm
                 for(vv in vars) {
                     if(notCF) {
                         ## infection tallies by risk level at beginning of trial
-                        itmp <- merge(infPop_EV[,list(.N, Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv)] 
-                                    , infPop_noEV[,list(Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv)] 
-                                    , by = c('simNum',vv), all=T, suffixes = c('_EV','_noEV'))
-                        stmp <- merge(saePop_EV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv)] 
-                                    , saePop_noEV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv)] 
-                                    , by = c('simNum',vv), all=T, suffixes = c('_EV','_noEV'))
+
+                        itmp <- merge(infPop_EV[,list(.N, Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv, 'vaccDay_noEV')] 
+                                    , infPop_noEV[,list(Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv, 'vaccDay_noEV')] 
+                                    , by = c(unqvars,vv, 'vaccDay_noEV'), all=T, suffixes = c('_EV','_noEV'))
+
+
+                        stmp <- merge(saePop_EV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv,'vaccDay_noEV')] 
+                                    , saePop_noEV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv,'vaccDay_noEV')] 
+                                    , by = c(unqvars,vv, 'vaccDay_noEV'), all=T, suffixes = c('_EV','_noEV'))
+
                     }else{
-                        itmp <- infPop_noEV[,list(.N, Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv)] 
-                        stmp <- saePop_noEV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv)] 
+                        itmp <- infPop_noEV[,list(Ninf=length(simNum[infectDay<Inf])), c(unqvars,vv, 'vaccDay_noEV')] 
+                        stmp <- saePop_noEV[,list(Nsae=length(simNum[SAE==1])), c(unqvars,vv,'vaccDay_noEV')] 
                     }
-                    tmp <- merge(itmp, stmp, by = c('simNum',vv), suffixes = c('inf','sae'), all=T)
+                    tmp <- merge(itmp, stmp, by = c(unqvars,vv,'vaccDay_noEV'), suffixes = c('inf','sae'), all=T)
                     Nnms <- colnames(tmp)[grepl('N_',colnames(tmp))]
                     for (col in Nnms) set(tmp, which(is.na(tmp[[col]])), col, 0)
                     tmp$nbatch <- nbatch
@@ -149,7 +157,7 @@ procResList <- function(resList, verbose = 0, doSave=T) {
         ## merge all trial-level info
         finit <- merge(parms, merge(finInfo, finTrials, all.x=T), all.y=T, by = 'nbatch')
 
-        finit[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood), length(tcal)),
+        finit[order(gs), list(tcalMean = mean(tcal), power = mean(vaccGood[vaccEff>0]), length(tcal[vaccEff>0])),
               list(trial, gs, ord, delayUnit, propInTrial, trialStartDate, avHaz, cat)]
         cols <- c('trial', 'gs', 'ord', 'delayUnit', 'propInTrial', 'trialStartDate', 'avHaz', 'cat')
         finit[, (cols):=lapply(.SD, as.factor), .SDcols=cols]
@@ -197,8 +205,8 @@ procResList <- function(resList, verbose = 0, doSave=T) {
 
 ## Make a data table of risk-strata level info on infections spent/averted & power contributed by
 ## that group within the trial
-makeInfPow <- function(resList, doSave=T) within(resList, {
-
+makeInfPow <- function(resList, doSave=T, verbose = 0) within(resList, {
+    ## make sure all combinations are filled in by doing a cross-join
     shc <- CJ.dt(unique(strat_ihaz0Cat[,list(nbatch, simNum)]), data.table(ihaz0Cat = strat_ihaz0Cat[,unique(ihaz0Cat)]))
     setkey(shc, nbatch, simNum, ihaz0Cat)
     setkey(strat_ihaz0Cat, nbatch, simNum, ihaz0Cat)

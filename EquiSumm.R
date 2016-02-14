@@ -18,6 +18,10 @@ vaccProp[, simNum:=1:length(vaccEff)]
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 
+## batchdirnm <- file.path('BigResults',thing)
+## fls <- list.files(batchdirnm, pattern=thing, full.names = T)
+## eos <- extractOneSim(fls[1], indivLev=T, verbose = 0)
+
 ## resList <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
 ## resList <- procResList(resList)
 ## resList <- makeInfPow(resList)
