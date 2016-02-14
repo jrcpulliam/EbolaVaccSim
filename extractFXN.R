@@ -110,7 +110,7 @@ extractSims <- function(thing
                       , dparms = dparms0
                       , doSave=T
                       , verbose = 0
-                      , maxbatches = NA
+                      , maxbatches = NA, nbatchDo=NA
                       , mc.cores = 48
                       , indivLev = F, hazBrks = 10^c(-12:0)
                         ) {
@@ -122,7 +122,13 @@ extractSims <- function(thing
         nbatch <- maxbatches
         fls <- fls[1:nbatch]
     }
-    print(paste0('extracting from ', nbatch, ' files'))
+    if(!is.na(nbatchDo[1])) {
+        batchdirnm <- file.path('BigResults',thing)
+        flstmp <- list.files(batchdirnm, pattern=thing)
+        fns <- as.numeric(sub('.Rdata','', sub(thing,'',flstmp)))
+        fls <- fls[fns %in% nbtd]
+    }
+    print(paste0('extracting from ', length(fls), ' files'))
     resList <- list()
     tmp <- mclapply(fls, extractOneSim, indivLev = indivLev, verbose=0, mc.cores=mc.cores)
     ## tmp <- mclapply(fls[[5340]], extractOneSim, indivLev = indivLev, verbose=1, mc.cores=mc.cores)
@@ -237,6 +243,9 @@ makeInfPow <- function(resList, doSave=T, verbose = 0, whichDo='ihaz0Cat', nbatc
     shc$Ninf <- NULL
     shc$Nsae <- NULL
 
+shc[N>0]
+    
+
     setkeyv(shc, c('nbatch', 'simNum', whichDo))
 
     shc <- merge(parms, shc, all.y=T, by = c('nbatch'))
@@ -248,20 +257,27 @@ makeInfPow <- function(resList, doSave=T, verbose = 0, whichDo='ihaz0Cat', nbatc
     ## shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, vaccDay_noEV, ihaz0Cat)] ## 7 simulation types
     ## unique(parms[propInTrial==.025 & trialStartDate=='2014-10-01' & avHaz==''][,2:12,with=F])
 
+shc[, risk_EV:=Ninf_EV/N]
+shc[, risk_noEV:=Ninf_noEV/N]
+
+shc[, risk_NT:= risk_noEV[trial=='NT' & vaccDay_noEV==Inf], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+shc[, risk_VR:= risk_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, vaccDay_noEV, ihaz0Cat)]
+    ## figuring out e* metrics here
+
     shc[, N_NT:= Ninf_noEV[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
 
 
     shc[, N_VR:= Ninf_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, vaccDay_noEV, ihaz0Cat)]
-    ## Averted infections
-    shc[, infAvert_EV := N_NT - Ninf_EV]
-    shc[, infAvert_noEV := N_NT - Ninf_noEV]
-    shc[, infAvertPC_EV := infAvert_EV/N]
+    ## Averted infections *marginal on randomization assignment*
+    shc[, infAvert_EV := sum(N_NT) - sum(Ninf_EV), list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+    shc[, infAvert_noEV := sum(N_NT) - sum(Ninf_noEV), list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+    shc[, infAvertPC_EV := infAvert_EV/sum(N), list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
     shc[, infAvertPC_noEV := infAvert_noEV/N]
     shc[is.nan(infAvertPC_EV), infAvertPC_EV := 0]
     shc[is.nan(infAvertPC_noEV),infAvertPC_noEV := 0]
     ## shc[, infAvertProp_EV := infAvert_EV /N_NT]
     ## shc[, infAvertProp_noEV := infAvert_noEV /N_NT]
-    ## Spent infections
+    ## Spent infections *conditional* on randomization assignment
     shc[, infSpent_EV := Ninf_EV - N_VR]
     shc[, infSpent_noEV := Ninf_noEV - N_VR]
     shc[, infSpentPC_EV := infSpent_EV/N]
@@ -294,7 +310,7 @@ makeInfPow <- function(resList, doSave=T, verbose = 0, whichDo='ihaz0Cat', nbatc
                        list(propInTrial, trialStartDate, lab, avHaz, vaccDay_noEV, ihaz0Cat)]
 
     infAvertPow <- merge(infAvertPow
-                       , finit[cat=='allFinalEV' & trial!='NT', list(.N, powerEff=mean(vaccGood[vaccEff>0]), tcalEff=mean(tcal[vaccEff>0])), 
+                       , finit[cat=='allFinalEV' & trial!='NT', list(powerEff=mean(vaccGood[vaccEff>0]), tcalEff=mean(tcal[vaccEff>0])), 
                                list(propInTrial, trialStartDate, lab, avHaz)]
                        , by = c('propInTrial', 'trialStartDate', 'lab', 'avHaz'))
     infAvertPow[lab=='VR', powerEff:=0]

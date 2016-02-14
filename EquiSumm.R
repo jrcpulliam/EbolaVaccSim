@@ -18,17 +18,17 @@ vaccProp[, simNum:=1:length(vaccEff)]
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 
-batchdirnm <- file.path('BigResults',thing)
-fls <- list.files(batchdirnm, pattern=thing, full.names = T)
-fls <- fls[grepl(2305,fls)]
-eos <- extractOneSim(fls[1], indivLev=T, verbose = 2)
+## batchdirnm <- file.path('BigResults',thing)
+## fls <- list.files(batchdirnm, pattern=thing, full.names = T)
+## fls <- fls[grepl(2305,fls)]
+## eos <- extractOneSim(fls[1], indivLev=T, verbose = 2)
+load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
+nbtd <- parmsMat[propInTrial==.05 & avHaz=='xClus' & trialStartDate=='2014-10-01', rcmdbatch]
 
-## resList <- extractSims(thing, verb=0, maxbatches=NA, indivLev = T, mc.cores=48)
+## resList <- extractSims(thing, verb=0, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
 ## resList <- procResList(resList, verb=0)
-## save(resList, file=file.path('BigResults',paste0(thing, '.Rdata')))
 
-nbtd <- resList$parms[propInTrial==.05 & avHaz=='xClus' & trialStartDate=='2014-10-01', nbatch]
-resList <- makeInfPow(resList, verb=2, nbatchDo=nbtd)
+resList <- makeInfPow(resList, verb=0)#, nbatchDo=nbtd)
 names(resList)
 
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
@@ -291,4 +291,11 @@ rowSums(tmp[trialStartDate=='2014-10-01' & ihaz0Cat=='(0.01,0.1]', list(infAvert
 ## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
 
 ##########
-resList$infAvertPow
+
+tmp <- infAvertPow[lab=='SWCT' & ihaz0Cat==levels(ihaz0Cat)[10]]
+jpeg(file.path(figdir, paste0('infSpentPC_EV cond Rand.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+ggplot(tmp) + geom_bar(aes(x=factor(vaccDay_noEV), y=infSpentPC_EV), stat='identity', position='dodge') + 
+    xlab('vaccination day') + ylab('risk spent per capita')
+graphics.off()
+ 
+tmp[vaccDay_noEV==0]

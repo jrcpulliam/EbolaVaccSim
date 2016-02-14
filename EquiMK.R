@@ -85,6 +85,7 @@ nrow(parmsMat)
 
 parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
+save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
 parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff, avHaz, trialStartDate, propInTrial)]
 nrow(parmsMat)
