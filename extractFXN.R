@@ -9,6 +9,8 @@ quantcut <- function(x, qs = seq(0,1, l = 6)) {
     return(as.numeric(cut(x, brks, include.lowest = T)))
 }
 
+
+
 extractOneSim <- function(fileNm
                         , dparms = dparms0
                         , verbose = 0
@@ -243,8 +245,6 @@ makeInfPow <- function(resList, doSave=T, verbose = 0, whichDo='ihaz0Cat', nbatc
     shc$Ninf <- NULL
     shc$Nsae <- NULL
 
-shc[N>0]
-    
 
     setkeyv(shc, c('nbatch', 'simNum', whichDo))
 
@@ -257,13 +257,21 @@ shc[N>0]
     ## shc[, .N, list(propInTrial, trialStartDate, simNum, avHaz, vaccDay_noEV, ihaz0Cat)] ## 7 simulation types
     ## unique(parms[propInTrial==.025 & trialStartDate=='2014-10-01' & avHaz==''][,2:12,with=F])
 
+    browser()
+
+    
+    ## infection risk within strata
 shc[, risk_EV:=Ninf_EV/N]
 shc[, risk_noEV:=Ninf_noEV/N]
 
+    ## for averted: NT risk comparator is same risk group & given they're never vaccinated
 shc[, risk_NT:= risk_noEV[trial=='NT' & vaccDay_noEV==Inf], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
+    ## for spent: VR risk comparator should be within same risk group marginal over vaccination group, vs that risk group marginal over vaccination group again. Cannot look at comparisons 
 shc[, risk_VR:= risk_noEV[trial=='VR'], list(propInTrial, trialStartDate, simNum, avHaz, vaccDay_noEV, ihaz0Cat)]
     ## figuring out e* metrics here
 
+        shc[N>0]
+    
     shc[, N_NT:= Ninf_noEV[trial=='NT'], list(propInTrial, trialStartDate, simNum, avHaz, ihaz0Cat)]
 
 
