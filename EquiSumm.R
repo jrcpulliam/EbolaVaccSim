@@ -18,17 +18,24 @@ vaccProp[, simNum:=1:length(vaccEff)]
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 
+
 ## batchdirnm <- file.path('BigResults',thing)
 ## fls <- list.files(batchdirnm, pattern=thing, full.names = T)
-## fls <- fls[grepl(2305,fls)]
-## eos <- extractOneSim(fls[1], indivLev=T, verbose = 2)
-load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
-nbtd <- parmsMat[propInTrial==.05 & avHaz=='xClus' & trialStartDate=='2014-10-01', rcmdbatch]
+## ## fls <- fls[grepl(2305,fls)]
+## eos <- extractOneSim(fls[1], indivLev=T, verbose = 0)
 
+load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
+## names(parmsMat)
+tpop <- unique(parmsMat[,list(trialStartDate, propInTrial, HazTrajSeed, avHaz)]) ## make sure to add other variables unique to population
+tpop <- data.table(tid=1:nrow(tpop), tpop)
+parmsMat <- merge(tpop, parmsMat, by=names(tpop)[names(tpop)!='tid'])
+## parmsMat[,.N,tid]
+
+nbtd <- parmsMat[tid==37] ##propInTrial==.05 & avHaz=='xClus' & trialStartDate=='2014-10-01'
 ## resList <- extractSims(thing, verb=0, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
 ## resList <- procResList(resList, verb=0)
 
-resList <- makeInfPow(resList, verb=0)#, nbatchDo=nbtd)
+resList <- makeInfPow(resList, verb=2)
 names(resList)
 
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
@@ -292,10 +299,50 @@ rowSums(tmp[trialStartDate=='2014-10-01' & ihaz0Cat=='(0.01,0.1]', list(infAvert
 
 ##########
 
-tmp <- infAvertPow[lab=='SWCT' & ihaz0Cat==levels(ihaz0Cat)[10]]
-jpeg(file.path(figdir, paste0('infSpentPC_EV cond Rand.jpeg')), w = 10, h = 8, units = 'in', res = 200)
-ggplot(tmp) + geom_bar(aes(x=factor(vaccDay_noEV), y=infSpentPC_EV), stat='identity', position='dodge') + 
-    xlab('vaccination day') + ylab('risk spent per capita')
+attach(resList)
+punq <- unique(parms[,-1,with=F])
+punq <- data.table(pid = 1:nrow(punq), punq)
+setkey(punq, pid)
+parms <- merge(punq, parms, by = names(punq)[names(punq)!='pid'])
+setkey(parms, pid, nbatch)
+setcolorder(parms, c('pid','nbatch', names(parms)[!names(parms) %in% c('pid','nbatch')]))
+parms
+Spop <- merge(parms[,list(pid, nbatch)], Spop, by = 'nbatch')
+setcolorder(Spop, c('pid','nbatch', names(Spop)[!names(Spop) %in% c('pid','nbatch')]))
+Spop
+
+punq[, lab:=trial]
+punq[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
+punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
+punq[,lab:=as.factor(lab)]
+
+irsk <- Spop[, list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf)), list(pid,indiv)]#[order(cluster)]
+irsk[, spent := inf - inf[pid==punq[trial=='VR',pid]], list(indiv)]
+irsk[, spent_EV := inf_EV - inf[pid==punq[trial=='VR',pid]], list(indiv)]    
+irsk <- merge(punq[,list(pid,gs, lab)], irsk, by = 'pid')
+irsk
+
+pdf(file.path(figdir, paste0('irsk.pdf')), w = 10, h = 8)#, units = 'in', res = 200)
+adj <- 2
+ggplot(irsk[pid<6], aes(x=spent_EV, col=lab, linetype = gs)) + geom_line(stat='density', size=1, adjust=adj)+ xlim(-.04, .08)
+ggplot(irsk[pid<6], aes(x=spent, col=lab, linetype = gs)) + geom_line(stat='density', size=1, adjust=adj) + xlim(-.04, .08)
 graphics.off()
- 
-tmp[vaccDay_noEV==0]
+
+
+pdf(file.path(figdir, paste0('irsk by EV.pdf')), w = 10, h = 8)#, units = 'in', res = 200)
+adj <- 2
+ggplot(irsk[gs==T & pid<6], aes(x=spent, col=lab)) + geom_line(stat='density', size=1, adjust=adj)+ xlim(-.04, .08) +
+    geom_line(aes(x=spent_EV, col=lab), linetype = 2, stat='density', size=1, adjust=adj)
+graphics.off()
+
+Spop[is.na(infectDay_EV), unique(pid)]
+irsk[is.na(spent_EV), unique(lab)]
+
+## individual variation in vaccine assignment
+
+length(Spop[pid==5 & indiv==1, unique(indivRR)]) ## not the same individuals...
+
+length(Spop[simNum==1 & indiv==1, unique(indivRR)]) ## not the same individuals...
+Spop[simNum==1 & indiv==1]
+
+## need to track individual's original id & cluster before re-ordered based on randomization.

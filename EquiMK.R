@@ -4,7 +4,7 @@ if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/'
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 
-thing <- 'Equip-indivL'
+thing <- 'Equip-irsk'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -29,12 +29,7 @@ parmsMatRCT <- as.data.table(expand.grid(
   , ord = c('none','TU')
   , trialStartDate = sdates
   , propInTrial = pits
-  , delayUnit = 7 ## c(0,7)
-  , immunoDelay = c(21)
   , vaccEff = ves
-  , randVaccProperties = T
-  , vaccPropStrg='vaccProp1'
-  , HazTrajSeed = 7
   , avHaz = c('', 'xTime','xClus','xClusxTime')
 ))
 parmsMatSWCT <- as.data.table(expand.grid(
@@ -44,12 +39,7 @@ parmsMatSWCT <- as.data.table(expand.grid(
   , ord = 'none'
   , trialStartDate = sdates
   , propInTrial = pits
-  , delayUnit = 7 ## c(0,7)
-  , immunoDelay = c(21)
   , vaccEff = ves
-  , randVaccProperties = T
-  , vaccPropStrg='vaccProp1'
-  , HazTrajSeed = 7
   , avHaz = c('', 'xTime','xClus','xClusxTime')
 ))
 parmsMatCFs <- as.data.table(expand.grid(
@@ -59,16 +49,12 @@ parmsMatCFs <- as.data.table(expand.grid(
   , ord = 'TU'
   , trialStartDate = sdates
   , propInTrial = pits
-  , delayUnit = 7 ## c(0,7)
-  , immunoDelay = c(21)
   , vaccEff = ves
-  , randVaccProperties = T
-  , vaccPropStrg='vaccProp1'
-  , HazTrajSeed = 7
   , avHaz = c('', 'xTime','xClus','xClusxTime')
 ))
+
 parmsMat <- rbind(parmsMatRCT,parmsMatSWCT,parmsMatCFs)
-parmsMat$returnEventTimes <- TRUE
+parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=FALSE; immunoDelay=21; delayUnit=7})
 parmsMat$StatsFxns <- 'doCoxME'
 parmsMat[trial=='SWCT', StatsFxns:='doRelabel']
 parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
@@ -76,30 +62,39 @@ parmsMat <- parmsMat[order(avHaz,trial)]
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 
+names(parmsMat)
+
+## variables that specify a trial population
+tvars <- c("trialStartDate", "propInTrial", "avHaz", "indivRRSeed" , "HazTrajSeed",'numClus','clusSuze','hazType','nbsize','mu','cvClus','cvClusTime','sdLogIndiv','weeklyDecay','cvWeeklyDecay','hazIntUnit')
+tvars <- tvars[tvars %in% colnames(parmsMat)]
+tpop <- unique(parmsMat[,tvars, with=F]) ## make sure to add other variables unique to population
+tpop <- data.table(tid=1:nrow(tpop), tpop)
+parmsMat <- merge(tpop, parmsMat, by=names(tpop)[names(tpop)!='tid'])
+frontcols <- c('tid','batch')
+setcolorder(parmsMat, c(frontcols, names(parmsMat)[!names(parmsMat) %in% frontcols]))
+## variables that specify a parameter combination (which may be spread over batches across cores)
+punq <- parmsMat[,!c('tid','batch','rcmdbatch'),with=F]
+setkey(punq, NULL)
+punq <- unique(punq)
+punq <- data.table(pid = 1:nrow(punq), punq)
+setkey(punq, pid)
+parmsMat <- merge(punq, parmsMat, by = names(punq)[names(punq)!='pid'])
+setkey(parmsMat, tid, pid, batch)
+frontcols <- c('pid','tid','batch', 'rcmdbatch')
+setcolorder(parmsMat, c(frontcols, names(parmsMat)[!names(parmsMat) %in% frontcols]))
+parmsMat
+
 nmtmp <- thing
-parmsMat$saveNm <- nmtmp
-parmsMat$nsims <- nsims
-parmsMat$reordLag <- 14
-parmsMat$nboot <- 200
+parmsMat <- within(parmsMat, {saveNm = nmtmp; nsims = nsims; reordLag = 14; nboot = 200})
 nrow(parmsMat)
 
 parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
-parmsMat[order(gs), length(nboot), list(trial, ord, delayUnit, gs, vaccEff, avHaz, trialStartDate, propInTrial)]
-nrow(parmsMat)
-jbs <- NULL
-jn <- 0
+tidsDo <- tpop[propInTrial==c(.05,.1) & trialStartDate==c('2014-10-01','2014-12-01'), tid]
 
-batchdirnm <- file.path('BigResults',thing)
-fls <- list.files(batchdirnm, pattern=thing)
-fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
-parmsMatDo <- parmsMat[!rcmdbatch %in% fns] ## 174
-
-## parmsMatDo <- parmsMat[trialStartDate %in% sdates[1:2] & trial=='RCT' & ord=='TU' & gs==T]
-# parmsMatDo <- rbind(parmsMat[trial=='VR'][1],parmsMat[trial=='NT'][1],parmsMat[trial=='RCT'][1],parmsMat[trial=='SWCT'][1])
-## parmsMatDo <- parmsMat
+parmsMatDo <- parmsMat[tid %in% tidsDo]
 nrow(parmsMatDo)
 sink('SLsims.txt')
 for(ii in parmsMatDo$rcmdbatch) {
@@ -111,3 +106,8 @@ for(ii in parmsMatDo$rcmdbatch) {
     cat('\n')              # add new line
 }
 sink()
+
+## batchdirnm <- file.path('BigResults',thing)
+## fls <- list.files(batchdirnm, pattern=thing)
+## fns <- as.numeric(sub('.Rdata','', sub(thing,'',fls)))
+## parmsMatDo <- parmsMat[!rcmdbatch %in% fns] ## 174

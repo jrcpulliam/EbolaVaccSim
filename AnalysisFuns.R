@@ -182,8 +182,8 @@ finInfoFxn <- function(parms) {
 }
 
 indivLevRes <- function(parms) within(parms, {
-    Spop <- pop[,list(indiv,cluster, indivRR)] ## indiv chars
-    SpopH <- popH[idByClus==1,list(cluster, day, Date, clusHaz)] ## cluster chars
+    Spop <- pop[,list(indiv,cluster, Oi, Oc, indivRR)] ## indiv chars
+    SpopH <- popH[idByClus==1,list(cluster, Oc, day, Date, clusHaz)] ## cluster chars
     toDo <- c('pop','EVpop')
     if(!doTrial)   toDo <- 'pop'
     for(tmpnm in toDo) {

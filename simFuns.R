@@ -13,6 +13,7 @@ makeParms <- function(
   , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
   , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
   , avHaz = ''      ## average over time 'xTime' across clusters 'xClus' or both 'xClusxTime'
+  , indivRRSeed = NA ## allows keeping all indivRR same between simulatinos
   , HazTrajSeed = NA ## allows keeping all forecasted hazard trajectories identical between simulations (only demograhic stochasticity)
   , nbsize = .8 ## for above
   , propInTrial = .03 ## for above
@@ -82,6 +83,8 @@ makePop <- function(parms=makeParms()) within(parms, {
                     , cluster=as.numeric(gl(n=numClus, k=clusSize))
                     , idByClus = rep(1:clusSize, numClus)
                       )
+    pop$Oi <- as.numeric(pop$indiv) ## to keep track when we reorder them
+    pop$Oc <- as.numeric(pop$cluster) ## to keep track when we reorder them
 })
 
 ## reparameterize a gamma by mean/var to simulate spatial variation in underlying hazards (change
@@ -149,7 +152,12 @@ setClusHaz <- function(parms) {
 setIndHaz <- function(parms=makePop()) within(parms, {
     if(verbose>10) browser()
     ## give every individual a lognormally distributed relative risk
+    if(!is.na(indivRRSeed)) { 
+        storedSeed <- .Random.seed
+        set.seed(indivRRSeed)
+    }
     pop$indivRR <- rlnorm(numClus*clusSize, meanlog = 0, sdlog = sdLogIndiv)
+    if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     ## create popH which has weekly hazards for all individuals
     popH <- arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day)
     popH$indivHaz <- popH[, clusHaz*indivRR]
@@ -279,7 +287,7 @@ setImmuneDays <- function(parms, whichDo='pop') within(parms, {
     tmpH$vacc <- tmpH[, day>=vaccDay]
     tmpH$immune <- tmpH[, day>=immuneDay]
     ## reset pop to refrence data table after reordering and then assignment of vaccday stuff
-    tmp <- select(tmpH[day==0], indiv, cluster, pair, idByClus, indivRR, vaccDay, immuneDay) 
+    tmp <- select(tmpH[day==0], indiv, cluster, Oi, Oc, pair, idByClus, indivRR, vaccDay, immuneDay) 
     assign(tmpstrgH, tmpH)
     assign(whichDo, tmp)
     rm(tmpH, tmpstrgH)
