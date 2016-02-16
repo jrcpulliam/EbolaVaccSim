@@ -305,6 +305,7 @@ punq[, lab:=trial]
 punq[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
 punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
 punq[,lab:=as.factor(lab)]
+punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])]
 setkey(punq, pid)
 
 parms <- merge(punq, parms, by = names(punq)[!names(punq) %in% c('lab','pid')])
@@ -318,46 +319,81 @@ setkey(Spop, Oi, pid, nbatch, simNum)
 Spop[,quantile(indivRR, c(.025,.975))]
 
 ## table by individual the average infection risk in each design
-irskMarg <- Spop[, list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf) , indivRR=unique(indivRR), Oc=Oc[1], indiv=indiv[1], type = 'marg', arm = NA), 
+irskMarg <- Spop[, list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf) , indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
              list(pid,Oi)]
-irskCond <- Spop[!lab %in% c('VR','NT'), ## conditional on randomization assignment
-             list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf), indivRR=unique(indivRR), Oc=Oc[1], indiv=indiv[1], type = 'cond'), 
+irskCond <- Spop[!lab %in% c('VR','NT','SWCT'), ## conditional on control/vacc randomization assignment
+             list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf), indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
              list(pid,Oi,arm)]
 ## maximum spent given worst possible vaccination order (only for random ordered trials)
 irskMax <- Spop[!lab %in% c('VR','NT') & arm=='vacc' & !grepl('rp',lab) & vaccDay==max(vaccDay[arm=='vacc']),
-                list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf), indivRR=unique(indivRR), Oc=Oc[1], indiv=indiv[1], arm='vacc', type='max'),
+                list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf), indivRR=unique(indivRR), Oc=Oc[1], arm='vacc', type='max'),
                 list(pid,Oi,vaccDay)]
-irsk <- rbindlist(list(irskMarg, irskCond, irskMax), use.names=T, fill=T)
+## conditional on exact vaccination day (note borrowing control info across all vaccDay==Inf, i.e. whether the cluster they're in is vaccinated early/late)
+irskCondvd <- Spop[!lab %in% c('VR','NT'),
+                list(.N, inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf), indivRR=unique(indivRR), Oc=Oc[1], type='condvd'),
+                list(pid,Oi,arm,vaccDay)]
+
+irsk <- rbindlist(list(irskMarg, irskCond, irskMax, irskCondvd), use.names=T, fill=T)
 setkey(irsk, Oi, pid)
 irsk <- merge(punq[,list(pid,gs, lab)], irsk, by = 'pid')
 moveFront(irsk, c('pid','lab','gs','type','arm','vaccDay'))
 irsk
-
 irsk[, unique(type), lab]
-
+irsk[Oi==1]
 
 ## Average risk spent versus marginal VR 
 irsk[, spent   := inf    - inf[lab=='VR'], list(Oi)]
 irsk[, spent_EV:= inf_EV - inf[lab=='VR'], list(Oi)]
 ## Averted risk versus marginal NT
 irsk[, avert   :=    inf[lab=='NT'] - inf, list(Oi)]
-irsk[, avert_EV:= inf_EV[lab=='NT'] - inf, list(Oi)]
+irsk[, avert_EV:= inf[lab=='NT'] - inf_EV, list(Oi)]
 setkey(irsk, Oi, pid)
 
 irsk[Oi==1]
 
-
 ##########
 ## Examine results
-irsk[, list(inf = mean(inf), inf_EV = mean(inf_EV), infMax = mean(infMax), infMax_EV=mean(infMax_EV)), list(lab, arm)][order(lab)] ## mean infection rate without vaccine
-sptmp <- irsk[, list(spent = mean(spent), spent_EV = mean(spent_EV), spentMax = mean(spentMax), spentMax_EV=mean(spentMax_EV)), list(lab, arm)][order(lab)] #
-for(ii in 3:6) sptmp[[ii]] <- formatC(100*signif(sptmp[[ii]],2)) ## % risk spent on average
+irsk[type!='condvd', list(inf = mean(inf), inf_EV = mean(inf_EV)), list(lab, arm, type)][order(lab)] ## mean infection rate without vaccine
+sptmp <- irsk[type!='condvd', list(spent = mean(spent), spent_EV = mean(spent_EV)), list(lab, arm, type)][order(lab)] #
+for(ii in 4:5) sptmp[[ii]] <- formatC(100*signif(sptmp[[ii]],2)) ## % risk spent on average
 sptmp
 
+lbrks <- c(.0001,.0005,.001,.005,.01,.05,.1,.5,1)
 cols <- punq$lab
 names(cols) <- cols
 cols <- c("NT"='red', "SWCT"='orange', "VR"='dark green', "RCT-gs"='dodger blue', "RCT"='dodger blue', "RCT-rp"='purple', "RCT-gs-rp" = 'purple')
 ## cols <- c("NT"='red', "SWCT"='orange', "VR"='dark green', "RCT-gs"='dodger blue', "RCT"='blue', "RCT-rp"='purple', "RCT-gs-rp" = 'magenta')
+
+## get clusters in risk-order
+cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
+cOrd[,cluster:=1:nrow(cOrd)]
+irsk$cluster <- NULL
+irsk <- merge(irsk, cOrd[,list(Oc, cluster)], by = 'Oc')
+
+## order individuals within clusters by risk for ease of display
+iord <- irsk[lab=='NT',list(Oi,cluster,inf)][order(cluster,-inf)]
+iord[,ordShow:=1:6000]
+irsk$ordShow <- NULL
+irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
+
+## what arm to label individuals as for RCTs?
+irsk[, armShown:=arm]
+irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (300) < 150), armShown:='cont']
+irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (300) >= 150), armShown:='vacc']
+
+irsk0 <- copy(irsk)
+irsk <- copy(irsk0)
+
+## order individuals within clusters & armShown by risk for ease of display
+iord <- irsk[lab=='NT',list(Oi,cluster,inf)]
+iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
+iord <- iord[order(cluster,armShown, -inf)]
+iord[,ordShowArm:=1:6000]
+irsk$ordShowArm <- NULL
+irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
+
+irsk <- irsk[order(Oc,indivRR,lab)]
+irsk[type=='cond' &  !lab %in% c('VR','NT') & pid==2 & Oi==1]
 
 ## histogram of risk
 pdf(file.path(figdir, paste0('irsk.pdf')), w = 6.5, h = 4) #, units = 'in', res = 200)
@@ -367,59 +403,52 @@ pdf(file.path(figdir, paste0('irsk.pdf')), w = 6.5, h = 4) #, units = 'in', res 
 ggplot(irsk[lab=='NT'], aes(x=inf)) + geom_histogram() + xlab('cumulative risk of infection') 
 graphics.off()
 
-lbrks <- c(.0001,.0005,.001,.005,.01,.05,.1,.5,1)
-
-## histogram of risk spent
-pdf(file.path(figdir, paste0('irsk spent hist.pdf')), w = 6.5, h = 4)#, units = 'in', res = 200)
-ggplot(irsk[!lab %in% c('VR','NT')], aes(x=spent_EV, fill=lab)) + geom_histogram() + facet_wrap(~lab, ncol=1) + xlim(-.04, .08)
-graphics.off()
-
 ## density lines risk spent
 pdf(file.path(figdir, paste0('irsk spent.pdf')), w = 6.5, h = 4)#, units = 'in', res = 200)
-adj <- 2
+adj <- 1.5
 p <- ggplot() + 
-    geom_line(data = irsk[!lab %in% c('NT','VR')], aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
-              scale_color_manual(values=cols) + xlim(.01, .3) + ylim(0,32) + xlab('per capita infection risk spent')  + ggtitle('average risk spent per individual')
+    geom_line(data = irsk[type=='marg'], aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
+              scale_color_manual(values=cols) + xlim(.005, .3) + ylim(0,32) + xlab('per capita infection risk spent')  + ggtitle('average risk spent per individual')
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
-## spentMax_EV for controls in non-rp RCTs, spent_EV for controls in rp RCTs, spentMax_EV for anyone in SWCT
 p <- ggplot() + 
-    geom_line(data = irsk[lab %in% c('RCT','RCT-gs')], aes(x=spentMax_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
-    geom_line(data = irsk[lab %in% c('RCT-rp','RCT-gs-rp') & arm=='cont'], aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) + 
-    geom_line(data = irsk[lab %in% c('SWCT')], aes(x=spentMax_EV, col=lab), stat='density', adjust=adj) +                       
-              scale_color_manual(values=cols) + xlim(.01, .3) + ylim(0,32) + xlab('per capita infection risk spent')  + ggtitle('maximum risk spent per individual')
+    geom_line(data = irsk[(type=='max' & lab=='SWCT') | (type='cond' & arm=='cont' & lab=='RCT-gs-rp')],
+              aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
+              scale_color_manual(values=cols) + xlim(.005, .3) + ylim(0,32) + xlab('per capita infection risk spent')  + ggtitle('max risk spent per individual')
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
-## spentMax_EV
 graphics.off()
 
-irsk[,lab:=factor(lab, levels(lab)[c(1,3,2,4,5,6)])]
-irsk <- irsk[order(Oc,indivRR,lab)]
+## need exemplar SWCT, probably do exemplars for all of them with exact same randomization throughout
+tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab))]# | (type=='max' & lab=='SWCT')]
+res <- 300
 
 ## spent
-jpeg(file.path(figdir, paste0('irsk spent bars.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
-ggplot(irsk[!lab %in% c('VR','NT')], aes(x=indiv, y=spent, fill=arm)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2)
+jpeg(file.path(figdir, paste0('irsk spent bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+ggplot(tmp, aes(x=ordShowArm, y=spent, fill=armShown)) + 
+    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('spent risk (conditional on arm)')
 graphics.off()
 
-jpeg(file.path(figdir, paste0('irsk spentEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
-ggplot(irsk[!lab %in% c('VR','NT')], aes(x=indiv, y=spent_EV, fill=arm)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2)
+jpeg(file.path(figdir, paste0('irsk spentEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+ggplot(tmp, aes(x=ordShowArm, y=spent_EV, fill=armShown)) + 
+    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('spent risk (conditional on arm) with EV')
 graphics.off()
 
 ## avert
-jpeg(file.path(figdir, paste0('irsk avert bars.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
-ggplot(irsk[!lab %in% c('VR','NT')], aes(x=indiv, y=avert, fill=arm)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2)
+jpeg(file.path(figdir, paste0('irsk avert bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+ggplot(tmp, aes(x=ordShowArm, y=avert, fill=armShown)) + 
+    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('averted risk (conditional on arm)')
 graphics.off()
 
-jpeg(file.path(figdir, paste0('irsk avertEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
-ggplot(irsk[!lab %in% c('VR','NT')], aes(x=indiv, y=avert_EV, fill=arm)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2)
+jpeg(file.path(figdir, paste0('irsk avertEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+ggplot(tmp, aes(x=ordShowArm, y=avert_EV, fill=armShown)) + 
+    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('averted risk (conditional on arm with EV)')
 graphics.off()
 
 ## inf
-jpeg(file.path(figdir, paste0('irsk inf bars.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
-ggplot(irsk[lab=='NT'], aes(x=indiv, y=inf, fill=arm)) + 
-    geom_bar(stat='identity') + ylim(0,1)
+
+jpeg(file.path(figdir, paste0('irsk inf bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, col=cluster)) +  ylab('cumulative infection risk \n(over year after trial start)') + xlab('individual') +
+    geom_bar(stat='identity') + ylim(0,1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
+        theme(legend.position="top")
 graphics.off()
 
 
