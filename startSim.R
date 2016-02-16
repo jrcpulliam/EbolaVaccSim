@@ -50,8 +50,6 @@ gc()
 
 ## * size of trial decreases each individuals' anticipated equipoise dilemma
 
-## * stratify equip by risk (must returnEventTimes for all sims, not just cf; or some aggregate version)
-
 ## * herd immunity (sherif)
 
 ## * ring vaccination

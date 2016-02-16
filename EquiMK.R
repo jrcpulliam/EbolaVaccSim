@@ -92,9 +92,12 @@ parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
-tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
+tidsDo <- tpop[propInTrial == c(.05,.1) & trialStartDate == c('2014-10-01','2014-12-01'), tid]
+##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
+
+parmsMatDo <- parmsMatDo[!trial %in% c('NT','VR','SWCT')]
 nrow(parmsMatDo)
 sink('SLsims.txt')
 for(ii in parmsMatDo$rcmdbatch) {
