@@ -171,6 +171,18 @@ setIndHaz <- function(parms=makePop()) within(parms, {
 ## setHazs(makePop(makeParms(weeklyDecay=.9, weeklyDecayVar=0)))$popH[cluster==1,]
 
 reordPop <- function(parms) { ## wrapper around other functions below
+    ## randomize individual order (first half will always be controls, this makes sure different
+    ## indiv are in there each time, track indivs with Oi)
+    parms <- within(parms, {
+        pop[, idByClus:= sample(idByClus, clusSize), cluster]
+        pop <- pop[order(cluster, idByClus)]
+        pop[,indiv:=1:nrow(pop)]
+        popH$idByClus <- popHearly$idByClus<- popH$indiv <- popHearly$indiv <- NULL
+        popH <- merge(pop[,list(indiv, idByClus, Oi)], popH, by = 'Oi')
+        popHearly <- merge(pop[,list(indiv, idByClus, Oi)], popHearly, by = 'Oi')
+        popH <- popH[order(indiv)]
+        popHearly <- popHearly[order(indiv)]
+    })
     reordFXN <- get(paste0('reord',parms$trial))
     parms <- reordFXN(parms)
     within(parms, { ## return parms
@@ -251,6 +263,7 @@ reordCRCT <- function(parms) within(parms, {
 ## p1$popH
 ## p1$popH[idByClus==1 & day==0 & cluster <=numClus/2, order(clusHaz)]
 
+## **TO ADD** randomize individuals to vacc order to allow averaging individual risk over simultions
 setVaccDays <- function(parms) { ## wrapper around other functions below
     setVaccFXN <- get(paste0('set',parms$trial,'vaccDays'))
     parms <- setVaccFXN(parms)

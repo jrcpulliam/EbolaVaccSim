@@ -30,6 +30,7 @@ extractOneSim <- function(fileNm ## prepare each simulation for binding into a l
         if(indivLev) {
             riskStratList <- sim$sim$Spops
             riskStratList <- within(riskStratList, {
+                ## browser()
                 setkey(Spop, simNum, indiv, cluster)
                 setkey(SpopH, simNum, cluster)
                 setkey(SpopEvents, simNum, indiv)

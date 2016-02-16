@@ -54,7 +54,7 @@ parmsMatCFs <- as.data.table(expand.grid(
 ))
 
 parmsMat <- rbind(parmsMatRCT,parmsMatSWCT,parmsMatCFs)
-parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=FALSE; immunoDelay=21; delayUnit=7})
+parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; delayUnit=7; randVaccProperties=T})
 parmsMat$StatsFxns <- 'doCoxME'
 parmsMat[trial=='SWCT', StatsFxns:='doRelabel']
 parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
@@ -92,7 +92,7 @@ parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
-tidsDo <- tpop[propInTrial==c(.05,.1) & trialStartDate==c('2014-10-01','2014-12-01'), tid]
+tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 nrow(parmsMatDo)
