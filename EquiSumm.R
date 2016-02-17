@@ -369,6 +369,7 @@ cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
 cOrd[,cluster:=1:nrow(cOrd)]
 irsk$cluster <- NULL
 irsk <- merge(irsk, cOrd[,list(Oc, cluster)], by = 'Oc')
+irsk[,cluster:=factor(cluster)]
 
 ## order individuals within clusters by risk for ease of display
 iord <- irsk[lab=='NT',list(Oi,cluster,inf)][order(cluster,-inf)]
@@ -395,11 +396,19 @@ irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
 irsk <- irsk[order(Oc,indivRR,lab)]
 irsk[type=='cond' &  !lab %in% c('VR','NT') & pid==2 & Oi==1]
 
+## need exemplar SWCT: pick arbitrary example of cluster-day assignment to display
+## **(later do probably do exemplars for all of them with exact same randomization throughout)
+clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),list(Oc = 1:20, vaccDay=unique(vaccDay))]
+setkey(clusVD, Oc, vaccDay)
+irsk[,exmpl:=F]
+
+setkey(irsk, Oc, vaccDay)
+irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,6000)
+irsk[clusVD][type=='condvd' & 'SWCT'==lab]
+setkey(irsk, Oi, pid)
+
 ## histogram of risk
-pdf(file.path(figdir, paste0('irsk.pdf')), w = 6.5, h = 4) #, units = 'in', res = 200)
-                                        #ggplot(irsk, aes(x=inf, col = lab)) + geom_line(stat='density') + xlab('cumulative risk of infection') + 
-                                        #scale_x_log10(breaks=10^c(-4:0))
-                                        #    scale_x_continuous(breaks=10^c(-4:0))
+pdf(file.path(figdir, paste0('irsk.pdf')), w = 6.5, h = 4) 
 ggplot(irsk[lab=='NT'], aes(x=inf)) + geom_histogram() + xlab('cumulative risk of infection') 
 graphics.off()
 
@@ -417,38 +426,52 @@ p <- ggplot() +
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
 graphics.off()
 
-## need exemplar SWCT, probably do exemplars for all of them with exact same randomization throughout
-tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab))]# | (type=='max' & lab=='SWCT')]
+tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T)]
 res <- 300
 
+####################################################################################################
 ## spent
 jpeg(file.path(figdir, paste0('irsk spent bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(tmp, aes(x=ordShowArm, y=spent, fill=armShown)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('spent risk (conditional on arm)')
+ggplot(tmp, aes(x=ordShowArm, y=spent, fill=armShown)) + ggtitle('risk spent, conditional on arm without EV') +
+    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.2) + ylab('risk') + xlab('individual')
 graphics.off()
 
 jpeg(file.path(figdir, paste0('irsk spentEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(tmp, aes(x=ordShowArm, y=spent_EV, fill=armShown)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('spent risk (conditional on arm) with EV')
+ggplot(tmp, aes(x=ordShowArm, y=spent_EV, fill=armShown)) + ggtitle('risk spent, conditional on arm with EV') +
+    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.2) + ylab('risk')+ xlab('individual')
 graphics.off()
 
 ## avert
 jpeg(file.path(figdir, paste0('irsk avert bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(tmp, aes(x=ordShowArm, y=avert, fill=armShown)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('averted risk (conditional on arm)')
+ggplot(tmp, aes(x=ordShowArm, y=avert, fill=armShown)) + ggtitle('risk averted, conditional on arm without EV') +
+    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.2) + ylab('risk')+ xlab('individual')
 graphics.off()
 
 jpeg(file.path(figdir, paste0('irsk avertEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(tmp, aes(x=ordShowArm, y=avert_EV, fill=armShown)) + 
-    geom_bar(stat='identity') + facet_wrap(~lab) + ylim(-.05,.2) + ylab('averted risk (conditional on arm with EV)')
+ggplot(tmp, aes(x=ordShowArm, y=avert_EV, fill=armShown)) + ggtitle('risk averted, conditional on arm with EV') +
+    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.2) + ylab('risk')+ xlab('individual')
 graphics.off()
+####################################################################################################
 
 ## inf
 
 jpeg(file.path(figdir, paste0('irsk inf bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, col=cluster)) +  ylab('cumulative infection risk \n(over year after trial start)') + xlab('individual') +
+ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, col=factor(cluster))) +  ylab('cumulative infection risk \n(over year after trial start)') + xlab('individual') +
     geom_bar(stat='identity') + ylim(0,1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
         theme(legend.position="top")
 graphics.off()
 
+##
+SpopH[,cluster:=factor(cluster)]
+cOrd[,OcOrd:=factor(cluster)]
+
+SpopH$OcOrd <- NULL
+SpopH <- merge(SpopH, cOrd[,list(Oc, OcOrd)], by = 'Oc')
+
+SpopH[simNum==1 & nbatch==3073]
+
+pdf(file.path(figdir, paste0('haz traj.pdf')), w = 6.5, h = 4)#, units = 'in', res = res)
+ggplot(SpopH[simNum==1 & nbatch==3073], aes(Date, clusHaz*10^5, group = OcOrd, col=OcOrd)) + geom_line() + theme(legend.position="top") +
+     theme(legend.key.size = unit(.1, "cm")) + ylab('daily infection hazard (per 100,000)') + ggtitle('mean cluster hazard trends')
+graphics.off()
 
