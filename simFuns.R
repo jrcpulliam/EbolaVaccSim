@@ -386,5 +386,3 @@ addParm <- function(x, parmsMat,ii, index='rcmdbatch') {
     }
     return(x)
 }
-
-

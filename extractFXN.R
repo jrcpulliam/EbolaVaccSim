@@ -31,22 +31,10 @@ extractOneSim <- function(fileNm ## prepare each simulation for binding into a l
             riskStratList <- sim$sim$Spops
             riskStratList <- within(riskStratList, {
                 setkey(Spop, simNum, indiv, cluster)
-                setkey(SpopH, simNum, cluster)
+                setkey(SpopH, simNum, Oc)
                 Spop <- data.table(nbatch = nbatch, Spop)
                 SpopH <- data.table(nbatch = nbatch, SpopH)
-                ## browser()
-                ## days <- SpopH[,unique(day)]
-                ## immunoDelay <- sim$parms$immunoDelay
-                
-                ## Spop[, iHaz:=indivRR* sum(SpopH[Oc==Oc & simNum==simNum,  clusHaz] *
-                ##                            c(rep(1,sum(days < vaccDay+immunoDelay)), rep(1-vaccProp[simNum==simNum, vaccEff], sum(days >= vaccDay+immunoDelay)))
-                ##            ), list(simNum, indiv)]
-                
-                
-                
-                rm(notCF)
             })
-            riskStratList$SpopEvents <- riskStratList$SEVpopEvents <- NULL
             essence <- c(essence, riskStratList)
         }
         return(essence)

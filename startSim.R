@@ -1,6 +1,7 @@
 if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R', 'MungeFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R','equipoiseFuns.R'), source)
@@ -13,7 +14,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-batch=1;trial="RCT";gs="FALSE";ord="none";trialStartDate="2015-04-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="xTime";returnEventTimes="TRUE";StatsFxns="doCoxME";rcmdbatch=4393;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=3;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;indivRRSeed=1;
+batch=1;trial="NT";gs="FALSE";ord="none";trialStartDate="2015-04-01";propInTrial=0.05;delayUnit=7;immunoDelay=21;vaccEff="NA";randVaccProperties="TRUE";vaccPropStrg="vaccProp1";HazTrajSeed=7;avHaz="xTime";returnEventTimes="TRUE";StatsFxns="doCoxME";rcmdbatch=4393;batchdirnm="BigResults/Equip-indivL";saveNm="Equip-indivL";nsims=3;reordLag=14;nboot=200;simNumStart=1;simNumEnd=85;indivRRSeed=1;
 }
 load('data/vaccProp1.Rdata')
 
