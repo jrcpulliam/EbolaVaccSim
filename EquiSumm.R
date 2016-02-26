@@ -18,10 +18,10 @@ vaccProp[, simNum:=1:length(vaccEff)]
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 
-## batchdirnm <- file.path('BigResults',thing)
-## fls <- list.files(batchdirnm, pattern=thing, full.names = T)
-## ## fls <- fls[grepl(2305,fls)]
-## eos <- extractOneSim(fls[1], indivLev=T, verbose = 0)
+batchdirnm <- file.path('BigResults',thing)
+fls <- list.files(batchdirnm, pattern=thing, full.names = T)
+## fls <- fls[grepl(2305,fls)]
+eos <- extractOneSim(fls[1], indivLev=T, verbose = 0)
 
 load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 

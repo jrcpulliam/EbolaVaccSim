@@ -42,11 +42,6 @@ collectRisks <- function(blah) {
 }
 
 collectHazards <- function(blah) {
-    ## **DOES NOT WORK** right-censoring: for weeks after someone has been infected, set wt to 0
-    ##    blah$wt <- 1
-    ##    blah[,wt:=1-as.numeric(1:50>which(infected==1)),list(id,s)]
-
-
     blah[,hazC:=iHaz*wt] ## create censored hazards based on censorship
     ## Option 1: average hazards, then calculate risk
     simHazH <- blah[,list('haz'=sum(hazC)),list(id,s)] ## sum censored hazards for each individual-simulation

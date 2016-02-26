@@ -182,22 +182,29 @@ finInfoFxn <- function(parms) {
 }
 
 indivLevRes <- function(parms) within(parms, {
-    Spop <- pop[,list(indiv,cluster, Oi, Oc, indivRR)] ## indiv chars
-    SpopH <- popH[idByClus==1,list(cluster, Oc, day, Date, clusHaz)] ## cluster chars
+    SpopH <- popH[idByClus==1,list(Oc, day, Date, clusHaz)] ## cluster chars
     toDo <- c('pop','EVpop')
     if(!doTrial)   toDo <- 'pop'
     for(tmpnm in toDo) {
-        tmp <- get(tmpnm)
-        tmpSM <- tmp[,list(indiv, vaccDay, infectDay, SAE)] ## indiv events
-        assign(paste0('S',tmpnm,'Events'), tmpSM)
+            tmp <- get(tmpnm)
+            tmpH <- get(paste0(tmpnm,'H'))
+            tmpH[,indivHazVacc := indivHaz * c(rep(1, sum(!immune)), rep(1-vaccEff, sum(immune))), indiv]
+            tmp <- merge(tmp, tmpH[, list(cumHaz = sum(indivHazVacc)), indiv], by = 'indiv')
+            tmpSM <- tmp[,list(indiv, cluster, Oi, Oc, indivRR, vaccDay, infectDay, SAE, cumHaz)] ## indiv events
+            assign(paste0('S',tmpnm), tmpSM)
+        }
+    if(doTrial) {## merge EV with no_EV
+        Spop <- merge(Spop, SEVpop[,list(indiv, vaccDay, infectDay, SAE, cumHaz)], suffixes = c('','_EV'), by = c('indiv'))
+        rm(SEVpop)
     }
+    rm(tmp, tmpH, tmpSM)
 })
 
 simNtrials <- function(batch = 1, parms=makeParms(), N = 2, 
                        returnEventTimes=T, simNums = ((batch-1)*nsims + 1):((batch-1)*nsims + N),
                        verbFreq=10, vaccProp=NA) {
     finInfo <- finMods <- data.frame(NULL)
-    SpopEvents <- SEVpopEvents <- SpopH <- Spop <- data.table()
+    SpopH <- Spop <- data.table()
     for(ss in 1:N) {
         simNum <- simNums[ss]
         set.seed(simNum)
@@ -229,14 +236,12 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         if(returnEventTimes) {
             Spop <- rbind(Spop, data.table(sim=ss, simNum=simNum, res$Spop))
             SpopH <- rbind(SpopH, data.table(sim=ss, simNum=simNum, res$SpopH))
-            SpopEvents <- rbind(SpopEvents, data.table(sim=ss, simNum=simNum, res$SpopEvents))
-            if(res$doTrial) SEVpopEvents <- rbind(SEVpopEvents, data.table(sim=ss, simNum=simNum, res$SEVpopEvents))
         }
         ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-    Spops <- list(Spop=Spop,SpopH=SpopH, SpopEvents=SpopEvents, SEVpopEvents=SEVpopEvents)
+    Spops <- list(Spop=Spop,SpopH=SpopH)
     return(list(finMods=finMods, finInfo=finInfo, Spops = Spops))
 }
 
