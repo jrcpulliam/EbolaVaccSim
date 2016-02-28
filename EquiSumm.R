@@ -229,8 +229,12 @@ Spop[,cumRisk:=1-exp(-cumHaz)]
 Spop[,cumRisk_EV:=1-exp(-cumHaz_EV)]
 
 ## table by individual the average infection risk in each design
-irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) , indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
-             list(pid,Oi)]
+irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
+                      , inf = mean(cumRisk), inf_EV = mean(cumRisk_EV)
+                      ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
+                 list(pid,Oi)]
+
+
 irskCond <- Spop[!lab %in% c('VR','NT','SWCT'), ## conditional on control/vacc randomization assignment
              list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
              list(pid,Oi,arm)]

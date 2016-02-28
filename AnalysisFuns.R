@@ -188,8 +188,9 @@ indivLevRes <- function(parms) within(parms, {
     for(tmpnm in toDo) {
             tmp <- get(tmpnm)
             tmpH <- get(paste0(tmpnm,'H'))
+            ## remember hazards are daily so multiply time unit
             tmpH[,indivHazVacc := indivHaz * c(rep(1, sum(!immune)), rep(1-vaccEff, sum(immune))), indiv]
-            tmp <- merge(tmp, tmpH[, list(cumHaz = sum(indivHazVacc)), indiv], by = 'indiv')
+            tmp <- merge(tmp, tmpH[, list(cumHaz = sum(indivHazVacc*hazIntUnit)), indiv], by = 'indiv')
             tmpSM <- tmp[,list(indiv, cluster, Oi, Oc, indivRR, vaccDay, infectDay, SAE, cumHaz)] ## indiv events
             assign(paste0('S',tmpnm), tmpSM)
         }
