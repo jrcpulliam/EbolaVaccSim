@@ -26,8 +26,6 @@ dir.create(figdir)
 
 load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
-## nbtd <- parmsMat[tid==37] ##propInTrial==.05 & avHaz=='xClus' & trialStartDate=='2014-10-01'
-
 unique(parmsMat[avHaz=='xTime' & propInTrial==c(.05) & trialStartDate==c('2014-10-01'), list(avHaz, tid)])
 nbtd <- parmsMat[tid==21,rcmdbatch]
 
@@ -38,172 +36,9 @@ resList <- procResList(resList, verb=0)
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 names(resList)
 
-attach(resList)
-names(resList)
-
-ltys <- labsToShow <- finit[, levels(lab)]
-names(ltys) <- ltys
-ltys[c('RCT-gs-rp','SWCT')] <- 1; ltys[c('VR','NT')] <- 2; ltys[c('RCT','RCT-gs','RCT-rp')] <- 3 
-class(ltys) <- 'numeric'
-cols <- c("NT"='red', "RCT"='blue', "SWCT"='orange', "VR"='dark green', "RCT-gs"='magenta', "RCT-rp"='purple', "RCT-gs-rp" = 'dodger blue')
-
-####################################################################################################
-## set up hazard trajectories
-rect <- data.table(xmin=as.Date(finit[,unique(trialStartDate)]), ymin=-Inf, ymax=Inf)
-rect[,xmax :=xmin+24*7]
-eb <- theme(
-    ## axis.line=element_blank(),axis.text.x=element_blank(),
-    #axis.text.y=element_blank(),
-    axis.ticks=element_blank(),
-
-    axis.title.x=element_blank(),
-    axis.title.y=element_blank(),legend.position="none",
-    panel.background=element_blank(),
-    panel.border=element_blank(),panel.grid.major=element_blank(),
-    panel.grid.minor=element_blank(),plot.background=element_blank())
-## HazT Plot
-ip0 <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date(limits=as.Date(c('2014-08-01','2015-10-01'))) + labs(ylab='relative hazard')
-ip <- ip0 + eb + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
-
-####################################################################################################
-## power vs infections averted
-
-infAvertPow <- finit[grepl('Final',cat) & trial!='NT', list(.N, pow = mean(vaccGood), infAvert = mean(infAvert), 
-                         infAvertProp = mean(infAvertProp)), ## infAvertableProp = mean(infAvertableProp, na.rm=T)), 
-                     list(propInTrial, trialStartDate, cat, lab, avHaz)] 
-infAvertPow[lab=='VR', pow:=0]
-infAvertLab <- "infections averted relative to not performing any trial"
-
-ftmp <- finit[grepl('Final',cat) & avHaz=='' & trial!='NT']
-ftmp$catn <- factor(ftmp$cat)
-ftmp[, catn:=factor(catn, labels = c('no rollout','rollout'))]
-ftmp[,.N, list(propInTrial, trialStartDate, cat, lab, avHaz)]
-tmp <- ftmp[lab %in% c('VR','NT')]
-tmp[,cat:='allFinal_noEV']
-tmp[,catn:='no rollout']
-ftmp <- rbind(ftmp,tmp)
-
-## density of infections averted by endtime, trial start date & % in trial
-nmtmp <- 'infAvert dens .1 2014-10 Pos.pdf'
-pdf(file.path(figdir, nmtmp), w=10, h = 8)
-p <- ggplot(ftmp[posv==T & trialStartDate=='2014-10-01' & propInTrial==.1], aes(infAvert, colour = lab, linetype = lab)) +
-    geom_density() + facet_grid(~catn) + 
-        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + xlab(infAvertLab)
-print(p)
-graphics.off()
-
-## density of infections averted by endtime, trial start date & % in trial
-for(ii in 1:2) {
-    if(ii==1) {
-        ft <- ftmp[posv==T]
-        nmtmp <- 'infAvert dens Pos.pdf'
-    }else{
-        ft <- ftmp
-        nmtmp <- 'infAvert dens.pdf'
-    }        
-    pdf(file.path(figdir, nmtmp), w=10, h = 8)
-    for(jj in 1:4) {
-        ts <- ft[,unique(trialStartDate)][jj]
-        p <- ggplot(ft[trialStartDate==ts], aes(infAvert, colour = lab, linetype = lab)) +
-            geom_density() + labs(title=paste0('trial starts ', ts)) +
-                ## facet_wrap(~propInTrial, ncol=1) +
-                facet_grid(catn~propInTrial) +                 
-                    scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-                                        #                scale_x_continuous(limits=c(-100,600)) + 
-                        xlab(infAvertLab)
-        ip1 <- ip + geom_rect(data=rect[jj], aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
-        multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
-    }
-    graphics.off()
-}
-
-ymaxHaz <- hazT[,max(clusHaz)]
-rect[,ymax:=ymaxHaz*c(1,.9,.8,.7)]
-ip1 <- ip0 + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
-
-## ethicline contours
-tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
-ias <- pretty(tmp$infAvert_EV, n = 50)
-pows <- seq(0,1,l=50)
-contt <- data.table(expand.grid(ia=ias, pow=pows))
-for(ii in 1:3) {
-    infPpow <- c(100, 200, 300)[ii]
-    contt[, merit:= ia/infPpow + pow] ## every infPpow infections is worth 10% power
-    contt[pow<.3, merit:= ia/infPpow+.3] ## don't penalize less power under 30% power since it's so insignificant anyways
-    ## Basic plot
-    jpeg(file.path(figdir, paste0('infAvert pow', infPpow/10, '.jpeg')), w = 10, h = 8, units = 'in', res = 200)
-    p <- ggplot() +
-        ## fill
-        geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "beige", high = "brown") +
-            stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) +
-                ## points
-                geom_point(data = tmp, aes(infAvert_EV, pow, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
-                    facet_grid(propInTrial~trialStartDate) + 
-                        scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
-                            xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +
-                                ## isoclines
-                                geom_segment(data = tmp[lab=='VR'],
-                                             aes(x = infAvert, y = .3, xend = 0, yend = .3+1/infPpow*infAvert)) +
-                                                 geom_segment(data = tmp[lab=='VR'],
-                                                              aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
-                                                                  coord_cartesian(ylim=c(0,1)) + guides(size=F) +
-                                                                      labs(title=paste(infPpow/10, 'infections := 10% power \n<30% power := negligible'))
-    print(multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1)))
-    graphics.off()
-}
-
-tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
-## by Proportion of infections averted
-pdf(file.path(figdir, 'infAvertProp pow.pdf'), w = 10, h = 8)
-    p <- ggplot(tmp, aes(infAvertProp, pow, shape = lab, colour = lab, linetype = lab)) +
-        geom_point() + facet_grid(propInTrial~trialStartDate) + 
-            scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
-                        xlab(paste('proportion of ', infAvertLab)) +
-                            geom_vline(aes(xintercept=infAvertProp), data = tmp[lab=='VR'], col = 'dark green')
-multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
-dev.off()
-
-####################################################################################################
-## individual level stuff
-
-####################################################################################################
-## fill in all hazard levels just so there aren't any missing ones, which can mess with things later
-infAvertLab <- "infections averted relative to not performing any trial"
-
-pdf(file.path(figdir, 'risk-stratified EV all trials & dates.pdf'), w = 10, h = 8)
-tmp <- infAvertPow[avHaz=='' & trialStartDate=='2014-10-01'& !ihaz0Cat %in% levels(ihaz0Cat)[c(1:6,12:13)]]
-p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, shape = lab, colour=lab, linetype=lab)) + facet_grid(ihaz0Cat~propInTrial) + 
-    xlab('infections spent (EV)') + ylab('power fraction within strata')
-print(p)
-graphics.off()
-
-####################################################################################################
-## Compare RCT-gs-rp vs SWCT 
-pdf(file.path(figdir, 'PoP vs infSpent RCT-gs-rp vs SWCT.pdf'), w = 8, h = 5)
-tmp <- infAvertPow[avHaz=='' & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,12:13)] & propInTrial==.05 & lab %in% c('SWCT','RCT-gs-rp')]
-p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, colour=ihaz0Cat, shape=lab, size = 2)) + facet_grid(lab~trialStartDate) + 
-    xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
-print(p)
-graphics.off()
-
-## no end vaccination
-pdf(file.path(figdir, 'PoP_noEV vs infSpent_noEV RCT-gs-rp vs SWCT.pdf'), w = 8, h = 5)
-p <- ggplot(tmp) + geom_point(aes(infSpent_noEV, powfrac_noEV, colour=ihaz0Cat, shape=lab, size = 2)) + facet_wrap(~trialStartDate, nc=4) + 
-    xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
-print(p)
-graphics.off()
-
-## add error bars to inf spent & frac of information
-## try fraction of information per person on y-axis
-## show inf spent/averted on same plot
-
-## equipoise perturbed plot
-## histogram within strata groups
-## look at risk by person/strata by treatment assignment for trials
-## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
-
 ####################################################################################################
 ####################################################################################################
+
 attach(resList)
 
 punq <- unique(parms[,-1,with=F])
@@ -225,27 +60,26 @@ Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]]
 setkey(Spop, Oi, pid, nbatch, simNum)
 Spop[,quantile(indivRR, c(.025,.975))]
 
-Spop[,cumRisk:=1-exp(-cumHaz)]
-Spop[,cumRisk_EV:=1-exp(-cumHaz_EV)]
+Spop[,cumRisk:=1-exp(-cumHaz*7)] ## remove *7 next time it's run ith hazIntUnit*********
+Spop[,cumRisk_EV:=1-exp(-cumHaz_EV*7)]
 
 ## table by individual the average infection risk in each design
 irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
-                      , inf = mean(cumRisk), inf_EV = mean(cumRisk_EV)
                       ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
                  list(pid,Oi)]
 
-
 irskCond <- Spop[!lab %in% c('VR','NT','SWCT'), ## conditional on control/vacc randomization assignment
-             list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
-             list(pid,Oi,arm)]
+                 list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV)
+                    , indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
+                 list(pid,Oi,arm)]
 ## maximum spent given worst possible vaccination order (only for random ordered trials)
 irskMax <- Spop[!lab %in% c('VR','NT') & arm=='vacc' & !grepl('rp',lab) & vaccDay==max(vaccDay[arm=='vacc']),
                 list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], arm='vacc', type='max'),
                 list(pid,Oi,vaccDay)]
 ## conditional on exact vaccination day (note borrowing control info across all vaccDay==Inf, i.e. whether the cluster they're in is vaccinated early/late)
 irskCondvd <- Spop[!lab %in% c('VR','NT'),
-                list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type='condvd'),
-                list(pid,Oi,arm,vaccDay)]
+                   list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type='condvd'),
+                   list(pid,Oi,arm,vaccDay)]
 
 irsk <- rbindlist(list(irskMarg, irskCond, irskMax, irskCondvd), use.names=T, fill=T)
 setkey(irsk, Oi, pid)
@@ -262,6 +96,9 @@ irsk[, spent_EV:= inf_EV - inf[lab=='VR'], list(Oi)]
 irsk[, avert   :=    inf[lab=='NT'] - inf, list(Oi)]
 irsk[, avert_EV:= inf[lab=='NT'] - inf_EV, list(Oi)]
 setkey(irsk, Oi, pid)
+save(irsk, file=file.path('BigResults',paste0(thing, 'irsk .Rdata')))
+
+load(file=file.path('BigResults',paste0(thing, 'irsk .Rdata')))
 
 irsk[Oi==1]
 
@@ -304,6 +141,8 @@ iord[,ordShowArm:=1:6000]
 irsk$ordShowArm <- NULL
 irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
 
+irsk[lab=='SWCT', ordShowArm:=ordShow]
+
 irsk <- irsk[order(Oc,indivRR,lab)]
 irsk[type=='cond' &  !lab %in% c('VR','NT') & pid==2 & Oi==1]
 
@@ -318,13 +157,17 @@ irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,6000)
 irsk[clusVD][type=='condvd' & 'SWCT'==lab]
 setkey(irsk, Oi, pid)
 
+wid <- 6.5
+heig <- 4
+res <- 300
+
 ## histogram of risk
-jpeg(file.path(figdir, paste0('irsk.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
+jpeg(file.path(figdir, paste0('irsk.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(irsk[lab=='NT'], aes(x=inf)) + geom_histogram() + xlab('cumulative risk of infection') 
 graphics.off()
 
 ## density lines risk spent
-jpeg(file.path(figdir, paste0('irsk spent.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
+jpeg(file.path(figdir, paste0('irsk spent.jpeg')), w = wid, h = heig, units = 'in', res = res)
 adj <- 1.5
 p <- ggplot() + 
     geom_line(data = irsk[type=='marg'], aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
@@ -332,7 +175,7 @@ p <- ggplot() +
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
 graphics.off()
 
-jpeg(file.path(figdir, paste0('irsk spent Max.jpeg')), w = 6.5, h = 4, units = 'in', res = 200)
+jpeg(file.path(figdir, paste0('irsk spent Max.jpeg')), w = wid, h = heig, units = 'in', res = res)
 p <- ggplot() + 
     geom_line(data = irsk[(type=='max' & lab=='SWCT') | (type=='cond' & arm=='cont' & lab=='RCT-gs-rp')],
               aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
@@ -340,40 +183,67 @@ p <- ggplot() +
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
 graphics.off()
 
-tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T)]
-res <- 300
-
-####################################################################################################
-## spent
-jpeg(file.path(figdir, paste0('irsk spent bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(tmp, aes(x=ordShowArm, y=spent, fill=armShown)) + ggtitle('risk spent, conditional on arm without EV') +
-    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.15) + ylab('risk') + xlab('individual')
+## infection risk
+jpeg(file.path(figdir, paste0('irsk inf bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, col=factor(cluster))) +  ylab('cumulative infection risk \n(over year after trial start)') + xlab('individual') +
+    geom_bar(stat='identity', width=1) + ylim(0,1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
+        theme(legend.position="top")
 graphics.off()
 
-jpeg(file.path(figdir, paste0('irsk spentEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+## Conditional on arms & order randomization
+tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T)]
+####################################################################################################
+## spent
+ylim <- tmp[,range(spent,spent_EV)]
+jpeg(file.path(figdir, paste0('irsk spent bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(tmp, aes(x=ordShowArm, y=spent, fill=armShown)) + ggtitle('risk spent, conditional on arm without EV') +
+    geom_bar(stat='identity', width=1) + facet_wrap(~lab, ncol=2) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
+graphics.off()
+
+jpeg(file.path(figdir, paste0('irsk spentEV bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(tmp, aes(x=ordShowArm, y=spent_EV, fill=armShown)) + ggtitle('risk spent, conditional on arm with EV') +
-    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.15) + ylab('risk')+ xlab('individual')
+    geom_bar(stat='identity', width=1) + facet_wrap(~lab, ncol=2) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
 graphics.off()
 
 ## avert
-jpeg(file.path(figdir, paste0('irsk avert bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+ylim <- tmp[,range(avert,avert_EV)]
+jpeg(file.path(figdir, paste0('irsk avert bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(tmp, aes(x=ordShowArm, y=avert, fill=armShown)) + ggtitle('risk averted, conditional on arm without EV') +
-    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.15) + ylab('risk')+ xlab('individual')
+    geom_bar(stat='identity', width=1) + facet_wrap(~lab, ncol=2) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
 graphics.off()
 
-jpeg(file.path(figdir, paste0('irsk avertEV bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+jpeg(file.path(figdir, paste0('irsk avertEV bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(tmp, aes(x=ordShowArm, y=avert_EV, fill=armShown)) + ggtitle('risk averted, conditional on arm with EV') +
-    geom_bar(stat='identity') + facet_wrap(~lab, ncol=2) + ylim(-.05,.15) + ylab('risk')+ xlab('individual')
+    geom_bar(stat='identity', width=1) + facet_wrap(~lab, ncol=2) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
 graphics.off()
 ####################################################################################################
 
-## inf
-
-jpeg(file.path(figdir, paste0('irsk inf bars.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
-ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, col=factor(cluster))) +  ylab('cumulative infection risk \n(over year after trial start)') + xlab('individual') +
-    geom_bar(stat='identity') + ylim(0,1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
-        theme(legend.position="top")
+## marginal on arms & order randomization
+cols <- c('w/o EV' = 'dodger blue', 'w/ EV' = 'green')
+tmp <- irsk[type=='marg' & !lab %in% c('NT','VR')]
+####################################################################################################
+## spent
+ylim <- tmp[,range(spent,spent_EV)]
+jpeg(file.path(figdir, paste0('irsk spent bars MARG.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(tmp) + ggtitle('risk spent, marginal on randomization') +
+        geom_bar(aes(x=ordShow, y=spent, fill=ev), data.table(tmp, ev = 'w/o EV'), stat='identity', width=1) +
+        geom_bar(aes(x=ordShow, y=spent_EV, fill=ev), data.table(tmp[lab!='SWCT'], ev = 'w/ EV'), stat='identity', width=1) +
+        scale_fill_manual(values=cols) +
+        facet_wrap(~lab, ncol=2) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
 graphics.off()
+
+## avert
+ylim <- c(0, tmp[,max(avert,avert_EV)])
+jpeg(file.path(figdir, paste0('irsk avert bars MARG.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(tmp) + ggtitle('risk averted, marginal on randomization') +
+    geom_bar(aes(x=ordShow, y=avert_EV, fill=ev), data.table(tmp[lab!='SWCT'], ev = 'w/ EV'), stat='identity', width=1) +
+    geom_bar(aes(x=ordShow, y=avert, fill=ev), data.table(tmp, ev = 'w/o EV'), stat='identity', width=1) +
+        scale_fill_manual(values=cols) +
+            facet_wrap(~lab, ncol=2) +
+                ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
+graphics.off()
+
+
 
 ##
 SpopH[,cluster:=factor(cluster)]
@@ -384,7 +254,7 @@ SpopH <- merge(SpopH, cOrd[,list(Oc, OcOrd)], by = 'Oc')
 
 SpopH[simNum==1 & nbatch==3073]
 
-jpeg(file.path(figdir, paste0('haz traj.jpeg')), w = 6.5, h = 4, units = 'in', res = res)
+jpeg(file.path(figdir, paste0('haz traj.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(SpopH[simNum==1 & nbatch==3073], aes(Date, clusHaz*10^5, group = OcOrd, col=OcOrd)) + geom_line() + theme(legend.position="top") +
      theme(legend.key.size = unit(.1, "cm")) + ylab('daily infection hazard (per 100,000)') + ggtitle('mean cluster hazard trends')
 graphics.off()
@@ -398,3 +268,169 @@ prsk
 finTrials
 
 finit
+
+
+## attach(resList)
+## names(resList)
+
+## ltys <- labsToShow <- finit[, levels(lab)]
+## names(ltys) <- ltys
+## ltys[c('RCT-gs-rp','SWCT')] <- 1; ltys[c('VR','NT')] <- 2; ltys[c('RCT','RCT-gs','RCT-rp')] <- 3 
+## class(ltys) <- 'numeric'
+## cols <- c("NT"='red', "RCT"='blue', "SWCT"='orange', "VR"='dark green', "RCT-gs"='magenta', "RCT-rp"='purple', "RCT-gs-rp" = 'dodger blue')
+
+## ####################################################################################################
+## ## set up hazard trajectories
+## rect <- data.table(xmin=as.Date(finit[,unique(trialStartDate)]), ymin=-Inf, ymax=Inf)
+## rect[,xmax :=xmin+24*7]
+## eb <- theme(
+##     ## axis.line=element_blank(),axis.text.x=element_blank(),
+##     #axis.text.y=element_blank(),
+##     axis.ticks=element_blank(),
+
+##     axis.title.x=element_blank(),
+##     axis.title.y=element_blank(),legend.position="none",
+##     panel.background=element_blank(),
+##     panel.border=element_blank(),panel.grid.major=element_blank(),
+##     panel.grid.minor=element_blank(),plot.background=element_blank())
+## ## HazT Plot
+## ip0 <- ggplot(hazT, aes(x=Date, y=clusHaz, col=as.factor(cluster))) + geom_line() + eb + scale_x_date(limits=as.Date(c('2014-08-01','2015-10-01'))) + labs(ylab='relative hazard')
+## ip <- ip0 + eb + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+
+## ####################################################################################################
+## ## power vs infections averted
+
+## infAvertPow <- finit[grepl('Final',cat) & trial!='NT', list(.N, pow = mean(vaccGood), infAvert = mean(infAvert), 
+##                          infAvertProp = mean(infAvertProp)), ## infAvertableProp = mean(infAvertableProp, na.rm=T)), 
+##                      list(propInTrial, trialStartDate, cat, lab, avHaz)] 
+## infAvertPow[lab=='VR', pow:=0]
+## infAvertLab <- "infections averted relative to not performing any trial"
+
+## ftmp <- finit[grepl('Final',cat) & avHaz=='' & trial!='NT']
+## ftmp$catn <- factor(ftmp$cat)
+## ftmp[, catn:=factor(catn, labels = c('no rollout','rollout'))]
+## ftmp[,.N, list(propInTrial, trialStartDate, cat, lab, avHaz)]
+## tmp <- ftmp[lab %in% c('VR','NT')]
+## tmp[,cat:='allFinal_noEV']
+## tmp[,catn:='no rollout']
+## ftmp <- rbind(ftmp,tmp)
+
+## ## density of infections averted by endtime, trial start date & % in trial
+## nmtmp <- 'infAvert dens .1 2014-10 Pos.pdf'
+## pdf(file.path(figdir, nmtmp), w=10, h = 8)
+## p <- ggplot(ftmp[posv==T & trialStartDate=='2014-10-01' & propInTrial==.1], aes(infAvert, colour = lab, linetype = lab)) +
+##     geom_density() + facet_grid(~catn) + 
+##         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + xlab(infAvertLab)
+## print(p)
+## graphics.off()
+
+## ## density of infections averted by endtime, trial start date & % in trial
+## for(ii in 1:2) {
+##     if(ii==1) {
+##         ft <- ftmp[posv==T]
+##         nmtmp <- 'infAvert dens Pos.pdf'
+##     }else{
+##         ft <- ftmp
+##         nmtmp <- 'infAvert dens.pdf'
+##     }        
+##     pdf(file.path(figdir, nmtmp), w=10, h = 8)
+##     for(jj in 1:4) {
+##         ts <- ft[,unique(trialStartDate)][jj]
+##         p <- ggplot(ft[trialStartDate==ts], aes(infAvert, colour = lab, linetype = lab)) +
+##             geom_density() + labs(title=paste0('trial starts ', ts)) +
+##                 ## facet_wrap(~propInTrial, ncol=1) +
+##                 facet_grid(catn~propInTrial) +                 
+##                     scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+##                                         #                scale_x_continuous(limits=c(-100,600)) + 
+##                         xlab(infAvertLab)
+##         ip1 <- ip + geom_rect(data=rect[jj], aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+##         multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
+##     }
+##     graphics.off()
+## }
+
+## ymaxHaz <- hazT[,max(clusHaz)]
+## rect[,ymax:=ymaxHaz*c(1,.9,.8,.7)]
+## ip1 <- ip0 + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), fill="grey20", border=NA, alpha=0.2, inherit.aes = FALSE)
+
+## ## ethicline contours
+## tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
+## ias <- pretty(tmp$infAvert_EV, n = 50)
+## pows <- seq(0,1,l=50)
+## contt <- data.table(expand.grid(ia=ias, pow=pows))
+## for(ii in 1:3) {
+##     infPpow <- c(100, 200, 300)[ii]
+##     contt[, merit:= ia/infPpow + pow] ## every infPpow infections is worth 10% power
+##     contt[pow<.3, merit:= ia/infPpow+.3] ## don't penalize less power under 30% power since it's so insignificant anyways
+##     ## Basic plot
+##     jpeg(file.path(figdir, paste0('infAvert pow', infPpow/10, '.jpeg')), w = 10, h = 8, units = 'in', res = 200)
+##     p <- ggplot() +
+##         ## fill
+##         geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "beige", high = "brown") +
+##             stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) +
+##                 ## points
+##                 geom_point(data = tmp, aes(infAvert_EV, pow, shape = lab, colour = lab, linetype = lab, size = 1.5)) + 
+##                     facet_grid(propInTrial~trialStartDate) + 
+##                         scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) + 
+##                             xlab(infAvertLab) + theme(legend.position='top', legend.box='horizontal') +
+##                                 ## isoclines
+##                                 geom_segment(data = tmp[lab=='VR'],
+##                                              aes(x = infAvert, y = .3, xend = 0, yend = .3+1/infPpow*infAvert)) +
+##                                                  geom_segment(data = tmp[lab=='VR'],
+##                                                               aes(x = infAvert, y = .3, xend = infAvert, yend = 0)) +  
+##                                                                   coord_cartesian(ylim=c(0,1)) + guides(size=F) +
+##                                                                       labs(title=paste(infPpow/10, 'infections := 10% power \n<30% power := negligible'))
+##     print(multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1)))
+##     graphics.off()
+## }
+
+## tmp <- infAvertPow[cat=='allFinalEV' & lab!='NT' & avHaz=='']
+## ## by Proportion of infections averted
+## pdf(file.path(figdir, 'infAvertProp pow.pdf'), w = 10, h = 8)
+##     p <- ggplot(tmp, aes(infAvertProp, pow, shape = lab, colour = lab, linetype = lab)) +
+##         geom_point() + facet_grid(propInTrial~trialStartDate) + 
+##             scale_color_manual(values=cols) + scale_linetype_manual(values = ltys) +
+##                         xlab(paste('proportion of ', infAvertLab)) +
+##                             geom_vline(aes(xintercept=infAvertProp), data = tmp[lab=='VR'], col = 'dark green')
+## multiplot(ip1, p, layout = matrix(c(1, rep(2,3)), ncol=1))
+## dev.off()
+
+## ####################################################################################################
+## ## individual level stuff
+
+## ####################################################################################################
+## ## fill in all hazard levels just so there aren't any missing ones, which can mess with things later
+## infAvertLab <- "infections averted relative to not performing any trial"
+
+## pdf(file.path(figdir, 'risk-stratified EV all trials & dates.pdf'), w = 10, h = 8)
+## tmp <- infAvertPow[avHaz=='' & trialStartDate=='2014-10-01'& !ihaz0Cat %in% levels(ihaz0Cat)[c(1:6,12:13)]]
+## p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, shape = lab, colour=lab, linetype=lab)) + facet_grid(ihaz0Cat~propInTrial) + 
+##     xlab('infections spent (EV)') + ylab('power fraction within strata')
+## print(p)
+## graphics.off()
+
+## ####################################################################################################
+## ## Compare RCT-gs-rp vs SWCT 
+## pdf(file.path(figdir, 'PoP vs infSpent RCT-gs-rp vs SWCT.pdf'), w = 8, h = 5)
+## tmp <- infAvertPow[avHaz=='' & !ihaz0Cat %in% levels(ihaz0Cat)[c(1:4,12:13)] & propInTrial==.05 & lab %in% c('SWCT','RCT-gs-rp')]
+## p <- ggplot(tmp) + geom_point(aes(infSpent_EV, powfrac_EV, colour=ihaz0Cat, shape=lab, size = 2)) + facet_grid(lab~trialStartDate) + 
+##     xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
+## print(p)
+## graphics.off()
+
+## ## no end vaccination
+## pdf(file.path(figdir, 'PoP_noEV vs infSpent_noEV RCT-gs-rp vs SWCT.pdf'), w = 8, h = 5)
+## p <- ggplot(tmp) + geom_point(aes(infSpent_noEV, powfrac_noEV, colour=ihaz0Cat, shape=lab, size = 2)) + facet_wrap(~trialStartDate, nc=4) + 
+##     xlab('infections spent (EV)') + ylab('power fraction within strata') + scale_colour_brewer(palette='Reds') 
+## print(p)
+## graphics.off()
+
+
+## add error bars to inf spent & frac of information
+## try fraction of information per person on y-axis
+## show inf spent/averted on same plot
+
+## equipoise perturbed plot
+## histogram within strata groups
+## look at risk by person/strata by treatment assignment for trials
+## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
