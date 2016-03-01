@@ -47,8 +47,8 @@ parmsMatSWCT <- as.data.table(expand.grid(
   , avHaz = c('', 'xTime','xClus','xClusxTime')
 ))
 parmsMatCFs <- as.data.table(expand.grid(
-    batch =  1 ## only one for CFs
-  , nsims = 1 ## 
+    batch =  1:numEach ## do for average vacc eff
+  , nsims = nsims ## 
   , trial = c('VR','NT')
   , gs = F
   , ord = 'TU'
@@ -101,6 +101,7 @@ tidsDo <- tpop[propInTrial == c(.05) & trialStartDate == c('2014-10-01') & avHaz
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
+#parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
 
 ##parmsMatDo <- parmsMatDo[!trial %in% c('NT','VR','SWCT')]
 nrow(parmsMatDo)

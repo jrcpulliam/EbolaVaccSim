@@ -60,14 +60,13 @@ Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]]
 setkey(Spop, Oi, pid, nbatch, simNum)
 Spop[,quantile(indivRR, c(.025,.975))]
 
-Spop[,cumRisk:=1-exp(-cumHaz*7)] ## remove *7 next time it's run ith hazIntUnit*********
-Spop[,cumRisk_EV:=1-exp(-cumHaz_EV*7)]
+Spop[,cumRisk:=1-exp(-cumHaz)] 
+Spop[,cumRisk_EV:=1-exp(-cumHaz_EV)]
 
 ## table by individual the average infection risk in each design
 irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
                       ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
                  list(pid,Oi)]
-
 irskCond <- Spop[!lab %in% c('VR','NT','SWCT'), ## conditional on control/vacc randomization assignment
                  list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV)
                     , indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
@@ -167,14 +166,16 @@ ggplot(irsk[lab=='NT'], aes(x=inf)) + geom_histogram() + xlab('cumulative risk o
 graphics.off()
 
 ## density lines risk spent
+tmp <- irsk[type=='marg' & !lab%in%c('NT','VR')]
 jpeg(file.path(figdir, paste0('irsk spent.jpeg')), w = wid, h = heig, units = 'in', res = res)
-adj <- 1.5
+adj <- 2
 p <- ggplot() + 
-    geom_line(data = irsk[type=='marg'], aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
-              scale_color_manual(values=cols) + xlim(.005, .3) + ylim(0,32) + xlab('per capita infection risk spent')  + ggtitle('average risk spent per individual')
+    geom_line(data=tmp, aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
+              scale_color_manual(values=cols)  + xlab('per capita infection risk spent')  + ggtitle('average risk spent per individual') #+ xlim(.005, .3) + ylim(0,32)
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
 graphics.off()
 
+## redo below for better index***
 jpeg(file.path(figdir, paste0('irsk spent Max.jpeg')), w = wid, h = heig, units = 'in', res = res)
 p <- ggplot() + 
     geom_line(data = irsk[(type=='max' & lab=='SWCT') | (type=='cond' & arm=='cont' & lab=='RCT-gs-rp')],
@@ -219,7 +220,7 @@ graphics.off()
 ####################################################################################################
 
 ## marginal on arms & order randomization
-cols <- c('w/o EV' = 'dodger blue', 'w/ EV' = 'green')
+cols <- c('w/o EV' = 'dodger blue', 'w/ EV' = 'purple')
 tmp <- irsk[type=='marg' & !lab %in% c('NT','VR')]
 ####################################################################################################
 ## spent
@@ -243,7 +244,13 @@ ggplot(tmp) + ggtitle('risk averted, marginal on randomization') +
                 ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
 graphics.off()
 
+irsk[lab %in% c('RCT-rp', 'VR') & type=='marg', ]
+irsk[lab %in% c('RCT-rp') & spent < -.05 & type=='cond'& arm =='vacc' & Oi==12]
 
+Spop[Oi==12 & pid==3 & vaccDay<Inf, summary(vaccDay_EV)]
+Spop[Oi==12 & lab=='VR']# & vaccDay<Inf, summary(vaccDay_EV)]
+
+irsk[lab %in% c('RCT-rp') & spent < -.02 & type=='cond' & arm =='vacc', summary(indivRR)]
 
 ##
 SpopH[,cluster:=factor(cluster)]
