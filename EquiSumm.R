@@ -8,6 +8,9 @@ require(optiRum); require(RColorBrewer); require(boot); require(data.table); req
 moveFront <- function(dt, fnames) setcolorder(dt, c(fnames, names(dt)[!names(dt) %in% fnames]))
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
+wid <- 6.5
+heig <- 4
+res <- 300
 
 thing <- 'Equip-irsk'
 thing <- 'Equip-irskHybrid'
@@ -63,6 +66,33 @@ Spop[,quantile(indivRR, c(.025,.975))]
 Spop[,cumRisk:=1-exp(-cumHaz)] 
 Spop[,cumRisk_EV:=1-exp(-cumHaz_EV)]
 
+## Calculate risk spent so that can tabulate expected # of people spending a certain amount of risk in a given simulation
+Spop[, spent:= cumRisk - cumRisk[lab=='VR'],list(simNum, Oi)]
+Spop[, avert:= cumRisk[lab=='NT'] - cumRisk,list(simNum, Oi)]
+Spop[, spent_EV:= cumRisk_EV - cumRisk[lab=='VR'],list(simNum, Oi)]
+Spop[, avert_EV:= cumRisk[lab=='NT'] - cumRisk_EV,list(simNum, Oi)]
+## resList$Spop <- Spop
+## save(resList, file=file.path('BigResults',paste0(thing, '.Rdata')))
+
+## frequency distribution of risk spent for each simulation, then will get expected # of people within each risk spent bin across 2000 scenarios
+breaks <- seq(-.5, 1, by = .01)
+HpopInd <- Spop[!lab %in% c('VR','NT'), hist(spent, breaks=breaks, plot=F)[c('mids','counts')], list(pid, simNum)]
+HpopInd_EV <- Spop[!lab %in% c('VR','NT'), hist(spent_EV, breaks=breaks, plot=F)[c('mids','counts')], list(pid, simNum)]
+HpopInd <- merge(HpopInd, HpopInd_EV, by = c('pid','simNum','mids'), suffixes=c('','_EV'))
+rm(HpopInd_EV)
+Hpop <- HpopInd[, list(counts=median(counts), counts_EV=median(counts_EV)), list(pid, mids)]
+Hpop <- merge(Hpop, punq, by = 'pid')
+## save(resList, Hpop, file=file.path('BigResults',paste0(thing, '.Rdata')))
+
+
+jpeg(file.path(figdir, paste0('Hpop.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(Hpop[mids>=.005], aes(mids, counts, col=lab)) + geom_line() + xlim(0, .2) + ylim(0,2000)
+graphics.off()
+
+jpeg(file.path(figdir, paste0('Hpop_EV.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(Hpop[mids>=.005], aes(mids, counts_EV, col=lab)) + geom_line() + xlim(0, .2) + ylim(0,2000)
+graphics.off()
+
 ## table by individual the average infection risk in each design
 irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
                       ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
@@ -95,11 +125,9 @@ irsk[, spent_EV:= inf_EV - inf[lab=='VR'], list(Oi)]
 irsk[, avert   :=    inf[lab=='NT'] - inf, list(Oi)]
 irsk[, avert_EV:= inf[lab=='NT'] - inf_EV, list(Oi)]
 setkey(irsk, Oi, pid)
-save(irsk, file=file.path('BigResults',paste0(thing, 'irsk .Rdata')))
+save(irsk, file=file.path('BigResults',paste0(thing, 'irsk.Rdata')))
 
 load(file=file.path('BigResults',paste0(thing, 'irsk .Rdata')))
-
-irsk[Oi==1]
 
 ##########
 ## Examine results
@@ -147,7 +175,7 @@ irsk[type=='cond' &  !lab %in% c('VR','NT') & pid==2 & Oi==1]
 
 ## need exemplar SWCT: pick arbitrary example of cluster-day assignment to display
 ## **(later do probably do exemplars for all of them with exact same randomization throughout)
-clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),list(Oc = 1:20, vaccDay=unique(vaccDay))]
+clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),list(Oc = sample(1:20,20), vaccDay=unique(vaccDay))]
 setkey(clusVD, Oc, vaccDay)
 irsk[,exmpl:=F]
 
@@ -155,10 +183,6 @@ setkey(irsk, Oc, vaccDay)
 irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,6000)
 irsk[clusVD][type=='condvd' & 'SWCT'==lab]
 setkey(irsk, Oi, pid)
-
-wid <- 6.5
-heig <- 4
-res <- 300
 
 ## histogram of risk
 jpeg(file.path(figdir, paste0('irsk.jpeg')), w = wid, h = heig, units = 'in', res = res)
