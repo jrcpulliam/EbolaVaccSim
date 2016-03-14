@@ -82,8 +82,14 @@ HpopInd <- merge(HpopInd, HpopInd_EV, by = c('pid','simNum','mids'), suffixes=c(
 rm(HpopInd_EV)
 Hpop <- HpopInd[, list(counts=median(counts), counts_EV=median(counts_EV)), list(pid, mids)]
 Hpop <- merge(Hpop, punq, by = 'pid')
-## save(resList, Hpop, file=file.path('BigResults',paste0(thing, '.Rdata')))
-
+## Find the simulation with the most # of people above risk spent threshold
+threshold <- .02
+SpopThresh <- Spop[!lab %in% c('VR','NT'), list(above = sum(spent > threshold), above_EV = sum(spent_EV > threshold), .N), list(pid, simNum)]
+SpopWorst <- merge(SpopThresh[, list(above = max(above), above_EV = max(above_EV), .N), list(pid)], punq, by = 'pid')
+SpopWorst
+     
+## save(resList, Hpop, SpopWorst, file=file.path('BigResults',paste0(thing, '.Rdata')))
+## load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 
 jpeg(file.path(figdir, paste0('Hpop.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(Hpop[mids>=.005], aes(mids, counts, col=lab)) + geom_line() + xlim(0, .2) + ylim(0,2000)
@@ -91,6 +97,11 @@ graphics.off()
 
 jpeg(file.path(figdir, paste0('Hpop_EV.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(Hpop[mids>=.005], aes(mids, counts_EV, col=lab)) + geom_line() + xlim(0, .2) + ylim(0,2000)
+graphics.off()
+
+jpeg(file.path(figdir, paste0('Hpop by EV.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(Hpop[mids>=.005]) + geom_line(aes(mids, counts, col=lab)) +
+    geom_line(aes(mids, counts_EV, col=lab), linetype = 2) + xlim(.02-.005, .2) + ylim(0,500)
 graphics.off()
 
 ## table by individual the average infection risk in each design
@@ -292,13 +303,16 @@ graphics.off()
 
 ####################################################################################################
 ## spent vs power
-prsk <- Spop[, list(N=length(sim[Oi==1]), inf = mean(infectDay<Inf), inf_EV = mean(infectDay_EV<Inf),
-                    ninf = sum(infectDay<Inf)/length(sim[Oi==1]), ninf_EV = sum(infectDay_EV<Inf)/length(sim[Oi==1])), list(pid)]
-prsk
 
-finTrials
+ptab <- merge(finTrials[,!"sim", with=F], parms, by = 'nbatch')[, list(pid, lab, simNum, vaccEff, mean, lci, uci, vaccGood, vaccBad, stopped, cvr)]
 
-finit
+
+triSumm <- merge(SpopWorst, ptab[vaccEff>0 & pid < 6, list(power = mean(vaccGood)), list(pid)], by = 'pid')
+## **check why # of SWCT with posv is not the same as other designs** could be just running different sims?
+
+jpeg(file.path(figdir, paste0('pow trhes.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(triSumm, aes(above_EV, power, col = lab)) + geom_point() + ylim(0,1) + xlab(paste0('expected # subjects spending >', threshold, ' infection risk'))
+graphics.off()
 
 
 ## attach(resList)
