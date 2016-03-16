@@ -14,7 +14,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="FALSE";ord="TU";vaccEff="NA";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85
+pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="FALSE";ord="TU";vaccEff="NA";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85; DoIndivRRcat=T
 }
 load('data/vaccProp1.Rdata')
 

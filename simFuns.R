@@ -21,6 +21,8 @@ makeParms <- function(
   , cvClus=1 ##  variance in cluster-level hazards for gamma distribution
   , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
+  , DoIndivRRcat = F 
+  , indivRRcats = list(rr = c(1,5,10,30), prop = c(.55,.3,.1,.05))
   , vaccEff = .8
   , pSAE = 10^-4
   , maxDurationDay = 7*24 ## maximum duration end of trial (24 weeks default; 6 months) (trial can stop early though; e.g. endTrialDay)
@@ -152,12 +154,16 @@ setClusHaz <- function(parms) {
 setIndHaz <- function(parms=makePop()) within(parms, {
     if(verbose>10) browser()
     ## give every individual a lognormally distributed relative risk
-    if(!is.na(indivRRSeed)) { 
-        storedSeed <- .Random.seed
-        set.seed(indivRRSeed)
+    if(!as.logical(DoIndivRRcat)) {
+        if(!is.na(indivRRSeed)) { 
+            storedSeed <- .Random.seed
+            set.seed(indivRRSeed)
+        }
+        pop$indivRR <- rlnorm(numClus*clusSize, meanlog = 0, sdlog = sdLogIndiv)
+        if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
+    }else{ ## categorical individual heterogeneity
+        pop$indivRR <- sample(indivRRcats$rr, numClus*clusSize, replace=T, indivRRcats$prop)
     }
-    pop$indivRR <- rlnorm(numClus*clusSize, meanlog = 0, sdlog = sdLogIndiv)
-    if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     ## create popH which has weekly hazards for all individuals
     popH <- arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day)
     popH$indivHaz <- popH[, clusHaz*indivRR]
