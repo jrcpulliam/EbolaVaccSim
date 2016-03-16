@@ -11,10 +11,15 @@ sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
 wid <- 6.5
 heig <- 4
 res <- 300
+## Make Figure Folder
+figdir <- file.path('Figures', thing)
+dir.create(figdir)
 
-thing <- 'Equip-RRcat'## resList <- makeInfPow(resList, verb=2)
+## thing <- 'Equip-RRcat'
+thing <- 'Equip-irskHybrid'
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 names(resList)
+attach(resList)
 
 ####################################################################################################
 ####################################################################################################
@@ -23,13 +28,6 @@ cols <- punq$lab
 names(cols) <- cols
 cols <- c("NT"='red', "SWCT"='orange', "VR"='dark green', "RCT-gs"='dodger blue', "RCT"='dodger blue', "RCT-rp"='purple', "RCT-gs-rp" = 'purple')
 ## cols <- c("NT"='red', "SWCT"='orange', "VR"='dark green', "RCT-gs"='dodger blue', "RCT"='blue', "RCT-rp"='purple', "RCT-gs-rp" = 'magenta')
-
-attach(resList)
-## resList$Spop <- Spop
-## save(resList, file=file.path('BigResults',paste0(thing, '.Rdata')))
-     
-## save(resList, Hpop, SpopWorst, file=file.path('BigResults',paste0(thing, '.Rdata')))
-## load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 
 jpeg(file.path(figdir, paste0('Hpop.jpeg')), w = wid, h = heig, units = 'in', res = res)
 ggplot(Hpop[mids>=.005], aes(mids, counts, col=lab)) + geom_line() + xlim(0, .2) + ylim(0,2000)
@@ -51,20 +49,11 @@ graphics.off()
 
 ## density lines risk spent
 tmp <- irsk[type=='marg' & !lab%in%c('NT','VR')]
-jpeg(file.path(figdir, paste0('irsk spent.jpeg')), w = wid, h = heig, units = 'in', res = res)
+jpeg(file.path(figdir, paste0('irsk spentEV.jpeg')), w = wid, h = heig, units = 'in', res = res)
 adj <- 2
 p <- ggplot() + 
     geom_line(data=tmp, aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
               scale_color_manual(values=cols)  + xlab('per capita infection risk spent')  + ggtitle('average risk spent per individual') #+ xlim(.005, .3) + ylim(0,32)
-print(p) ## print(p+scale_x_log10(breaks=lbrks))
-graphics.off()
-
-## redo below for better index***
-jpeg(file.path(figdir, paste0('irsk spent Max.jpeg')), w = wid, h = heig, units = 'in', res = res)
-p <- ggplot() + 
-    geom_line(data = irsk[(type=='max' & lab=='SWCT') | (type=='cond' & arm=='cont' & lab=='RCT-gs-rp')],
-              aes(x=spent_EV, col=lab, linetype = gs), stat='density', adjust=adj) +
-              scale_color_manual(values=cols) + xlim(.005, .3) + ylim(0,32) + xlab('per capita infection risk spent')  + ggtitle('max risk spent per individual')
 print(p) ## print(p+scale_x_log10(breaks=lbrks))
 graphics.off()
 
@@ -101,6 +90,25 @@ jpeg(file.path(figdir, paste0('irsk avertEV bars.jpeg')), w = wid, h = heig, uni
 ggplot(tmp, aes(x=ordShowArm, y=avert_EV, fill=armShown)) + ggtitle('risk averted, conditional on arm with EV') +
     geom_bar(stat='identity', width=1) + facet_wrap(~lab, ncol=2) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
 graphics.off()
+ 
+## both
+ylim <- tmp[,range(-avert_EV,spent_EV, -avert, spent)]
+jpeg(file.path(figdir, paste0('irsk spent & avert bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(tmp) + ggtitle('risk spent, conditional on arm without EV') +
+    geom_hline(yintercept=.05) +
+        geom_bar(aes(x=ordShowArm, y=spent, fill=armShown), stat='identity', width=1) +
+            geom_bar(aes(x=ordShowArm, y=-avert, fill=armShown), stat='identity', width=1, alpha = .8) +
+                facet_wrap(~lab, ncol=2) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
+graphics.off()
+
+jpeg(file.path(figdir, paste0('irsk spent & avert EV bars.jpeg')), w = wid, h = heig, units = 'in', res = res)
+ggplot(tmp) + ggtitle('risk spent, conditional on arm without EV') +
+    geom_hline(yintercept=.05) +
+        geom_bar(aes(x=ordShowArm, y=spent_EV, fill=armShown), stat='identity', width=1) +
+            geom_bar(aes(x=ordShowArm, y=-avert_EV, fill=armShown), stat='identity', width=1, alpha = .8) +
+                facet_wrap(~lab, ncol=2) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
+graphics.off()
+
 ####################################################################################################
 
 ## marginal on arms & order randomization

@@ -30,6 +30,8 @@ for(ps in c(1/200, 10^-4)) {
 }
 graphics.off()
 
+
+
 pdf('~/Desktop/eq2.pdf', w =6.5, h = 4)
 tmp <- eqd[efficacy==.8 & probSAE>10^-5]
 p <- ggplot(tmp) + facet_grid(probSAE~infRisk) + scale_color_manual(values=cols) + # palette='RdBu') + 
@@ -37,6 +39,16 @@ p <- ggplot(tmp) + facet_grid(probSAE~infRisk) + scale_color_manual(values=cols)
         geom_hline(yintercept=0, linetype = 2, col = 'black') + guides(col = guide_legend(rev=T, title='CFR') ) +
             ylab('excess risk of death in control arm') + xlab('probability vaccine works')  + 
                 ylim(-.01, .06) + scale_x_continuous(breaks=seq(0,1,b=.2))
+print(p)
+graphics.off()
+
+pdf('~/Desktop/eq3.pdf', w =6.5, h = 4)
+tmp <- eqd[efficacy==.8 & probSAE==10^-4 & infRisk %in% c(.01,.05)]
+p <- ggplot(tmp) + facet_grid(~infRisk) + scale_color_manual(values=cols) + # palette='RdBu') + 
+    geom_line(aes(probVaccWorks, excessCFR, col = factor(cfr), group=cfr))  + 
+        geom_hline(yintercept=0, linetype = 2, col = 'black') + guides(col = guide_legend(rev=T, title='CFR') ) +
+            ylab('excess risk of death in control arm') + xlab('probability vaccine works')  + 
+                ylim(-.01, .03) + scale_x_continuous(breaks=seq(0,1,b=.2))
 print(p)
 graphics.off()
 
