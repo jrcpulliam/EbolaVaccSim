@@ -31,6 +31,11 @@ sdates <- sdates[1:length(sdates) %% 2 ==1]
 unique(parmsMat[avHaz=='xTime' & propInTrial==c(.05) & trialStartDate==c('2014-10-01'), list(avHaz, tid)])
 tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid] )
 
-procAll(tidDo = 21,2)
+for(ti in tidsDo) {
+    print(ti)
+    procAll(tidDo = ti,0)
+}
 
-
+for(ti in tidsDo) {
+    load(file=file.path('BigResults',paste0(thing, '-', tidDo, '.Rdata')))
+}

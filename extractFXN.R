@@ -10,14 +10,18 @@ quantcut <- function(x, qs = seq(0,1, l = 6)) {
     return(as.numeric(cut(x, brks, include.lowest = T)))
 }
 
-procAll <- function(tidDo, verbose=0) {
+procAll <- function(tidDo, verbose=0, maxbatch24 = 30) {
     if(verbose>0) browser()
-    nbtd <- parmsMat[tid==tidDo,rcmdbatch]
+    nbtd <- parmsMat[tid==tidDo & batch <= maxbatch24,rcmdbatch]
+    print('extracting individual sims')
     resList <- extractSims(thing, verb=0, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
-    resList <- procResList(resList, verb=0)
+    ## print('processing final trial info')
+    ## resList <- procResList(resList, verb=0)
+    print('processing parameters by batches')
     resList <- procMetaParms(resList)
-    resList <- procIrskSpent(resList)
-    save(resList, file=file.path('BigResults',paste0(thing, '-', tid, '.Rdata')))
+    print('processing individual risk spent/averted')
+    resList <- procIrskSpent(resList, verbose=verbose)
+    save(resList, file=file.path('BigResults',paste0(thing, '-', tidDo, '.Rdata')))
 }
 
 extractOneSim <- function(fileNm ## prepare each simulation for binding into a large data.table
@@ -196,7 +200,8 @@ procExpRiskSpent <- function(resList, threshold = .2, breaks = seq(-.5, 1, by = 
 })
 
 ## **automate 150,300,6000** change later on new batches
-procIrskSpent <- function(resList) within(resList, {
+procIrskSpent <- function(resList, verbose=0) within(resList, {
+    if(verbose>1) browser()
     ## table by individual the average infection risk in each design
     irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
                          ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
@@ -242,18 +247,17 @@ procIrskSpent <- function(resList) within(resList, {
     irsk <- merge(irsk, cOrd[,list(Oc, cluster)], by = 'Oc')
     irsk[,cluster:=factor(cluster)]
     ## order individuals within clusters by risk for ease of display
+    if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
+    clusSize <- as.numeric(parms[1,clusSize])
+    if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
+    numClus <- as.numeric(parms[1,numClus])
+    ## 
     iord <- irsk[lab=='NT',list(Oi,cluster,inf)][order(cluster,-inf)]
-    iord[,ordShow:=1:6000]
+    iord[,ordShow:=1:(numClus*clusSize)]
     irsk$ordShow <- NULL
     irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
     ## what arm to label individuals as for RCTs?
     irsk[, armShown:=arm]
-    ## if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
-    ## clusSize <- parms[1,clusSize]
-    clusSize <- 300
-    ## if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
-    ## numClus <- parms[1,numClus]
-    numClus <- 20
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont']
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display

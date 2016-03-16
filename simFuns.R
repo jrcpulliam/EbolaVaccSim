@@ -154,16 +154,16 @@ setClusHaz <- function(parms) {
 setIndHaz <- function(parms=makePop()) within(parms, {
     if(verbose>10) browser()
     ## give every individual a lognormally distributed relative risk
+    if(!is.na(indivRRSeed)) { 
+        storedSeed <- .Random.seed
+        set.seed(indivRRSeed)
+    }
     if(!as.logical(DoIndivRRcat)) {
-        if(!is.na(indivRRSeed)) { 
-            storedSeed <- .Random.seed
-            set.seed(indivRRSeed)
-        }
         pop$indivRR <- rlnorm(numClus*clusSize, meanlog = 0, sdlog = sdLogIndiv)
-        if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     }else{ ## categorical individual heterogeneity
         pop$indivRR <- sample(indivRRcats$rr, numClus*clusSize, replace=T, indivRRcats$prop)
     }
+    if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     ## create popH which has weekly hazards for all individuals
     popH <- arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day)
     popH$indivHaz <- popH[, clusHaz*indivRR]
