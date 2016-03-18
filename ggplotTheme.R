@@ -36,3 +36,21 @@ thsb <- theme(axis.text.x = thax, axis.text.y = thax, plot.title = element_text(
              ,legend.position='top'
               )
 theme_set(theme_grey(base_size = 12))
+
+eb <- theme(
+    ## axis.line=element_blank(),axis.text.x=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks=element_blank(),
+    axis.title.x=element_blank(),
+    axis.title.y=element_blank(),legend.position="none",
+    panel.background=element_blank(),
+    panel.border=element_blank(),panel.grid.major=element_blank(),
+    panel.grid.minor=element_blank(),plot.background=element_blank())
+
+
+makeTransparent<-function(someColor, alpha=100)
+{
+  newColor<-col2rgb(someColor)
+  apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+    blue=curcoldata[3],alpha=alpha, maxColorValue=255)})
+}

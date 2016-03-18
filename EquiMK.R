@@ -98,7 +98,8 @@ parmsMat[, simNumStart:=(batch-1)*nsims+1]
 parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
-tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
+## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
+tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(2,4)] & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
