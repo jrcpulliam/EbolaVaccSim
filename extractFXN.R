@@ -1,7 +1,8 @@
 popNms <- c("Spop", "SpopH", "SpopEvents", "SEVpopEvents")
-dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 'avHaz',
+dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 'avHaz', 'clusSize', 'numClus', ## **automate 150,300,6000** change later on new batches
              'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate', 'HazTrajSeed'                          
              )
+moveFront <- function(dt, fnames) setcolorder(dt, c(fnames, names(dt)[!names(dt) %in% fnames]))
 
 quantcut <- function(x, qs = seq(0,1, l = 6)) {
     brks <- unique(quantile(x, qs))
@@ -9,6 +10,32 @@ quantcut <- function(x, qs = seq(0,1, l = 6)) {
     return(as.numeric(cut(x, brks, include.lowest = T)))
 }
 
+procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, .05, .1, .2), breaks = seq(-.5, 1, by = .01),
+                    saveSmall = T) {
+    if(verbose>0) browser()
+    nbtd <- parmsMat[tid==tidDo & batch <= maxbatch24,rcmdbatch]
+    if(verbose>0) print('extracting individual sims')
+    system.time(
+    resList <- extractSims(thing, verb=0, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
+        )
+    ## if(verbose>0) print('processing final trial info')
+    ## resList <- procResList(resList, verb=0)
+    if(verbose>0) print('processing risk, risk spent/averted by simulation')
+        system.time(
+    resList <- procMetaParms(resList)
+            )
+    if(verbose>0) print('calculating risk spent/averted metrics summing or taking expectations across simulations')
+        system.time(
+    resList <- procIrskSpent(resList, verbose=verbose)
+            )
+    if(verbose>0) print('calculating expected # spending more than threshold risk across simulations')
+        system.time(
+    resList <- procExpRiskSpent(resList, thresholds = thresholds, breaks = breaks)
+            )
+    if(saveSmall) resList <- within(resList, {Spop <- NULL; SpopH <- NULL})
+    save(resList, file=file.path('BigResults',paste0(thing, '-', tidDo, '.Rdata')))
+    rm(resList); gc()
+}
 
 extractOneSim <- function(fileNm ## prepare each simulation for binding into a large data.table
                         , dparms = dparms0
@@ -31,22 +58,10 @@ extractOneSim <- function(fileNm ## prepare each simulation for binding into a l
             riskStratList <- sim$sim$Spops
             riskStratList <- within(riskStratList, {
                 setkey(Spop, simNum, indiv, cluster)
-                setkey(SpopH, simNum, cluster)
+                setkey(SpopH, simNum, Oc)
                 Spop <- data.table(nbatch = nbatch, Spop)
                 SpopH <- data.table(nbatch = nbatch, SpopH)
-                ## browser()
-                ## days <- SpopH[,unique(day)]
-                ## immunoDelay <- sim$parms$immunoDelay
-                
-                ## Spop[, iHaz:=indivRR* sum(SpopH[Oc==Oc & simNum==simNum,  clusHaz] *
-                ##                            c(rep(1,sum(days < vaccDay+immunoDelay)), rep(1-vaccProp[simNum==simNum, vaccEff], sum(days >= vaccDay+immunoDelay)))
-                ##            ), list(simNum, indiv)]
-                
-                
-                
-                rm(notCF)
             })
-            riskStratList$SpopEvents <- riskStratList$SEVpopEvents <- NULL
             essence <- c(essence, riskStratList)
         }
         return(essence)
@@ -56,7 +71,6 @@ extractOneSim <- function(fileNm ## prepare each simulation for binding into a l
 ## Extract from simulations from multiple cores
 extractSims <- function(thing
                       , dparms = dparms0
-                      , doSave=T
                       , verbose = 0
                       , maxbatches = NA
                       , nbatchDo=NA
@@ -75,7 +89,7 @@ extractSims <- function(thing
         ## batchdirnm <- file.path('BigResults',thing)
         ## flstmp <- list.files(batchdirnm, pattern=thing)
         fns <- as.numeric(gsub("[^0-9]", "", fls)) ##as.numeric(sub('.Rdata','', sub(thing,'',flstmp)))
-        fls <- fls[fns %in% nbtd]
+        fls <- fls[fns %in% nbatchDo]
     }
     print(paste0('extracting from ', length(fls), ' files'))
     resList <- list()
@@ -87,13 +101,10 @@ extractSims <- function(thing
         resList[[vv]] <- rbindlist(lapply(tmp, function(x) {x[[vv]]}), fill=T)
         if(vv!='parms') setkey(resList[[vv]], nbatch ,simNum)
     }
-    if(doSave) {
-        save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
-    }
     return(resList)
 }
 
-procResList <- function(resList, verbose = 0, doSave=T) {
+procResList <- function(resList, verbose = 0) {
     resList <- within(resList, {
         if(verbose>0) browser()
         ## Coverage
@@ -150,26 +161,150 @@ procResList <- function(resList, verbose = 0, doSave=T) {
         finit[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
         finit[,lab:=as.factor(lab)]
     })
-    if(doSave) {
-        save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
-    }
     return(resList)
 }
 
-## Make a data table of risk-strata level info on infections spent/averted & power contributed by
-## that group within the trial
-makeInfPow <- function(resList, doSave=T, verbose = 0) within(resList, {
-    if(verbose>0) browser()
-
-    ## unique identifier for trial population & for parameter set
-                   
-    
-    ##     if(doSave) {
-    ##         save(resList, file=file.path('BigResults', paste0(thing, '.Rdata')))
-    ##     }
-
+## add risk spent & averted for individuals to Spop & also create punq & parms
+procMetaParms <- function(resList)  within(resList, {
+    ## unique parameters
+    punq <- unique(parms[,-1,with=F])
+    punq <- data.table(pid = 1:nrow(punq), punq)
+    punq[, lab:=trial]
+    punq[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
+    punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
+    punq[,lab:=as.factor(lab)]
+    punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])]
+    setkey(punq, pid)
+    ## create parms
+    parms <- merge(punq, parms, by = names(punq)[!names(punq) %in% c('lab','pid')])
+    setkey(parms, pid, nbatch)
+    setcolorder(parms, c('pid','nbatch', names(parms)[!names(parms) %in% c('pid','nbatch')]))
+    Spop <- merge(parms[,list(pid, lab, nbatch)], Spop, by = 'nbatch')
+    setcolorder(Spop, c('pid','lab','nbatch', names(Spop)[!names(Spop) %in% c('pid','lab', 'nbatch')]))
+    Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]]
+    setkey(Spop, Oi, pid, nbatch, simNum)
+    ## Spop[,quantile(indivRR, c(.025,.975))]
+    Spop[,cumRisk:=1-exp(-cumHaz)] 
+    Spop[,cumRisk_EV:=1-exp(-cumHaz_EV)]
+    ## Calculate risk spent so that can tabulate expected # of people spending a certain amount of risk in a given simulation
+    Spop[, spent:= cumRisk - cumRisk[lab=='VR'],list(simNum, Oi)]
+    Spop[, avert:= cumRisk[lab=='NT'] - cumRisk,list(simNum, Oi)]
+    Spop[, spent_EV:= cumRisk_EV - cumRisk[lab=='VR'],list(simNum, Oi)]
+    Spop[, avert_EV:= cumRisk[lab=='NT'] - cumRisk_EV,list(simNum, Oi)]
 })
 
+procExpRiskSpent <- function(resList, thresholds = c(.01, .02, .05, .1, .2), breaks = seq(-.5, 1, by = .01), verbose = 0) within(resList, {
+    if(verbose>1) browser()
+    ## frequency distribution of risk spent for each simulation, then will get expected # of people within each risk spent bin across 2000 scenarios
+    HpopInd <- Spop[!lab %in% c('VR','NT'), hist(spent, breaks=breaks, plot=F)[c('mids','counts')], list(pid, simNum)]
+    HpopInd_EV <- Spop[!lab %in% c('VR','NT'), hist(spent_EV, breaks=breaks, plot=F)[c('mids','counts')], list(pid, simNum)]
+    HpopInd <- merge(HpopInd, HpopInd_EV, by = c('pid','simNum','mids'), suffixes=c('','_EV'))
+    rm(HpopInd_EV)
+    Hpop <- HpopInd[, list(counts=mean(counts), counts_EV=mean(counts_EV)), list(pid, mids)]
+    Hpop <- merge(Hpop, punq, by = 'pid')
+    ## Find the simulation with the most # of people above risk spent threshold
+    SpopWorst <- data.table()
+    for(th in 1:length(thresholds)) {
+        threshold <- thresholds[th]
+        SpopThresh <- Spop[!lab %in% c('VR','NT'), list(above = sum(spent > threshold), above_EV = sum(spent_EV > threshold), .N), list(pid, simNum)]
+        SpopWorst <- rbind(SpopWorst, merge(SpopThresh[, list(threshold, above = max(above), above_EV = max(above_EV), .N), list(pid)], punq, by = 'pid'))
+    }
+    SpopWorst <- SpopWorst[,list(pid, lab, threshold, above, above_EV, N, propInTrial)]
+    finTrials[, stopped:=vaccGood|vaccBad]
+    finTrials[, cvr := lci < vaccEff & uci > vaccEff]
+    powTab <- merge(finTrials[,!"sim", with=F], parms, by = 'nbatch')[, list(pid, lab, simNum, vaccEff, mean, lci, uci, vaccGood, vaccBad, stopped, cvr)]
+    powTab <- powTab[vaccEff>0 & pid < 6, list(power = mean(vaccGood)), list(pid)]
+    totCasesTab <- Spop[pid<6,list(totCase_EV = sum(infectDay_EV<336), totCase = sum(infectDay<336)), list(pid, simNum)]
+    totCasesTab <- totCasesTab[,list(totCase = mean(totCase), totCase_EV = mean(totCase_EV)),pid]
+    punq <- merge(punq, powTab, by = 'pid')
+    punq <- merge(punq, totCasesTab, by = 'pid')
+    rm(powTab, totCasesTab)
+})
+
+## **automate 150,300,6000** change later on new batches
+procIrskSpent <- function(resList, verbose=0) within(resList, {
+    if(verbose>1) browser()
+    ## table by individual the average infection risk in each design
+    irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
+                         ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
+                     list(pid,Oi)]
+    irskCond <- Spop[!lab %in% c('VR','NT','SWCT'), ## conditional on control/vacc randomization assignment
+                     list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV)
+                        , indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
+                     list(pid,Oi,arm)]
+    ## maximum spent given worst possible vaccination order (only for random ordered trials)
+    irskMax <- Spop[!lab %in% c('VR','NT') & arm=='vacc' & !grepl('rp',lab) & vaccDay==max(vaccDay[arm=='vacc']),
+                    list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], arm='vacc', type='max'),
+                    list(pid,Oi,vaccDay)]
+    ## conditional on exact vaccination day (note borrowing control info across all vaccDay==Inf, i.e. whether the cluster they're in is vaccinated early/late)
+    irskCondvd <- Spop[!lab %in% c('VR','NT'),
+                       list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type='condvd'),
+                       list(pid,Oi,arm,vaccDay)]
+    irsk <- rbindlist(list(irskMarg, irskCond, irskMax, irskCondvd), use.names=T, fill=T)
+    rm(irskMarg, irskCond, irskMax, irskCondvd)
+    setkey(irsk, Oi, pid)
+    irsk <- merge(punq[,list(pid,gs, lab)], irsk, by = 'pid')
+    moveFront(irsk, c('pid','lab','gs','type','arm','vaccDay'))
+    ## irsk
+    ## irsk[, unique(type), lab]
+    ## irsk[Oi==1]
+    ## Average risk spent versus marginal VR 
+    irsk[, spent   := inf    - inf[lab=='VR'], list(Oi)]
+    irsk[, spent_EV:= inf_EV - inf[lab=='VR'], list(Oi)]
+    ## Averted risk versus marginal NT
+    irsk[, avert   :=    inf[lab=='NT'] - inf, list(Oi)]
+    irsk[, avert_EV:= inf[lab=='NT'] - inf_EV, list(Oi)]
+    setkey(irsk, Oi, pid)
+    ## ########
+    ## Examine results
+    ## irsk[type!='condvd', list(inf = mean(inf), inf_EV = mean(inf_EV)), list(lab, arm, type)][order(lab)] ## mean infection rate without vaccine
+    ## sptmp <- irsk[type!='condvd', list(spent = mean(spent), spent_EV = mean(spent_EV)), list(lab, arm, type)][order(lab)] #
+    ## for(ii in 4:5) sptmp[[ii]] <- formatC(100*signif(sptmp[[ii]],2)) ## % risk spent on average
+    ## sptmp ## % risk (multiplied by 100)
+    ## ##############################################################################
+    ## get clusters in risk-order
+    cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
+    cOrd[,cluster:=1:nrow(cOrd)]
+    if('cluster' %in% colnames(irsk)) irsk$cluster <- NULL
+    irsk <- merge(irsk, cOrd[,list(Oc, cluster)], by = 'Oc')
+    irsk[,cluster:=factor(cluster)]
+    ## order individuals within clusters by risk for ease of display
+    if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
+    clusSize <- as.numeric(parms[1,clusSize])
+    if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
+    numClus <- as.numeric(parms[1,numClus])
+    ## 
+    iord <- irsk[lab=='NT',list(Oi,cluster,inf)][order(cluster,-inf)]
+    iord[,ordShow:=1:(numClus*clusSize)]
+    if('ordShow' %in% colnames(irsk)) irsk$ordShow <- NULL
+    irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
+    ## what arm to label individuals as for RCTs?
+    irsk[, armShown:=arm]
+    irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont']
+    irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
+    ## order individuals within clusters & armShown by risk for ease of display
+    iord <- irsk[lab=='NT',list(Oi,cluster,inf)]
+    iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
+    iord <- iord[order(cluster,armShown, -inf)]
+    iord[,ordShowArm:=1:(clusSize*numClus)]
+    if('ordShowArm' %in% colnames(irsk)) irsk$ordShowArm <- NULL
+    irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
+    irsk[lab=='SWCT', ordShowArm:=ordShow]
+    irsk <- irsk[order(Oc,indivRR,lab)]
+    irsk[type=='cond' &  !lab %in% c('VR','NT') & pid==2 & Oi==1]
+    ## need exemplar SWCT: pick arbitrary example of cluster-day assignment to display
+    ## do average SW, where every other cluster from highest to lowest risk is picked
+    clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),
+                   list(cluster = as.factor(c((1:numClus)[1:numClus %% 2==1], (1:numClus)[1:numClus %% 2==0])),
+                        vaccDay=unique(vaccDay))]
+    setkey(clusVD, cluster, vaccDay)
+    irsk[,exmpl:=F]
+    setkey(irsk, cluster, vaccDay)
+    irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,numClus*clusSize)
+    irsk[clusVD][type=='condvd' & 'SWCT'==lab]
+    setkey(irsk, Oi, pid)
+    rm(iord, cOrd)
+})
 
 
 makePowTable <- function(finTrials, verbose=0, doSave=T) {
