@@ -93,14 +93,14 @@ ebinc <- function(upto='2015-11-01', bg='black', fg='white',ps=27, detail=T, cex
 ## wktcks <- wktcks[80:85]
 
 ## Movie
-## require(animation);
-## resScl <- 1.5
-## nm <- paste0('ebolaInc.mov')
-## if(file.exists(nm)) file.remove(nm)
-## saveVideo({
-##     ani.options(interval = 0.15, nmax = 300, ani.dev='png', ani.type='png')
-##     for(ww in wktcks) ebinc(ww, ps=30)
-## }, video.name = nm, other.opts = "-b 3000k -pix_fmt yuv420p", ani.width = 800*resScl, ani.height = 600*resScl)
+require(animation);
+resScl <- 1.5
+nm <- paste0('ebolaIncnodetail.mov')
+if(file.exists(nm)) file.remove(nm)
+saveVideo({
+    ani.options(interval = 0.15, nmax = 300, ani.dev='png', ani.type='png')
+    for(ww in wktcks) ebinc(ww, ps=30, detail=F )
+}, video.name = nm, other.opts = "-b 3000k -pix_fmt yuv420p", ani.width = 800*resScl, ani.height = 600*resScl)
 
 ## resScl <- 1
 ## png('EbolaIncXDistrictWA Tall.png', w=800*resScl, h=1000*resScl)
