@@ -89,7 +89,7 @@ ebinc <- function(upto='2015-11-01', bg='black', fg='white',ps=27, detail=T, cex
 
 ## ebinc(wktcks[1], ps = 16)
 
-## wktcks <- as.character(seq.Date(min(pdat[,date],na.rm=T),max(pdat[,date],na.rm=T), by='week'))
+wktcks <- as.character(seq.Date(min(pdat[,date],na.rm=T),max(pdat[,date],na.rm=T), by='week'))
 ## wktcks <- wktcks[80:85]
 
 ## Movie
@@ -104,5 +104,54 @@ saveVideo({
 
 ## resScl <- 1
 ## png('EbolaIncXDistrictWA Tall.png', w=800*resScl, h=1000*resScl)
-## ebinc(ps = 30, detail=F, cex = 1)
+ ebinc(ps = 30, detail=F, cex = 1)
 ## dev.off()
+
+evddat <- pdat[!is.na(Numeric) & Case.definition=='Confirmed' & Location!='',.(date, Numeric, Country,Location)]
+setnames(evddat, 'Numeric','cases')
+
+SLdistr <- evddat[Country=='Sierra Leone']
+SLcountry <- SLdistr[,.(cases = sum(cases)), date]
+Gdistr <- evddat[Country=='Guinea']
+Gcountry <- Gdistr[,.(cases=sum(cases)), date]
+Ldistr <- evddat[Country=='Liberia']
+Lcountry <- Ldistr[,.(cases=sum(cases)), date]
+
+nms <- c('evddat','SLdstr','SLcountry','Gdistr','Gcountry','Ldistr','Lcountry')
+for(nn in nms) assign(nn, data.frame(get(nms)))
+
+save(evddat, SLdistr, SLcountry, Gdistr, Gcountry, Ldistr, Lcountry, guecDat, file='data/WAevddat.Rdata')
+
+pdf('data/All EVD.pdf', w=10, h = 8)
+par(ps=16, bty='n')
+cols <- c('red','purple','orange')
+evddat[, plot(date,cases, type = 'n', ylab = 'weekly EVD incidence by district', xlab='', xaxt='n')]
+wktcks <- seq.Date(as.Date('2013-12-01'), as.Date('2015-11-01'), by='month')
+axis.Date(1, at=wktcks, las = 2, lab = format(wktcks, format='%b-%y'), cex=2)
+evddat[,lines(date,cases, col = cols[Country], lwd=2), Location]
+legend('topright', leg = evddat[,levels(Country)], col=cols, pch = 16)
+graphics.off()
+
+
+for(cc in levels(evddat$Country)) {
+    pdf(paste0('data/', cc, ' EVD.pdf'), w=10, h = 8)
+    par(ps=16, bty='n')
+    temp <- evddat[Country==cc]
+    temp[,Location:= levels(Location)[as.numeric(Location)]]
+    temp[,Location:=factor(Location)]
+    nLoc <- temp[,length(unique(Location))]
+    temp[, colx:= rainbow(nLoc)[as.numeric(Location)]]
+    evddat[, plot(date,cases, type = 'n', ylab = 'weekly EVD incidence by district', xlab='', xaxt='n')]
+    wktcks <- seq.Date(as.Date('2013-12-01'), as.Date('2015-11-01'), by='month')
+    axis.Date(1, at=wktcks, las = 2, lab = format(wktcks, format='%b-%y'), cex=2)
+    for(ll in levels(temp[,Location])) temp[Location==ll, lines(date,cases, col = colx, lwd=2)]
+    temp[!duplicated(Location), legend('topright', leg = Location, col=colx, pch = 16, ncol = 2)]
+    graphics.off()
+    pdf(paste0('data/', cc, ' EVD district per page.pdf'), w=10, h = 8)
+    for(ll in levels(temp[,Location])) {
+    evddat[, plot(date,cases, type = 'n', ylab = 'weekly EVD incidence by district', xlab='', xaxt='n', main = ll)]
+    axis.Date(1, at=wktcks, las = 2, lab = format(wktcks, format='%b-%y'), cex=2)
+    temp[Location==ll, lines(date,cases, lwd=2)]
+    }
+    graphics.off()
+}
