@@ -1,3 +1,4 @@
+
 if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
@@ -50,14 +51,14 @@ contt[, merit:= -ia/infPpow + pow] ## every case spent is worth 10% power
 ##    contt[pow<.3, merit:= -ia/infPpow+.3] ## don't penalize less power under 30% power since it's so insignificant anyways
 tmp <-  plunq[lab!='RCT-rp' & avHaz=='']
 ## totcase vs power
-p <- ggplot(tmp) +
+p <- ggplot(tmp[date!='Apr-15']) +
     geom_tile(data = contt, aes(x=ia, y=pow, z=merit, fill=merit)) + scale_fill_gradient(low = "light green", high = "dark green") +
         stat_contour(data = contt, aes(x=ia, y=pow, z=merit), col = gray(.9, alpha = .9), bins = 7) + 
-            geom_point(data = tmp, aes(caseSpent, power, colour = lab), size =2.5) +
+            geom_point(data = tmp[date!='Apr-15'], aes(caseSpent, power, colour = lab), size =2.5) +
                 ylim(0,1) + xlab(paste0('cases spent relative to vaccine rollout')) +
-                facet_grid(date~.) + scale_color_manual(values=cols) +
+                facet_grid(trialStartDate~.) + scale_color_manual(values=cols) +
                     ylab('power \n(given efficacy>0)') + theme(axis.title.y = element_text(angle=0))
-ggsave(file.path(figdir, paste0('power vs case.tiff')), plot=p, w=wid, h=heig, units='in', dpi = 200)
+ggsave(file.path(figdir, paste0('power vs case.pdf')), plot=p, w=wid, h=heig, units='in', dpi = 200)
 
 
 
@@ -186,6 +187,31 @@ for(ll in tmp[,unique(lab)]) {
 }
 title(xlab='individual',outer=T)
 title(ylab='risk',outer=T)
+graphics.off()
+
+
+## SB version short
+ylim <- tmp[,range(-avert_EV,spent_EV, -avert, spent)]
+tmp[, cols:=armShown]; tmp[cols=='cont',cols:='red']; tmp[cols=='vacc',cols:='dodger blue']
+pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
+par(mfrow=c(2,1), mar = c(0,5,1,0), oma = c(1,2,0,0))
+ll='RCT-gs-rp'
+with(tmp[as.numeric(cluster) <= 8 & lab==ll], plot(ordShowArm, spent, xlab='individual', ylab='spent', bty = 'n', type = 'h', col = cols, ylim = c(0,.2), las = 1, xaxt='n', main =''))
+abline(h=0, lty = 1)
+abline(h=.05, lty = 2, col='dark gray', lwd  =2)
+legend('topright', leg = c('cont','vacc'), col = c('red','dodger blue'), pch = 15, bty = 'n')
+with(tmp[as.numeric(cluster) <= 8 & lab==ll], plot(ordShowArm, -avert, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = cols, ylim = c(-.2,0), las = 1, xaxt='n', main =''))
+title(ylab='risk',outer=T, line = 0)
+graphics.off()
+
+
+## SB risk
+tmp <- irsk[lab=='NT']
+ylim <- tmp[,range(inf)]
+pdf(file.path(figdir, paste0('irsk inf risk SB.pdf')), w = wid, h = heig)
+par(mfrow=c(2,1), mar = c(0,5,1,0), oma = c(1,2,0,0))
+with(tmp[as.numeric(cluster) <= 8], plot(ordShow, inf, xlab='individual', ylab='', bty = 'n', type = 'h', col = rainbow(8)[as.numeric(cluster)], ylim = c(0,.2), las = 1, xaxt='n', main =''))
+title(ylab='risk',outer=T, line = 0)
 graphics.off()
 
 ####################################################################################################
