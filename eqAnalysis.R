@@ -36,6 +36,24 @@ for(ps in c(1/200, 10^-4)) {
 graphics.off()
 
 
+pdf('Figures/excess vs inf risk.pdf', w =6.5, h = 4)
+#for(ps in c(1/200, 10^-4)) { 
+    tmp <- eqd[probSAE==1/1000 & probVaccWorks %in% c(.4) & efficacy==.7]  # facet_grid(efficacy~probVaccWorks) + 
+    p <- ggplot(tmp) + scale_color_manual(values=cols) + # palette='RdBu') + 
+        geom_line(aes(infRisk, excessCFR, col = factor(cfr), group=cfr))  + 
+            geom_hline(yintercept=0, linetype = 2, col = 'black') + guides(col = guide_legend(rev=T, title='CFR') ) +
+                ylab('excess risk of death in control arm') + xlab('infection risk')  + 
+                    ggtitle(paste0('pSAE = ',ps)) + ylim(-.01, .025)
+    print(p)
+#}
+graphics.off()
+
+
+
+
+
+
+
 
 pdf('~/Desktop/eq2.pdf', w =6.5, h = 4)
 tmp <- eqd[efficacy==.8 & probSAE>10^-5]
@@ -101,3 +119,16 @@ ggplot(dat) +
 aes(x = infRisk, y = size, z = power, fill = power) + 
 geom_tile() + 
 geom_contour(color = "white", alpha = 0.5) 
+
+####################################################################################################
+## how big of an SAE needed to balance vaccine efficacy probability or infection risk?
+####################################################################################################
+eqd <- as.data.table(expand.grid(infRisk = c(.005, .01, .05, .1)
+                               , probVaccWorks = seq(.1, .7, by = .1)
+                               , efficacy = seq(.6, .9, by = .1)
+                                 ## , probSAE = 1/c(200,500,1000,10^4,10^5)
+                               , excessCFR = 0
+                               , cfr = c(.1,.3,.5,.7,.9)))#seq(0, 1, by = .1)))
+
+eqd[,probSAE  := (infRisk * cfr - (probVaccWorks * (infRisk * (1-efficacy) * cfr) + (1-probVaccWorks) * infRisk * cfr)) /
+(1 - (probVaccWorks * (infRisk * (1-efficacy) * cfr) + (1-probVaccWorks) * infRisk * cfr))]
