@@ -49,13 +49,7 @@ pdf('Figures/excess vs inf risk.pdf', w =6.5, h = 4)
 graphics.off()
 
 
-
-
-
-
-
-
-pdf('~/Desktop/eq2.pdf', w =6.5, h = 4)
+pdf('Figures/eq2.pdf', w =6.5, h = 4)
 tmp <- eqd[efficacy==.8 & probSAE>10^-5]
 p <- ggplot(tmp) + facet_grid(probSAE~infRisk) + scale_color_manual(values=cols) + # palette='RdBu') + 
     geom_line(aes(probVaccWorks, excessCFR, col = factor(cfr), group=cfr))  + 
@@ -65,7 +59,7 @@ p <- ggplot(tmp) + facet_grid(probSAE~infRisk) + scale_color_manual(values=cols)
 print(p)
 graphics.off()
 
-pdf('~/Desktop/eq3.pdf', w =6.5, h = 4)
+pdf('Figures/eq3.pdf', w =6.5, h = 4)
 tmp <- eqd[efficacy==.8 & probSAE==10^-4 & infRisk %in% c(.01,.05)]
 p <- ggplot(tmp) + facet_grid(~infRisk) + scale_color_manual(values=cols) + # palette='RdBu') + 
     geom_line(aes(probVaccWorks, excessCFR, col = factor(cfr), group=cfr))  + 
