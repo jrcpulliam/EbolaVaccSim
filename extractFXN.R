@@ -10,6 +10,7 @@ quantcut <- function(x, qs = seq(0,1, l = 6)) {
     return(as.numeric(cut(x, brks, include.lowest = T)))
 }
 
+## calls several other processing functions
 procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, .05, .1, .2), breaks = seq(-.5, 1, by = .01),
                     saveSmall = T) {
     if(verbose>0) browser()
