@@ -10,6 +10,7 @@ makeParms <- function(
   , trialStartDate = '2015-02-01' ## converted to date below    
   , numClus=20, clusSize=300
   , delayUnit = 7 ## logistically imposed interval in between each new cluster receiving vaccination
+  , contVaccDelay = NA ## days before vaccine arm is vaccinated in a delayed vaccine comparator trial
   , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
   , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
   , avHaz = ''      ## average over time 'xTime' across clusters 'xClus' or both 'xClusxTime'
@@ -285,10 +286,12 @@ setVRvaccDays <- setSWCTvaccDays <- function(parms, whichDo='pop') within(parms,
 setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming same speed rollout as SWCT (unless FRCT)
     popH$vaccDay <- Inf ## unvaccinated
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
+    if(!is.na(contVaccDelay)) pop[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
 })
-setCRCTvaccDays <- function(parms) within(parms, {
+setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT still, and then should be how vacc/controls are chosen inside here
     popH$vaccDay <- Inf
     popH[cluster <= numClus/2, vaccDay := delayUnit*(cluster-1)] ## first half of clusters (1 per pair) get vaccinated in sequence
+    if(!is.na(contVaccDelay)) pop[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
 })
 setNTvaccDays <- function(parms) within(parms, {
     popH$vaccDay <- Inf
