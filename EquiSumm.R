@@ -1,4 +1,4 @@
-if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('Stevens-MacBook', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
@@ -16,7 +16,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
     }
 }
 
-thing <- 'Equip-RRcat'
+thing <- 'Equip-ByTrialDate'
 ## Load VaccProp & hazT
 load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
