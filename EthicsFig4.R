@@ -48,12 +48,18 @@ p <- ggplot(tmp) +
                 scale_color_manual(values=cols) + ylab('power \n(given efficacy>0)') + theme(axis.title.y = element_text(angle=0))
 ggsave(file.path(figdir, paste0('power vs case.pdf')), plot=p, w=wid, h=heig, units='in', dpi = 200)
 
-pdf(file.path(figdir, paste0('Fig4B.pdf')))
-par(mfrow=c(1,2))
-with(tmp, plot(caseSpent, power, xlim = c(0,50), ylim = c(0,1), pch = 16, las = 1, col = cols[match(with(tmp, lab), names(cols))], cex = 2, bty = 'n'))
-legend('bottomright', leg = names(leg), col = leg, pch = 16, cex = 1.1, bty = 'n')
-with(tmp, plot(caseSpent, tcal/30, xlim = c(0,50), ylim = c(0,168/30), pch = 16, las = 1, col = cols[match(with(tmp, lab), names(cols))], cex=2, bty='n', ylab = 'trial duration (months)'))
+
+## Fig 4B with just power vs avertable cases that aren't averted
+tmp <-  plunq[lab!='RCT-rp' & avHaz=='' & date %in% c('Dec-14','Feb-15')]
+tmp$pch <- 16
+tmp[date=='Feb-15',pch:=15]
+pdf(file.path(figdir, paste0('Fig4B.pdf')), width =5.5, h=3)
+par(mfrow=c(1,2), mar = c(4 ,6,.5,.5))
+with(tmp, plot(caseSpent, power, xlim = c(0,50), ylim = c(0,1), pch = 16, las = 1, col = cols[match(with(tmp, lab), names(cols))], cex = 2, bty = 'n', xlab = ''))
+mtext('avertable cases not averted', 1, -2, outer = T)
 leg <- cols[match(with(tmp, lab), names(cols))]
+#legend('bottomright', leg = names(leg), col = leg, pch = 16, cex = 1.1, bty = 'n')
+with(tmp, plot(caseSpent, tcal/30, xlim = c(0,50), ylim = c(0,168/30), pch = 16, las = 1, col = cols[match(with(tmp, lab), names(cols))], cex=2, bty='n', xlab='', ylab = 'trial duration\n(months)'))
 graphics.off()
 
 ## think about cRCT and rpSWCT on this plot. otherwise kinda finished??
