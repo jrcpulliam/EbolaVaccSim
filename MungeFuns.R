@@ -9,7 +9,7 @@ makeSurvDat <- function(parms,  whichDo='pop') within(parms, {
     stPre$endDay <- stPre[, pmin(immuneDayThink, infectDay)]
     stPre$infected <- stPre[ ,as.numeric(infectDay <= immuneDayThink)]
     stPre$immuneGrp <-  0     ## immuneGrp is variable used for analysis, not omnietient knowledge of vaccination/immune status
-    stPre <- stPre[,list(indiv, cluster, pair, idByClus, vaccDay, immuneDay, 
+    stPre <- stPre[,list(indiv, cluster, pair, idByClus, indivRR, vaccDay, immuneDay, 
                          immuneDayThink, startDay, endDay, infectDay, infected, immuneGrp, SAE)]
     ## post-immunity table
     stPost <- copy(popTmp)[infectDay > immuneDayThink,]
@@ -17,7 +17,7 @@ makeSurvDat <- function(parms,  whichDo='pop') within(parms, {
     stPost$endDay   <-  stPost[,infectDay]
     stPost$infected <- 1 ## everyone gets infected eventually, but will truncate this in a separate function
     stPost$immuneGrp <- 1
-    stPost <- stPost[,list(indiv, cluster, pair, idByClus, vaccDay, immuneDay, 
+    stPost <- stPost[,list(indiv, cluster, pair, idByClus, indivRR, vaccDay, immuneDay, 
                            immuneDayThink, startDay, endDay, infectDay,  infected, immuneGrp, SAE)]
     nmSt <- paste0('st', sub('pop','',whichDo)) ## makes EVpop into EVst for example
     tmpSt <- rbind(stPre, stPost)
@@ -35,13 +35,14 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
     ## clusters are still considered to provide useful information from baseline
     stA <- copy(get(whichDo))
     stA$firstActive <- 0
+    if(maxRRcat>0) stA <- stA[indivRR<=maxRRcat]
     if(!includeAllControlPT) { ## remove person-time observed prior to post-immune-ramp-up period from data
         if(trial=='CRCT' & ord!='none') ## active once anyone considered immune in matched cluster pair
             stA[, firstActive := min(immuneDayThink), by = pair]
         if(trial %in% c('RCT','FRCT')) {## active once anyone considered immune in cluster
             stA[, firstActive := min(immuneDayThink), by = cluster]
             ## set accumulation of person time as when the cluster/pair is active (does nothing for SWCT)
-                stA[startDay < firstActive, startDay := firstActive] 
+            stA[startDay < firstActive, startDay := firstActive] 
             if(!is.na(contVaccDelay) & excludeTimeAfterVaccDelay) { 
                 ## make sure that each cluster's p-t stops being counted as soon as the control arm has been
                 ## vaccinated.  More realistically (following Dean et al. 2016), we should be counting person-time
@@ -78,7 +79,7 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
                 ## Now check that infectDay is still in intervals
                 if(verbose>1.5) print(paste0('excluding ', 
                                              stA[, sum(infected==1 & infectDay < Inf & !(infectDay >= startDay & infectDay <= endDay))]
-                                             , ' infected after ', lastDayAnyoneNotVacc, ' days'))
+                                           , ' infected after ', lastDayAnyoneNotVacc, ' days'))
                 stA[infected==1 & infectDay < Inf & !(infectDay >= startDay & infectDay <= endDay), infected:=0]
                 rm(firstDayAnyoneImmune, lastDayAnyoneNotVacc)
             }
@@ -92,7 +93,7 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
                 ## Now check that infectDay is still in intervals
                 if(verbose>1.5) 
                     print(paste0('excluding ', stA[, sum(infected==1 & infectDay < Inf & !(infectDay >= startDay & infectDay <= endDay))]
-                                 , ' infected in protective delay'))
+                               , ' infected in protective delay'))
                 stA[infected==1 & infectDay < Inf & !(infectDay >= startDay & infectDay <= endDay), infected:=0]
             }
             ## make events that happen after endDay not count
@@ -140,6 +141,7 @@ plotSTA <- function(stA, vaccCol='dodger blue', contCol='red') {
 makeGEEDat <- function(parms, whichDo='popH') within(parms, {
     if(verbose ==1.7) browser()
     popHTmp <- get(whichDo)
+    if(maxRRcat>0) popHTmp <- popHTmp[indivRR<=maxRRcat] ## exclude individuals above the threshold
     popHTmp$immuneDayThink <- popHTmp[,vaccDay] + immunoDelayThink ## vaccine refractory period ASSUMED in analysis
     popHTmp$infectDayRCens <- popHTmp$infectDay
     popHTmp[infectDay==Inf, infectDayRCens := NA]
@@ -154,7 +156,7 @@ makeGEEDat <- function(parms, whichDo='popH') within(parms, {
             popHTmp[, firstActive := min(immuneDayThink), cluster]
         ## unactive once no one is unvaccinated
         popHTmp[, maxVaccDayInClus := max(vaccDay) , by = cluster]
-                
+        
     }
     ## need delayUnit below, b/c each day in this dt denotes that day plus the following delayUnit duratino of exposure time
     popHTmp$active <- popHTmp[, day>=firstActive & (day+delayUnit) < maxVaccDayInClus] 

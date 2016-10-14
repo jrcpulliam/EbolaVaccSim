@@ -27,6 +27,7 @@ makeParms <- function(
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
   , DoIndivRRcat = F 
   , indivRRcats = list(rr = c(1,5,10,30), prop = c(.55,.3,.1,.05))
+  , maxRRcat = 0 ## exclude RRcats above this level and just vaccinate them
   , vaccEff = .8
   , pSAE = 10^-4
   , maxDurationDay = 7*24 ## maximum duration end of trial (24 weeks default; 6 months) (trial can stop early though; e.g. endTrialDay)
@@ -293,12 +294,21 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
     popH$vaccDay <- Inf ## unvaccinated
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
     if(!is.na(contVaccDelay)) popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+    if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
+        ## in their cluster is vaccinated and exclud them from analysis (in activeFXN)
+        popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = cluster]
+    }
 })
 
 setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT still, and then should be how vacc/controls are chosen inside here
     popH$vaccDay <- Inf
     popH[cluster <= numClus/2, vaccDay := delayUnit*(cluster-1)] ## first half of clusters (1 per pair) get vaccinated in sequence
     if(!is.na(contVaccDelay)) popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+    if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
+        ## in their pair is vaccinated and exclud them from analysis (in activeFXN)
+        popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = pair]
+    }
+
 })
 setNTvaccDays <- function(parms) within(parms, {
     popH$vaccDay <- Inf
