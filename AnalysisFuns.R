@@ -48,7 +48,7 @@ testZeros <- function(tmpCSD) {
 }
 
 getEndResults <- function(parms, bump = T) {
-    if(verbose==2.93) browser()
+    if(parms$verbose==2.93) browser()
     ## initialize
     trialStopped <- F
     analysisNum <- 0
@@ -57,10 +57,11 @@ getEndResults <- function(parms, bump = T) {
         ## loop over sequential analyses (only do loop once for non-sequential analysis)
         while(!trialStopped) { 
             analysisNum <- analysisNum+1 ## iterate
-            if(verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
+            if(parms$verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
             analysisDay <- parms$intTab[analysisNum, tcal]
+    if(parms$verbose==2.935) browser()
             tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
-            if(verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
+            if(parms$verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
             ## Bump in case of 0-event arms
             if(!testZeros(tmpCSD)) { ## >0 events in each arm
                 parmsE <- parms
@@ -69,7 +70,7 @@ getEndResults <- function(parms, bump = T) {
                 parmsE <- infBump(parms, censorDay=analysisDay)
                 parmsE$bump <- T
                 tmpCSDE <- censSurvDat(parmsE, censorDay = analysisDay)
-                if(verbose>2) print(tmpCSDE[, list(numInfected=sum(infected)), immuneGrp])
+                if(parms$verbose>2) print(tmpCSDE[, list(numInfected=sum(infected)), immuneGrp])
             }
             parms <- within(parms, {
                 ## Call analysis functions
@@ -222,7 +223,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         res <- makeGEEDat(res) ## probably unnecessary to do these lines for !doTrial if tweak the code a bit later
         res <- activeFXN(res)
         res <- gsTimeCalc(res)
-        ## plotSTA(censSurvDat(res)) ## look at person-time for each data structure
+        ## plotSTA(censSurvDat(res))  ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
         res <- endT(res)
