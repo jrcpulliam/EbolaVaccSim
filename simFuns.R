@@ -1,4 +1,5 @@
-require(survival); require(coxme); require(data.table); require(parallel); require(dplyr); require(msm)
+require(survival); require(coxme); require(data.table); require(parallel); require(msm)
+#require(dplyr);
 load('data/createHT.Rdata')
 options(deparse.max.lines=10)
 
@@ -166,7 +167,7 @@ setIndHaz <- function(parms=makePop()) within(parms, {
     }
     if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     ## create popH which has weekly hazards for all individuals
-    popH <- data.table(arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day))
+    popH <- merge(pop, hazT, by='cluster', allow.cartesian=T)[order(day)]
     popH$indivHaz <- popH[, clusHaz*indivRR]
     daySeq <- daySeq[daySeq>=0] ## don't do anything before zero, just stored hazard in popHearly for ordering
     daySeqLong <- seq(0,trackUntilDay+1000,by=hazIntUnit) ## to avoid problems later
@@ -195,7 +196,7 @@ reordPop <- function(parms) { ## wrapper around other functions below
     within(parms, { ## return parms
         if(verbose>10) browser()
         popH[, cluster:=clusIncRank[popH[, cluster]]]
-        popH <- arrange(popH, day, cluster)
+        popH <- popH[order(day, cluster)] ## arrange(popH, day, cluster)
         ## reset indices so they're ordered again by vaccination sequence
         popH[,indiv:= rep(1:(numClus*clusSize), popH[, length(unique(day))])] 
         rm(clusIncRank)
@@ -340,7 +341,7 @@ simInfection <- function(parms, whichDo='pop', startInfectingDay = 0, cfNum=1, R
         }
         ## copy infection days to pop, to use in analysis
         indivInfDays <- tmpH[infectDay!=Inf & infectDay > startInfectingDay, list(indiv,infectDay, vaccDay, indivRR)]
-        indivInfDays <- arrange(indivInfDays, indiv)
+        indivInfDays <- indivInfDays[order(indiv)]
         tmp[indiv %in% indivInfDays[,indiv], infectDay:= indivInfDays[,infectDay]]
         ## SAEs
         tmp[, SAE:= as.integer(rbinom(length(indiv), 1, pSAE))]
