@@ -211,6 +211,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         set.seed(simNum)
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
+
         if(parms$verbose==2) browser()
         if(!is.na(vaccProp)[1]) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
@@ -221,7 +222,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         res <- makeGEEDat(res) ## probably unnecessary to do these lines for !doTrial if tweak the code a bit later
         res <- activeFXN(res)
         res <- gsTimeCalc(res)
-        ## plotSTA(res$stActive) ## look at person-time for each data structure
+        ## plotSTA(censSurvDat(res)) ## look at person-time for each data structure
         ## plotClusD(res$clusD)
         res <- getEndResults(res)
         res <- endT(res)

@@ -35,12 +35,31 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
     ## clusters are still considered to provide useful information from baseline
     stA <- copy(get(whichDo))
     stA$firstActive <- 0
-    if(!includeAllControlPT) { ## remove person-time observed prior to post-refractory period from data
+    if(!includeAllControlPT) { ## remove person-time observed prior to post-immune-ramp-up period from data
         if(trial=='CRCT' & ord!='none') ## active once anyone considered immune in matched cluster pair
             stA[, firstActive := min(immuneDayThink), by = pair]
-        if(trial %in% c('RCT','FRCT')) ## active once anyone considered immune in cluster
+        if(trial %in% c('RCT','FRCT')) {## active once anyone considered immune in cluster
             stA[, firstActive := min(immuneDayThink), by = cluster]
-        if(trial=='SWCT') {## inactive during protective delay; active only when there exists both vacc & unvacc person-time observed
+            ## set accumulation of person time as when the cluster/pair is active (does nothing for SWCT)
+                stA[startDay < firstActive, startDay := firstActive] 
+            if(!is.na(contVaccDelay) & excludeTimeAfterVaccDelay) { 
+                ## make sure that each cluster's p-t stops being counted as soon as the control arm has been
+                ## vaccinated.  More realistically (following Dean et al. 2016), we should be counting person-time
+                ## up until the delayed vaccine group's immune ramp up period has ended. But since we are excluding
+                ## immune ramp up period person-time elsewhere in the analysis, we will exclude it here (for now) as
+                ## well
+                stA[, maxVaccDayInClus:= max(vaccDay), by = cluster]
+                stA[endDay > maxVaccDayInClus, endDay := maxVaccDayInClus]
+                stA <- stA[endDay > startDay] ## can happen when we reset endDay to be maxVaccDay in cluster
+                if(verbose>1.5) 
+                    print(paste0('excluding ', stA[, sum(infected==1 & infectDay < Inf & !(infectDay >= startDay & infectDay <= endDay))]
+                               , ' infected outside of start-end window'))
+                stA[infected==1 & infectDay < Inf & !(infectDay >= startDay & infectDay <= endDay), infected:=0]
+                ## make events that happen after endDay not count
+                stA[infectDay>endDay, infected:=0]
+            }
+        }
+        if(trial=='SWCT') {## inactive during immune ramp up; active only when there exists both vacc & unvacc person-time observed
             if(remStartFin) {
                 firstDayAnyoneImmune <- stA[, min(immuneDayThink)]
                 lastDayAnyoneNotVacc <- stA[, max(vaccDay)]
@@ -130,10 +149,17 @@ makeGEEDat <- function(parms, whichDo='popH') within(parms, {
     if(!includeAllControlPT) { ## remove person-time observed prior to post-refractory period from data
         if(trial=='CRCT' & ord!='none') ## active once anyone considered immune in matched cluster pair
             popHTmp[, firstActive := min(immuneDayThink), by = pair]
-        if(trial %in% c('RCT','FRCT')) ## active once anyone considered immune in cluster
+        if(trial %in% c('RCT','FRCT')) 
+            ## active once anyone considered immune in cluster
             popHTmp[, firstActive := min(immuneDayThink), cluster]
+        ## unactive once no one is unvaccinated
+        popHTmp[, maxVaccDayInClus := max(vaccDay) , by = cluster]
+                
     }
-    popHTmp$active <- popHTmp[,day>=firstActive]
+    ## need delayUnit below, b/c each day in this dt denotes that day plus the following delayUnit duratino of exposure time
+    popHTmp$active <- popHTmp[, day>=firstActive & (day+delayUnit) < maxVaccDayInClus] 
+
+
     clusD <- popHTmp[, list(cases = sum(!is.na(infectDayRCens)), atRisk = length(idByClus)), 
                      list(cluster, day, active, immuneGrp, vaccDay, immuneDayThink)]
     clusD <- clusD[order(cluster, day)]
@@ -159,8 +185,8 @@ makeGEEDat <- function(parms, whichDo='popH') within(parms, {
 
 plotClusD <- function(clusD) {
     plot(0,0, type = 'n', xlim = c(0,168), ylim = c(0,20), bty = 'n', xlab = 'day', ylab='ID in trial', yaxt='n', main = 'infected individuals')
-    clusD[immuneGrp==0, segments(day, cluster, day+7, cluster, col = 'dodger blue'), cluster]
-    clusD[immuneGrp==1, segments(day, cluster, day+7, cluster, col = 'red'), cluster]    
+    clusD[immuneGrp==0, segments(day, cluster, day+7, cluster, col = 'red'), cluster]
+    clusD[immuneGrp==1, segments(day, cluster + .5, day+7, cluster + .5, col = 'dodger blue'), cluster]    
     print('# infections')
     print(clusD[, sum(cases), immuneGrp])
     print('empirical hazard (remember declining incidence distorts this')

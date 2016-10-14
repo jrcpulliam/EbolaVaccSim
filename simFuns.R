@@ -11,6 +11,9 @@ makeParms <- function(
   , numClus=20, clusSize=300
   , delayUnit = 7 ## logistically imposed interval in between each new cluster receiving vaccination
   , contVaccDelay = NA ## days before vaccine arm is vaccinated in a delayed vaccine comparator trial
+    ## exclude or include person-time after the delayed arm has been vaccinated (if including it becomes
+    ## a before-after comparison, i.e. not randomized comparison
+  , excludeTimeAfterVaccDelay = T 
   , ord = 'none' ## order clusters' receipt of vaccination ('none', by baseline visit 'BL', by time-updated 'TU' last interval incidence)
   , hazType =  'SL' ## use hazards from "SL" or "Phenom"enologically driven hazards
   , avHaz = ''      ## average over time 'xTime' across clusters 'xClus' or both 'xClusxTime'
@@ -62,6 +65,8 @@ makeParms <- function(
     if(maxDurationDay < delayUnit*numClus) stop('maxDurationDay too short. Need enough time to rollout vaccines to all clusters')
     if(gsDesArgs$k>1 & length(StatsFxns)>1) stop('Cannot apply multiple statistical functions for simulations of sequential designs since trial progression is conditional on analysis')
     if(!avHaz %in% c('','xClus','xClusxTime','xTime')) stop('invalid avHaz input')
+if(!is.na(contVaccDelay)) if(contVaccDelay%%7 !=0) stop('vaccination delay not in multiples of delayUnit, could cause problems (not setup for immune status changes within the middle of the week)')
+if(!is.na(immunoDelay)) if(immunoDelay%%7 !=0) stop('immuno delay not in multiples of delayUnit, could cause problems (not setup for immune status changes within the middle of the week)')
     if(trial=='FRCT') delayUnit <- delayUnit/2 ## rolling out vaccines as quickly as you would if you were vaccinating whole clusters
     if(gs) {
         gsBounds <- do.call(gsDesign, gsDesArgs)
