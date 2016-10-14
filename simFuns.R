@@ -1,5 +1,4 @@
-require(survival); require(coxme); require(data.table); require(parallel); require(msm)
-#require(dplyr);
+require(survival); require(coxme); require(data.table); require(parallel); require(msm); require(dplyr);
 load('data/createHT.Rdata')
 options(deparse.max.lines=10)
 
@@ -284,15 +283,17 @@ setVRvaccDays <- setSWCTvaccDays <- function(parms, whichDo='pop') within(parms,
     assign(tmpstrg, tmpH)
     rm(tmpH, tmpstrg)
 })
+
 setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming same speed rollout as SWCT (unless FRCT)
     popH$vaccDay <- Inf ## unvaccinated
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
-    if(!is.na(contVaccDelay)) pop[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+    if(!is.na(contVaccDelay)) popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
 })
+
 setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT still, and then should be how vacc/controls are chosen inside here
     popH$vaccDay <- Inf
     popH[cluster <= numClus/2, vaccDay := delayUnit*(cluster-1)] ## first half of clusters (1 per pair) get vaccinated in sequence
-    if(!is.na(contVaccDelay)) pop[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+    if(!is.na(contVaccDelay)) popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
 })
 setNTvaccDays <- function(parms) within(parms, {
     popH$vaccDay <- Inf

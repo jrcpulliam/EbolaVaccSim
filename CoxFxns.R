@@ -17,7 +17,8 @@ infBump <- function(parms, censorDay=parms$maxDurationDay) {
         if(trial %in% c('RCT','FRCT')) ## active once anyone considered immune in cluster
             popH[, firstActive := min(immuneDayThink), cluster]
         popH$active <- popH[,day>=firstActive]
-        newInfs <- arrange(popH[indiv %in% uninfecteds & active==T & (day+hazIntUnit)<=censorDay], desc(indivHaz))
+        ## newInfs <- arrange(popH[indiv %in% uninfecteds & active==T & (day+hazIntUnit)<=censorDay], desc(indivHaz))
+        newInfs <- popH[indiv %in% uninfecteds & active==T & (day+hazIntUnit)<=censorDay][rev(order(indivHaz))]
         contInf <- newInfs[immune==F, list(indiv = indiv[indivHaz==max(indivHaz)], day = day[indivHaz==max(indivHaz)])][1,]
         vaccInf <- newInfs[immune==T & indiv!=contInf[,indiv], 
                            list(indiv = indiv[indivHaz==max(indivHaz)], day = day[indivHaz==max(indivHaz)])][1,]
@@ -25,7 +26,8 @@ infBump <- function(parms, censorDay=parms$maxDurationDay) {
         popH[indiv==newInfs[1,indiv] & day==newInfs[1,day], infectDay := day + hazIntUnit*.99]
         popH[indiv==newInfs[2,indiv] & day==newInfs[2,day], infectDay := day + hazIntUnit*.99]
         indivInfDays <- popH[infectDay!=Inf & indiv %in% newInfs[,indiv], list(indiv,infectDay)]
-        indivInfDays <- arrange(indivInfDays, indiv)
+        ## indivInfDays <- arrange(indivInfDays, indiv)
+        indivInfDays <- indivInfDays[order(indiv)]
         pop[indiv %in% indivInfDays[,indiv], infectDay:= indivInfDays[,infectDay]]
         pop[indiv %in% indivInfDays[,indiv], ]
         rm(infecteds, uninfecteds, newInfs, indivInfDays, st, stActive, clusDat)
@@ -88,7 +90,8 @@ doRelabel <- function(parms, csd, bump=F, nboot=200, doMods='doCoxME', verbFreqR
                     pop[, immuneDay:=vaccDay+immunoDelay]
                     pnms <- colnames(popH)
                     popH <- merge(popH[,!'vaccDay',with=F], pop[,list(indiv,vaccDay)], by = 'indiv')
-                    popH <- arrange(popH, day, indiv)
+                    ## popH <- arrange(popH, day, indiv)
+                    popH <- popH[order(day, indiv)]
                     popH[, immuneDay := vaccDay + immunoDelay]
                     popH[, vacc := day>= vaccDay]
                     popH[, immune := day>= immuneDay]
