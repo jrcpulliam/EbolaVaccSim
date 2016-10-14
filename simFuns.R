@@ -166,7 +166,7 @@ setIndHaz <- function(parms=makePop()) within(parms, {
     }
     if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     ## create popH which has weekly hazards for all individuals
-    popH <- arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day)
+    popH <- data.table(arrange(merge(pop, hazT, by='cluster', allow.cartesian=T),day))
     popH$indivHaz <- popH[, clusHaz*indivRR]
     daySeq <- daySeq[daySeq>=0] ## don't do anything before zero, just stored hazard in popHearly for ordering
     daySeqLong <- seq(0,trackUntilDay+1000,by=hazIntUnit) ## to avoid problems later

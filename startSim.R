@@ -1,4 +1,4 @@
-if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl("Stevens-MacBook-Pro.local", Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
@@ -14,7 +14,10 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="FALSE";ord="TU";vaccEff="NA";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85; DoIndivRRcat=T
+## pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="FALSE";ord="TU";vaccEff="NA";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85; DoIndivRRcat=T
+
+pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="TRUE";ord="TU";vaccEff=.9;randVaccProperties="FALSE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85; DoIndivRRcat=T
+
 }
 load('data/vaccProp1.Rdata')
 
@@ -22,7 +25,7 @@ load('data/vaccProp1.Rdata')
 if(randVaccProperties)
    vaccProp <- get(vaccPropStrg) else vaccProp <- NA
 
-verbose <- 1
+verbose <- 11
 parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)
