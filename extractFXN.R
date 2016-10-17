@@ -1,6 +1,7 @@
 popNms <- c("Spop", "SpopH", "SpopEvents", "SEVpopEvents")
 dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 'avHaz', 'clusSize', 'numClus', ## **automate 150,300,6000** change later on new batches
-             'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate', 'HazTrajSeed'                          
+             'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate', 'HazTrajSeed'
+            ,'contVaccDelay', 'maxRRcat'
              )
 moveFront <- function(dt, fnames) setcolorder(dt, c(fnames, names(dt)[!names(dt) %in% fnames]))
 
@@ -17,22 +18,22 @@ procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, 
     nbtd <- parmsMat[tid==tidDo & batch <= maxbatch24,rcmdbatch]
     if(verbose>0) print('extracting individual sims')
     system.time(
-    resList <- extractSims(thing, verb=verbose, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
-        )
+        resList <- extractSims(thing, verb=verbose, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=detectCores())
+    )
     ## if(verbose>0) print('processing final trial info')
     ## resList <- procResList(resList, verb=0)
     if(verbose>0) print('processing risk, risk spent/averted by simulation')
-        system.time(
-    resList <- procMetaParms(resList)
-            )
+    system.time(
+        resList <- procMetaParms(resList)
+    )
     if(verbose>0) print('calculating risk spent/averted metrics summing or taking expectations across simulations')
-        system.time(
-    resList <- procIrskSpent(resList, verbose=verbose)
-            )
+    system.time(
+        resList <- procIrskSpent(resList, verbose=verbose)
+    )
     if(verbose>0) print('calculating expected # spending more than threshold risk across simulations')
-        system.time(
-    resList <- procExpRiskSpent(resList, thresholds = thresholds, breaks = breaks)
-            )
+    system.time(
+        resList <- procExpRiskSpent(resList, thresholds = thresholds, breaks = breaks)
+    )
     if(saveSmall) resList <- within(resList, {Spop <- NULL; SpopH <- NULL})
     save(resList, file=file.path('BigResults',paste0(thing, '-', tidDo, '.Rdata')))
     rm(resList); gc()
@@ -75,7 +76,7 @@ extractSims <- function(thing
                       , verbose = 0
                       , maxbatches = NA
                       , nbatchDo=NA
-                      , mc.cores = 48
+                      , mc.cores = detectCores()
                       , indivLev = F 
                         ) {
     if(verbose==1) browser()
@@ -171,11 +172,13 @@ procResList <- function(resList, verbose = 0) {
 procMetaParms <- function(resList)  within(resList, {
     ## unique parameters
     punq <- unique(parms[,-1,with=F])
+
     punq <- data.table(pid = 1:nrow(punq), punq)
     punq[, lab:=trial]
     punq[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
     punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
-    browser()
+    punq[trial=='RCT' & maxRRcat>0, lab:=paste0(lab,'-maxRR')]
+    punq[trial=='RCT' & !is.na(contVaccDelay), lab:=paste0(lab,'-cvr')]
     
     punq[,lab:=as.factor(lab)]
     punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])]
