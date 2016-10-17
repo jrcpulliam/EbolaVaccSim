@@ -106,7 +106,7 @@ extractSims <- function(thing
     }
     return(resList)
 }
-Q
+
 procResList <- function(resList, verbose = 0) {
     resList <- within(resList, {
         if(verbose>0) browser()
