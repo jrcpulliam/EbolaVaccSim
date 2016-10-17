@@ -17,7 +17,7 @@ procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, 
     nbtd <- parmsMat[tid==tidDo & batch <= maxbatch24,rcmdbatch]
     if(verbose>0) print('extracting individual sims')
     system.time(
-    resList <- extractSims(thing, verb=0, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
+    resList <- extractSims(thing, verb=verbose, maxbatches=NA, nbatchDo=nbtd, indivLev = T, mc.cores=48)
         )
     ## if(verbose>0) print('processing final trial info')
     ## resList <- procResList(resList, verb=0)
@@ -48,7 +48,7 @@ extractOneSim <- function(fileNm ## prepare each simulation for binding into a l
     riskStratList <-  finInfoList <- finModList <- parmsList <- list(NULL)
     if(exists('sim')) {
         if(verbose>2) browser()
-        nbatch <- as.numeric(gsub("[^0-9]", "", fileNm))
+        nbatch <- as.numeric(gsub("[^0-9]", "", gsub(thing, '', fileNm)))
         if(nbatch %% verbFreq == 0) print(nbatch)
         sim$parms[['trialStartDate']] <- as.character(sim$parms[['trialStartDate']])
         parmsList <- data.table(nbatch = nbatch, t(unlist(sim$parms[dparms])))
@@ -89,12 +89,14 @@ extractSims <- function(thing
     if(!is.na(nbatchDo[1])) {
         ## batchdirnm <- file.path('BigResults',thing)
         ## flstmp <- list.files(batchdirnm, pattern=thing)
-        fns <- as.numeric(gsub("[^0-9]", "", fls)) ##as.numeric(sub('.Rdata','', sub(thing,'',flstmp)))
+        fns <- gsub(thing,'',fls) ## in case there is a number in thing
+        fns <- as.numeric(gsub("[^0-9]", "", fns)) ##as.numeric(sub('.Rdata','', sub(thing,'',flstmp)))
         fls <- fls[fns %in% nbatchDo]
     }
     print(paste0('extracting from ', length(fls), ' files'))
     resList <- list()
     tmp <- mclapply(fls, extractOneSim, indivLev = indivLev, verbose=0, mc.cores=mc.cores)
+    print('finished extracting files')
     ## tmp <- mclapply(fls[[5340]], extractOneSim, indivLev = indivLev, verbose=1, mc.cores=mc.cores)
     length(resList) <- length(tmp[[1]])
     names(resList) <- names(tmp[[1]])
@@ -104,7 +106,7 @@ extractSims <- function(thing
     }
     return(resList)
 }
-
+Q
 procResList <- function(resList, verbose = 0) {
     resList <- within(resList, {
         if(verbose>0) browser()
@@ -173,6 +175,8 @@ procMetaParms <- function(resList)  within(resList, {
     punq[, lab:=trial]
     punq[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
     punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
+    browser()
+    
     punq[,lab:=as.factor(lab)]
     punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])]
     setkey(punq, pid)

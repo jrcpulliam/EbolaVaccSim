@@ -16,7 +16,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
 }else{
 ## pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="FALSE";ord="TU";vaccEff="NA";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85; DoIndivRRcat=T
 
-pid=38;tid=21;batch=1;rcmdbatch=2385;trialStartDate="2014-10-01";propInTrial=0.05;avHaz="xTime";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="TRUE";ord="TU";vaccEff=.9;randVaccProperties="FALSE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-irskHybrid";nboot=200;reordLag=14;saveNm="Equip-irskHybrid";simNumStart=1;simNumEnd=85; DoIndivRRcat=T
+pid=6;tid=1;batch=1;rcmdbatch=121;trialStartDate="2014-12-01";propInTrial=0.05;avHaz="";indivRRSeed=7;HazTrajSeed=7;nsims=5;trial="RCT";gs="TRUE";ord="TU";contVaccDelay=NA;maxRRcat=25;vaccEff="NA";DoIndivRRcat="TRUE";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-Fig5-v1";nboot=200;reordLag=14;saveNm="Equip-Fig5-v1";simNumStart=1;simNumEnd=5
 
 }
 load('data/vaccProp1.Rdata')
@@ -25,7 +25,7 @@ load('data/vaccProp1.Rdata')
 if(randVaccProperties)
    vaccProp <- get(vaccPropStrg) else vaccProp <- NA
 
-verbose <- 11
+verbose <- 1
 parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)

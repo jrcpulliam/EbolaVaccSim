@@ -16,7 +16,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
     }
 }
 
-thing <- 'Equip-RRcat'
+thing <- 'Equip-Fig5-v1'
 ## Load VaccProp & hazT
 load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
@@ -35,12 +35,13 @@ sdates <- sdates[1:length(sdates) %% 2 ==1]
 unique(parmsMat[avHaz=='xTime' & propInTrial==c(.05) & trialStartDate==c('2014-10-01'), list(avHaz, tid)])
 ## tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid] )
 tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates & avHaz %in% c('', 'xTime'), tid] )
+tidsDo <- parmsMat[,unique(tid)]t
 
-#for(tt in 1:length(tidsDo)) {
+for(tt in 1:length(tidsDo)) {
     ti <- tidsDo[tt]
     print(ti)
     procAll(tidDo = ti, verbose = 0, maxbatch24=30)
-#}
+}
 
 ## for(ti in tidsDo) {
 ##     load(file=file.path('BigResults',paste0(thing, '-', ti, '.Rdata')))
