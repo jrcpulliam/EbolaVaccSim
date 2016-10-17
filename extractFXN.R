@@ -179,18 +179,19 @@ procMetaParms <- function(resList)  within(resList, {
     punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
     punq[trial=='RCT' & maxRRcat>0, lab:=paste0(lab,'-maxRR')]
     punq[trial=='RCT' & !is.na(contVaccDelay), lab:=paste0(lab,'-cvr')]
-    
     punq[,lab:=as.factor(lab)]
-    punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])]
+    ## punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])] ## commenting out, not sure what this does?
     setkey(punq, pid)
     ## create parms
+    
     parms <- merge(punq, parms, by = names(punq)[!names(punq) %in% c('lab','pid')])
     setkey(parms, pid, nbatch)
     setcolorder(parms, c('pid','nbatch', names(parms)[!names(parms) %in% c('pid','nbatch')]))
     Spop <- merge(parms[,list(pid, lab, nbatch)], Spop, by = 'nbatch')
     setcolorder(Spop, c('pid','lab','nbatch', names(Spop)[!names(Spop) %in% c('pid','lab', 'nbatch')]))
-    Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]]
-    setkey(Spop, Oi, pid, nbatch, simNum)
+    Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]] ## going to need to fix to deal with delayedVacc groups
+
+    setkey(Spop, simNum, Oi, pid, nbatch)
     ## Spop[,quantile(indivRR, c(.025,.975))]
     Spop[,cumRisk:=1-exp(-cumHaz)] 
     Spop[,cumRisk_EV:=1-exp(-cumHaz_EV)]
