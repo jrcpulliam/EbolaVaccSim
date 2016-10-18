@@ -178,7 +178,7 @@ procMetaParms <- function(resList)  within(resList, {
     punq[trial=='RCT' & gs==T, lab:=paste0(lab,'-gs')]
     punq[trial=='RCT' & ord=='TU', lab:=paste0(lab,'-rp')]
     punq[trial=='RCT' & maxRRcat>0, lab:=paste0(lab,'-maxRR')]
-    punq[trial=='RCT' & !is.na(contVaccDelay), lab:=paste0(lab,'-cvr')]
+    punq[trial=='RCT' & !is.na(contVaccDelay), lab:=paste0(lab,'-cvd')]
     punq[,lab:=as.factor(lab)]
     ## punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])] ## commenting out, not sure what this does?
     setkey(punq, pid)
@@ -190,6 +190,14 @@ procMetaParms <- function(resList)  within(resList, {
     Spop <- merge(parms[,list(pid, lab, nbatch)], Spop, by = 'nbatch')
     setcolorder(Spop, c('pid','lab','nbatch', names(Spop)[!names(Spop) %in% c('pid','lab', 'nbatch')]))
     Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]] ## going to need to fix to deal with delayedVacc groups
+browser()
+
+    Spop[grepl(lab, 'cvd') & indiv < 151,arm:='cont'] ## going to need to fix to deal with delayedVacc groups
+    Spop[pid==punq[!is.na(contVaccDelay),pid] & indiv < 150, arm:='cont']
+    Spop[pid==punq[maxRRcat>0,pid] & indivRR > punq[maxRRcat>0, maxRRcat], arm:='highRRexcl']
+
+##     Spop[pid==punq[maxRRcat>0,pid] & indivRR > 25] ## working here
+
 
     setkey(Spop, simNum, Oi, pid, nbatch)
     ## Spop[,quantile(indivRR, c(.025,.975))]
