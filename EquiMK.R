@@ -78,7 +78,7 @@ parmsMat <- rbind(parmsMatRCT,parmsMatSWCT,parmsMatCFs)
 parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; delayUnit=7; randVaccProperties=T;
                            DoIndivRRcat=T})
 parmsMat$StatsFxns <- 'doCoxME'
-parmsMat[trial=='SWCT', StatsFxns:='doCoxME'] ### CHANGE BACK
+parmsMat[trial=='SWCT', StatsFxns:='doRelabel'] ### CHANGE BACK
 parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
 parmsMat <- parmsMat[order(avHaz,trial)]
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)

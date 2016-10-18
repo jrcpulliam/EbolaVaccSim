@@ -292,21 +292,32 @@ setVRvaccDays <- setSWCTvaccDays <- function(parms, whichDo='pop') within(parms,
 
 setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming same speed rollout as SWCT (unless FRCT)
     popH$vaccDay <- Inf ## unvaccinated
+    popH$arm <- 'cont' ## control arm
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
-    if(!is.na(contVaccDelay)) popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+    popH[idByClus > clusSize/2 , arm:= 'vacc'] ## half get vaccinated in each cluster, 1 per interval
+    if(!is.na(contVaccDelay)) {
+        popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay] ## control delayed vacc
+        popH[idByClus <= clusSize/2, arm := 'contDV'] ## control delayed vacc
+    }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
         ## in their cluster is vaccinated and exclud them from analysis (in activeFXN)
-        popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = cluster]
+        popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = cluster] ## excluded
+        popH[indivRR>maxRRcat, arm:=paste0(arm, 'Excl')]
     }
 })
 
 setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT still, and then should be how vacc/controls are chosen inside here
     popH$vaccDay <- Inf
-    popH[cluster <= numClus/2, vaccDay := delayUnit*(cluster-1)] ## first half of clusters (1 per pair) get vaccinated in sequence
-    if(!is.na(contVaccDelay)) popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+    popH$arm <- 'cont'
+    popH[cluster <= numClus/2, .(vaccDay := delayUnit*(cluster-1), arm='vacc')] ## first half of clusters (1 per pair) get vaccinated in sequence
+    if(!is.na(contVaccDelay)) {
+        popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
+        popH[cluster > numClus/2,   arm:='contDV']
+    }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
         ## in their pair is vaccinated and exclud them from analysis (in activeFXN)
         popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = pair]
+        popH[indivRR>maxRRcat, arm:=paste0(arm, 'Excl')]
     }
 
 })
@@ -326,7 +337,7 @@ setImmuneDays <- function(parms, whichDo='pop') within(parms, {
     tmpH$vacc <- tmpH[, day>=vaccDay]
     tmpH$immune <- tmpH[, day>=immuneDay]
     ## reset pop to refrence data table after reordering and then assignment of vaccday stuff
-    tmp <- select(tmpH[day==0], indiv, cluster, Oi, Oc, pair, idByClus, indivRR, vaccDay, immuneDay) 
+    tmp <- select(tmpH[day==0], indiv, cluster, Oi, Oc, pair, idByClus, indivRR, vaccDay, arm, immuneDay) 
     assign(tmpstrgH, tmpH)
     assign(whichDo, tmp)
     rm(tmpH, tmpstrgH)
