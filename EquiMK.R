@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-v1'
+thing <- 'Equip-Fig5-v2'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -78,7 +78,7 @@ parmsMat <- rbind(parmsMatRCT,parmsMatSWCT,parmsMatCFs)
 parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; delayUnit=7; randVaccProperties=T;
                            DoIndivRRcat=T})
 parmsMat$StatsFxns <- 'doCoxME'
-parmsMat[trial=='SWCT', StatsFxns:='doRelabel'] ### CHANGE BACK
+parmsMat[trial=='SWCT', StatsFxns:='doRelabel'] ### slow if relabeling
 parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
 parmsMat <- parmsMat[order(avHaz,trial)]
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
