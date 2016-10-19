@@ -43,6 +43,7 @@ for(tt in 1:length(tidsDo)) {
     procAll(tidDo = ti, verbose = 0, maxbatch24=30)
 }
 
+
 ## for(ti in tidsDo) {
 ##     load(file=file.path('BigResults',paste0(thing, '-', ti, '.Rdata')))
 ##     resList$Spop <- resList$SpopH <- NULL
