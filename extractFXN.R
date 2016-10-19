@@ -26,6 +26,7 @@ procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, 
     system.time(
         resList <- procMetaParms(resList)
     )
+browser()
     if(verbose>0) print('calculating risk spent/averted metrics summing or taking expectations across simulations')
     system.time(
         resList <- procIrskSpent(resList, verbose=verbose)
@@ -230,8 +231,10 @@ procExpRiskSpent <- function(resList, thresholds = c(.01, .02, .05, .1, .2), bre
     powTab <- powTab[vaccEff>0 & pid < 6, list(power = mean(vaccGood)), list(pid)]
     totCasesTab <- Spop[pid<6,list(totCase_EV = sum(infectDay_EV<336), totCase = sum(infectDay<336)), list(pid, simNum)]
     totCasesTab <- totCasesTab[,list(totCase = mean(totCase), totCase_EV = mean(totCase_EV)),pid]
-    punq <- merge(punq, powTab, by = 'pid')
-    punq <- merge(punq, totCasesTab, by = 'pid')
+
+browser() ## *** working here need to figure out why power wasn't calculated for new designs and also why swct/vr/nt disappeared from data set
+    punq <- merge(punq, powTab, by = 'pid', all = T)
+    punq <- merge(punq, totCasesTab, by = 'pid', all = T)
     rm(powTab, totCasesTab)
 })
 
@@ -251,6 +254,8 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
                     list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], arm='vacc', type='max'),
                     list(pid,Oi,vaccDay)]
     ## conditional on exact vaccination day (note borrowing control info across all vaccDay==Inf, i.e. whether the cluster they're in is vaccinated early/late)
+
+    ## ***REMEMBER vaccDay==INF no longer tells yo it's a control for delayed vacc groups**
     irskCondvd <- Spop[!lab %in% c('VR','NT'),
                        list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type='condvd'),
                        list(pid,Oi,arm,vaccDay)]

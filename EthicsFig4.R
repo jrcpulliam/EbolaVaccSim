@@ -11,7 +11,7 @@ wid <- 6.5
 heig <- 4
 res <- 300
 
-thing <- 'Equip-RRcat'
+thing <- 'Equip-Fig5-v1'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -28,7 +28,8 @@ for(ii in 1:length(fls)) {
 }
 punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
-plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
+## Fig 4
+plunq <- punq[threshold==.05 & is.na(contVaccDelay) & maxRRcat==0, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 
 
 ## ethicline contours
