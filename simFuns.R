@@ -286,6 +286,7 @@ setVRvaccDays <- setSWCTvaccDays <- function(parms, whichDo='pop') within(parms,
     tmpstrg <- paste0(whichDo, 'H')
     tmpH <- copy(get(tmpstrg))
     tmpH$vaccDay <- delayUnit*(tmpH[,cluster]-1)
+    tmpH$arm <- 'vacc'
     assign(tmpstrg, tmpH)
     rm(tmpH, tmpstrg)
 })
@@ -328,6 +329,7 @@ setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT 
 })
 setNTvaccDays <- function(parms) within(parms, {
     popH$vaccDay <- Inf
+    popH$arm <- NA
 })
 ## To check ordering works
 ## p1 <- setHazs(makePop(makeParms(clusSize=2, weeklyDecay=.9, weeklyDecayVar=.2, ord='TU', trial='SWCT',small=T)))
