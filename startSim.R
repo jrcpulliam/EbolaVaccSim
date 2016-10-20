@@ -69,18 +69,3 @@ gc()
 ## excess risk taken on distribution, ppl above a certain threshold should be given a choice regardless of info provided
 ## informed consent, choice to be given experimental vaccine vs being randomized, working in altruism
 ## what does a trialist do with our framework, how can they decide who is at what level? simple BMJ version with suspected inf risk & CFR
-
-## pdf('Figures/RCT-rp-gs.pdf')
-## par(mfrow=c(3,1))
-## plotSTA(censSurvDat(res, whichDo='stActive', 336), endTrialDay=res$endTrialDay, verbose=0)
-## plotSTA(censSurvDat(res, whichDo='stEV', 336), endTrialDay=res$endTrialDay, verbose=0)
-## plotSTA(censSurvDat(res, whichDo='st', 336), endTrialDay=res$endTrialDay, verbose=0)
-## graphics.off()
-
-
-## pdf('Figures/RCT-rp-gs-cvd.pdf')
-## par(mfrow=c(3,1))
-## plotSTA(censSurvDat(res, whichDo='stActive', 336), endTrialDay=res$endTrialDay, verbose=0)
-## plotSTA(censSurvDat(res, whichDo='stEV', 336), endTrialDay=res$endTrialDay, verbose=0)
-## plotSTA(censSurvDat(res, whichDo='st', 336), endTrialDay=res$endTrialDay, verbose=0)
-## graphics.off()                          
