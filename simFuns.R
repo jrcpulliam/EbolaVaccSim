@@ -300,8 +300,11 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
         popH[idByClus <= clusSize/2, arm := 'contDV'] ## control delayed vacc
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
+
         ## in their cluster is vaccinated and exclud them from analysis (in activeFXN)
-        popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = cluster] ## excluded
+        popH[,minvaccDay:=min(vaccDay), cluster]
+        popH[indivRR>maxRRcat, vaccDay := minvaccDay] ## excluded
+        popH$minvaccDay <- NULL
         popH[indivRR>maxRRcat, arm:=paste0(arm, 'Excl')]
     }
 })
@@ -316,7 +319,9 @@ setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT 
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
         ## in their pair is vaccinated and exclud them from analysis (in activeFXN)
-        popH[indivRR>maxRRcat, vaccDay := min(vaccDay), by = pair]
+        popH[,minvaccDay:=min(vaccDay), pair]
+        popH[indivRR>maxRRcat, vaccDay := minvaccDay] ## excluded
+        popH$minvaccDay <- NULL
         popH[indivRR>maxRRcat, arm:=paste0(arm, 'Excl')]
     }
 

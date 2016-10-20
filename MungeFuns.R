@@ -116,26 +116,54 @@ activeFXN <- function(parms, whichDo='st') within(parms, {
 ## s1 <- activeFXN(s1)
 ## s1$st[idByClus%in%1:2, list(indiv, cluster, pair, idByClus,immuneDayThink, startDay,endDay)]
 
-plotSTA <- function(stA, vaccCol='dodger blue', contCol='red') {
+plotSTA <- function(stA, vaccCol='dodger blue', contCol='red', endTrialDay=NA, verbose = 0, ylim = c(0,6000)) {
     ## par(mfrow=c(2,1))
-    ## plot(0,0, type = 'n', xlim = c(0,168), ylim = c(0,6000), bty = 'n', xlab = 'day', ylab='ID in trial', yaxt='n', main = 'infected individuals')
+    ## plot(0,0, type = 'n', xlim = c(0,168), ylim = ylim, bty = 'n', xlab = 'day', ylab='ID in trial', yaxt='n', main = 'infected individuals')
     ## stA[infected==1 & immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = contCol), cluster]
     ## stA[infected==1 & infectDay<Inf & immuneGrp==1, segments(startDay, indiv, min(168,endDay), indiv, col = vaccCol), cluster]
     par(mar=c(5,4,1,.5))
-    plot(0,0, type = 'n', xlim = c(0,1.5*stA[,max(endDay)]), ylim = c(0,6000), bty = 'n', xlab = 'day', ylab='individuals', yaxt='n', main = '')
+    plot(0,0, type = 'n', xlim = c(0,stA[,max(endDay)+21]), ylim = ylim, bty = 'n', xlab = 'day', ylab='individuals', yaxt='n', main = '')
+    if(verbose>0) browser()
+    
     stA[ immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = contCol), cluster]
     stA[ immuneGrp==1, segments(startDay, indiv, endDay, indiv, col = vaccCol), cluster]
     ## stA[infected==1 & immuneGrp==0, segments(startDay, indiv, endDay, indiv, col = 'black'), cluster]
     ## stA[infected==1 & infectDay<Inf & immuneGrp==1, segments(startDay, indiv, endDay, indiv, col = 'black'), cluster]
     stA[infected==1 & immuneGrp==0, points(endDay, indiv, pch = 16, cex = .5, col = 'black'), cluster]
     stA[infected==1 & infectDay<Inf & immuneGrp==1, points(endDay, indiv, pch = 16, cex = .5, col = 'black'), cluster]
+    if(!is.na(endTrialDay)) abline(v=endTrialDay)
     legend('topright', c('vaccinated & immune','unvaccinated','infected individual'),
            title = 'analyzeable person-time', bty = 'n', col = c(vaccCol,contCol,'black'), pch = c(15,15,16),, cex = .7)
     print('# infections')
     print(stA[, sum(infected==1), immuneGrp])
     print('empirical hazard (remember declining incidence distorts this')
     print(stA[, sum(infected==1)/sum(min(endDay,168)-min(startDay,168)), immuneGrp])
+
 }
+
+
+## pdf('Figures/RCT-rp-gs.pdf')
+## par(mfrow=c(3,1))
+## plotSTA(censSurvDat(res, whichDo='stActive', 336), endTrialDay=res$endTrialDay, verbose=0)
+## plotSTA(censSurvDat(res, whichDo='stEV', 336), endTrialDay=res$endTrialDay, verbose=0)
+## plotSTA(censSurvDat(res, whichDo='st', 336), endTrialDay=res$endTrialDay, verbose=0)
+## graphics.off()
+
+
+## pdf('Figures/RCT-rp-gs-cvd.pdf')
+## par(mfrow=c(3,1))
+## plotSTA(censSurvDat(res, whichDo='stActive', 336), endTrialDay=res$endTrialDay, verbose=0)
+## plotSTA(censSurvDat(res, whichDo='stEV', 336), endTrialDay=res$endTrialDay, verbose=0)
+## plotSTA(censSurvDat(res, whichDo='st', 336), endTrialDay=res$endTrialDay, verbose=0)
+## graphics.off()                          
+
+## ylim <- c(0,300)
+## pdf('Figures/RCT-rp-gs-maxRRcat.pdf')
+## par(mfrow=c(3,1))
+## plotSTA(censSurvDat(res, whichDo='stActive', 336), endTrialDay=res$endTrialDay, ylim=ylim, verbose=0)
+## plotSTA(censSurvDat(res, whichDo='stEV', 336), endTrialDay=res$endTrialDay, ylim=ylim, verbose=0)
+## plotSTA(censSurvDat(res, whichDo='st', 336), endTrialDay=res$endTrialDay, ylim=ylim, verbose=0)
+## graphics.off()                          
 
 ## Restructure for GEE/GLMM with weekly observations of each cluster.
 makeGEEDat <- function(parms, whichDo='popH') within(parms, {
