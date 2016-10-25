@@ -1,3 +1,33 @@
+if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
+if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
+if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
+rm(list=ls(all=T)); gc()
+require(optiRum); require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
+sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
+wid <- 6.5
+heig <- 4
+res <- 300
+
+thing <- 'Equip-RRcat'
+figdir <- file.path('Figures', thing)
+dir.create(figdir)
+fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
+cols <- c("NT"='red', "SWCT"='orange', "VR"='dark green', "RCT-gs"='dodger blue', "RCT"='light blue', "RCT-rp"='purple', "RCT-gs-rp" = 'purple')
+
+punq <- data.table()
+for(ii in 1:length(fls)) {
+    load(fls[ii])
+    tmp <- merge(resList$punq,resList$SpopWorst,by = c('pid', 'propInTrial','lab'))
+    tmp <- merge(tmp, resList$irsk[type=='marg', list(caseSpent = 6000*mean(spent_EV)), pid], by = 'pid')
+    speedpow <- with(resList, merge(parms[, list(pid, nbatch)], finTrials[,list(tcal, vaccEff,vaccGood, cvr,nbatch)], by = 'nbatch'))
+    tmp <- merge(tmp, speedpow[, list(tcal = mean(tcal)), pid], by = 'pid')
+    punq <- rbind(punq, tmp)
+}
+punq[,trialStartDate:=as.Date(trialStartDate)]
+punq[,date:=format.Date(trialStartDate, '%b-%y')]
+plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 
 ## infection risk
 irsk[,cluster:=factor(cluster)]
