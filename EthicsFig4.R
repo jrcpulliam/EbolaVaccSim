@@ -11,7 +11,7 @@ wid <- 6.5
 heig <- 4
 res <- 300
 
-thing <- 'Equip-Fig5-v1'
+thing <- 'Equip-Fig5-v2'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -62,6 +62,9 @@ plunq <- punq[threshold==.05 & lab %in% labstoshow, list(lab, power, trialStartD
 tmpM <-  plunq[lab!='RCT-rp' & avHaz=='' & date %in% c('Dec-14','Feb-15')]
 ## tmp[date=='Dec-14', cols:=makeTransparent(cols, 100)]
 ##tmp[date=='Feb-15',pch:=15]
+## tmpM[pchs==21 & date=='Dec-14', pchs:=16]
+## tmpM[pchs==21 & date=='Dec-14', pchs:=15]
+## tmpM[pchs==21 & date=='Dec-14', pchs:=17]
 pdf(file.path(figdir, paste0('Fig4B.pdf')), width =5.5, h=3)
 par(mfrow=c(1,2), mar = c(4 ,6,.5,.5))
 par(mfrow=c(2,2), mar = c(3 ,6,.5,.5), oma = c(1,0,0,0))
@@ -69,10 +72,10 @@ for(dd in tmpM[,unique(date)]) {
     tmp <- tmpM[date==dd]
     xmax <- 60
     ## power
-    with(tmp, plot(caseSpent_EV, power, xlim = c(0,xmax), ylim = c(0,1), pch = pchs, las = 1, col = cols, cex = 2, bty = 'n', xlab = ''))
+    with(tmp, plot(caseSpent_EV, power, xlim = c(0,xmax), ylim = c(0,1), pch = pchs, las = 1, col = cols, cex = 1, bty = 'n', xlab = '', main = date[1]))
     mtext('avertable cases not averted', 1, -1, outer = T)
     ## speed
-    with(tmp, plot(caseSpent_EV, tcal/30, xlim = c(0,xmax), ylim = c(0,168/30), pch = pchs, las = 1, col = cols, cex=2, bty='n', xlab='', ylab = 'trial duration\n(months)'))
+    with(tmp, plot(caseSpent_EV, tcal/30, xlim = c(0,xmax), ylim = c(180/30,0), pch = pchs, las = 1, col = cols, cex=1, bty='n', xlab='', ylab = 'trial duration\n(months)'))
 }
     tmp[, legend('bottomright', leg = lab, col = cols, pch = pchs, cex = .7, bty = 'n')]
 graphics.off()
