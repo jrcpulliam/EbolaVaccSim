@@ -247,7 +247,7 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
                         , indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
                      list(pid,Oi,arm)]
     ## maximum spent given worst possible vaccination order (only for random ordered trials)
-    irskMax <- Spop[!lab %in% c('VR','NT') & arm=='vacc' & !grepl('rp',lab) & vaccDay==max(vaccDay[arm=='vacc']),
+    irskMax <- Spop[!lab %in% c('VR','NT') & grepl('vacc', arm) & !grepl('rp',lab) & vaccDay==max(vaccDay[grepl('vacc',arm)]),
                     list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], arm='vacc', type='max'),
                     list(pid,Oi,vaccDay)]
     ## conditional on exact vaccination day (note borrowing control info across all vaccDay==Inf, i.e. whether the cluster they're in is vaccinated early/late)

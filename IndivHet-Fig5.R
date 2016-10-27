@@ -40,26 +40,26 @@ plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above,
 
 ####################################################################################################
 ## infection risk
-irsk[,cluster:=factor(cluster)]
-p <- ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, fill=cluster)) +  ylab('cumulative infection risk') + xlab('individual') +
+itmp <- irsk[tid==1]
+p <- ggplot(itmp[lab=='NT'], aes(x=ordShow, y=inf, fill=cluster)) +  ylab('cumulative infection risk') + xlab('individual') +
     geom_bar(stat='identity', width=1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
         theme(legend.position="right") #+ theme(axis.title.y = element_text(angle=0))
-ggsave(file.path(figdir, paste0('irsk inf bars.pdf')), plot=p, w=wid, h=heig, units='in')
+ggsave(file.path(figdir, paste0('itmp inf bars.pdf')), plot=p, w=wid, h=heig, units='in')
 
 
 ## Conditional on arms & order randomization
-tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T)]
-tmp <- tmp[lab!='RCT-rp']
+itmp <- irsk[tid==1 & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
+itmp <- itmp[lab!='RCT-rp']
 
 ####################################################################################################
 ## SB version
-ylim <- tmp[,range(-avert_EV,spent_EV, -avert, spent)]
-tmp[, cols:=armShown]; tmp[cols=='cont',cols:='red']; tmp[cols=='vacc',cols:='dodger blue']
+ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
+itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
 pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
 par(mfrow=c(4,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
-for(ll in tmp[,unique(lab)]) {
-    with(tmp[lab==ll], plot(ordShowArm, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll))
-    with(tmp[lab==ll], points(ordShowArm, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
+for(ll in itmp[,unique(lab)]) {
+    with(itmp[lab==ll], plot(ordShowArm, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll))
+    with(itmp[lab==ll], points(ordShowArm, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
     abline(h=0, lty = 1)
     abline(h=.05, lty = 2, col='gray')    
 }
