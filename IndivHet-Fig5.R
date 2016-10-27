@@ -10,17 +10,26 @@ wid <- 6.5
 heig <- 4
 res <- 300
 
-thing <- 'Equip-RRcat'
+thing <- 'Equip-Fig5-v2'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
 cols <- c("NT"='red', "SWCT"='orange', "VR"='dark green', "RCT-gs"='dodger blue', "RCT"='light blue', "RCT-rp"='purple', "RCT-gs-rp" = 'purple')
 
-punq <- data.table()
+load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
+tvars <- c("trialStartDate", "propInTrial", "avHaz", "indivRRSeed" , "HazTrajSeed",'numClus','clusSuze','hazType','nbsize','mu','cvClus','cvClusTime','sdLogIndiv','weeklyDecay','cvWeeklyDecay','hazIntUnit')
+tvars <- tvars[tvars %in% colnames(parmsMat)]
+tpop <- unique(parmsMat[,tvars, with=F]) ## make sure to add other variables unique to population
+tpop$tid <- 1:nrow(tpop)
+
+irsk <- punq <- data.table()
 for(ii in 1:length(fls)) {
     load(fls[ii])
     tmp <- merge(resList$punq,resList$SpopWorst,by = c('pid', 'propInTrial','lab'))
     tmp <- merge(tmp, resList$irsk[type=='marg', list(caseSpent = 6000*mean(spent_EV)), pid], by = 'pid')
+    itmp <- resList$irsk
+    itmp$tid <- ii ## **careful here**, need to make sure it always matches flow from parmsMat
+    irsk <- rbind(irsk, itmp)
     speedpow <- with(resList, merge(parms[, list(pid, nbatch)], finTrials[,list(tcal, vaccEff,vaccGood, cvr,nbatch)], by = 'nbatch'))
     tmp <- merge(tmp, speedpow[, list(tcal = mean(tcal)), pid], by = 'pid')
     punq <- rbind(punq, tmp)
@@ -29,6 +38,7 @@ punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 
+####################################################################################################
 ## infection risk
 irsk[,cluster:=factor(cluster)]
 p <- ggplot(irsk[lab=='NT'], aes(x=ordShow, y=inf, fill=cluster)) +  ylab('cumulative infection risk') + xlab('individual') +
@@ -40,47 +50,8 @@ ggsave(file.path(figdir, paste0('irsk inf bars.pdf')), plot=p, w=wid, h=heig, un
 ## Conditional on arms & order randomization
 tmp <- irsk[(arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T)]
 tmp <- tmp[lab!='RCT-rp']
+
 ####################################################################################################
-## spent
-ylim <- tmp[,range(spent,spent_EV)]
-p <- ggplot(tmp, aes(x=ordShowArm, y=spent, fill=armShown)) + ggtitle('risk spent, conditional on arm without EV') +
-    geom_bar(stat='identity', width=1) + facet_grid(lab ~ .) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
-ggsave(file.path(figdir, paste0('irsk spent bars.jpeg')), p, w = wid, h = heig, units = 'in')
-
-
-p <- ggplot(tmp, aes(x=ordShowArm, y=spent_EV, fill=armShown)) + ggtitle('risk spent, conditional on arm with EV') +
-    geom_bar(stat='identity', width=1) + facet_grid(lab ~ .) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
-ggsave(file.path(figdir, paste0('irsk spentEV bars.jpeg')), p, w = wid, h = heig, units = 'in')
-
-## avert
-ylim <- tmp[,range(avert,avert_EV)]
-p <- ggplot(tmp, aes(x=ordShowArm, y=avert, fill=armShown)) + ggtitle('risk averted, conditional on arm without EV') +
-    geom_bar(stat='identity', width=1) + facet_grid(lab ~ .) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
-ggsave(file.path(figdir, paste0('irsk avert bars.jpeg')), p, w = wid, h = heig, units = 'in')
-
-
-p <- ggplot(tmp, aes(x=ordShowArm, y=avert_EV, fill=armShown)) + ggtitle('risk averted, conditional on arm with EV') +
-    geom_bar(stat='identity', width=1) + facet_grid(lab ~ .) +  ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
-ggsave(file.path(figdir, paste0('irsk avertEV bars.jpeg')), p, w = wid, h = heig, units = 'in')
- 
-## both
-ylim <- tmp[,range(-avert_EV,spent_EV, -avert, spent)]
-
-p <- ggplot(tmp) + ggtitle('risk spent, conditional on arm without EV') +
-    geom_hline(yintercept=.05) +
-        geom_bar(aes(x=ordShowArm, y=spent, fill=armShown), stat='identity', width=1) +
-            geom_bar(aes(x=ordShowArm, y=-avert, fill=armShown), stat='identity', width=1, alpha = .8) +
-                facet_grid(lab ~ .) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
-ggsave(file.path(figdir, paste0('irsk spent & avert bars.jpeg')), p, w = wid, h = heig, units = 'in')
-
-
-p <- ggplot(tmp) + ggtitle('risk spent, conditional on arm with EV') +
-    geom_hline(yintercept=.05) +
-        geom_bar(aes(x=ordShowArm, y=spent_EV, fill=armShown), stat='identity', width=1) +
-            geom_bar(aes(x=ordShowArm, y=-avert_EV, fill=armShown), stat='identity', width=1, alpha = .8) +
-                facet_grid(lab ~ .) +  ylab('risk') + xlab('individual') + ylim(ylim[1],ylim[2])
-ggsave(file.path(figdir, paste0('irsk spent & avert EV bars.jpeg')), p, w = wid, h = heig, units = 'in')
-
 ## SB version
 ylim <- tmp[,range(-avert_EV,spent_EV, -avert, spent)]
 tmp[, cols:=armShown]; tmp[cols=='cont',cols:='red']; tmp[cols=='vacc',cols:='dodger blue']
