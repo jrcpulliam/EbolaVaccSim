@@ -50,3 +50,15 @@ for(tt in 1:length(tidsDo)) {
 ##     save(resList, file=file.path('BigResults',paste0(thing, '-', ti, '.Rdata')))    
 ## }
 
+## load('BigResults/Equip-Fig5-v2-1.Rdata')
+## load('BigResults/testRes.Rdata')
+
+
+
+
+
+
+
+
+
+

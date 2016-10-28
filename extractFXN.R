@@ -277,6 +277,8 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     ## sptmp ## % risk (multiplied by 100)
     ## ##############################################################################
     ## get clusters in risk-order
+
+browser()
     cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
     cOrd[,cluster:=1:nrow(cOrd)]
     if('cluster' %in% colnames(irsk)) irsk$cluster <- NULL
@@ -292,8 +294,15 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     iord[,ordShow:=1:(numClus*clusSize)]
     if('ordShow' %in% colnames(irsk)) irsk$ordShow <- NULL
     irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
-    ## what arm to label individuals as for RCTs?
+    ## what arm to label individuals as for RCTs? since each individual can be randomized to either
+    ## arm, just pick the first half in each cluster to label as cont & 2nd half as vacc, then when
+    ## using arm==armShown we're looking at half the simulations for each individual. but note that
+    ## the == won't work with armExcl or armVD
+    irsk[,armO:=arm]
+    irsk[grepl('cont', arm), armO:='cont']
+    irsk[grepl('vacc', arm), armO:='vacc']
     irsk[, armShown:=arm]
+    ## *CHANGE* below to use arm from Spop instead of using Oi**
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont']
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display

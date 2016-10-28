@@ -44,28 +44,32 @@ itmp <- irsk[tid==1]
 p <- ggplot(itmp[lab=='NT'], aes(x=ordShow, y=inf, fill=cluster)) +  ylab('cumulative infection risk') + xlab('individual') +
     geom_bar(stat='identity', width=1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
         theme(legend.position="right") #+ theme(axis.title.y = element_text(angle=0))
+print(p)
 ggsave(file.path(figdir, paste0('itmp inf bars.pdf')), plot=p, w=wid, h=heig, units='in')
 
 
 ## Conditional on arms & order randomization
-itmp <- irsk[tid==1 & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
+## itmp <- irsk[tid==1 & ((armO==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
+itmp <- irsk[((armO==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
 itmp <- itmp[lab!='RCT-rp']
 
 ####################################################################################################
 ## SB version
 ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
 itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
-pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
+##pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
 par(mfrow=c(4,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
 for(ll in itmp[,unique(lab)]) {
-    with(itmp[lab==ll], plot(ordShowArm, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll))
+    with(itmp[lab==ll], plot(ordShow, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll))
     with(itmp[lab==ll], points(ordShowArm, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
     abline(h=0, lty = 1)
     abline(h=.05, lty = 2, col='gray')    
 }
 title(xlab='individual',outer=T)
 title(ylab='risk',outer=T)
-graphics.off()
+##graphics.off()
+
+with(itmp[lab==ll], plot(ordShow, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll, xlim = c(0,600)))
 
 
 ## SB version short
@@ -117,6 +121,7 @@ p <- ggplot(tmp) + ggtitle('risk averted, marginal on randomization') +
         scale_fill_manual(values=cols) +
             facet_grid(lab ~ .) +
                 ylab('risk')+ xlab('individual') + ylim(ylim[1],ylim[2])
+print(p)
 ggsave(file.path(figdir, paste0('irsk avert bars MARG.jpeg')), p, w = wid, h = heig, units = 'in')
 
 
@@ -130,6 +135,8 @@ ggsave(file.path(figdir, paste0('haz traj.jpeg')), p, w = wid, h = heig, units =
 p <- ggplot(triSumm, aes(above_EV, power, col = lab)) + geom_point() + ylim(0,1) + xlab(paste0('expected # subjects spending >', threshold, ' infection risk'))
 ggsave(file.path(figdir, paste0('pow trhes.jpeg')), p, w = wid, h = heig, units = 'in')
 
+## risk averted & avertable risk not averted for each design
+## avert_EV & spent_EV
 
 ## add error bars to inf spent & frac of information
 ## try fraction of information per person on y-axis
@@ -139,3 +146,9 @@ ggsave(file.path(figdir, paste0('pow trhes.jpeg')), p, w = wid, h = heig, units 
 ## histogram within strata groups
 ## look at risk by person/strata by treatment assignment for trials
 ## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
+
+par(mfrow=c(3,1))
+xmax <- 3000
+itmp[lab=='RCT',plot(ordShow, inf, type = 'h', col = cols, xlim = c(0,xmax))]
+itmp[lab=='RCT',plot(ordShow, spent_EV, type = 'h', col = cols, xlim = c(0,xmax))]
+itmp[lab=='RCT',plot(ordShow, avert_EV, type = 'h', col = cols, xlim = c(0,xmax))]
