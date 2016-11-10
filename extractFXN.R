@@ -278,7 +278,6 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     ## ##############################################################################
     ## get clusters in risk-order
 
-browser()
     cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
     cOrd[,cluster:=1:nrow(cOrd)]
     if('cluster' %in% colnames(irsk)) irsk$cluster <- NULL
@@ -289,7 +288,7 @@ browser()
     clusSize <- as.numeric(parms[1,clusSize])
     if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
     numClus <- as.numeric(parms[1,numClus])
-    ## 
+    ## get individuals in order
     iord <- irsk[lab=='NT',list(Oi,cluster,inf)][order(cluster,-inf)]
     iord[,ordShow:=1:(numClus*clusSize)]
     if('ordShow' %in% colnames(irsk)) irsk$ordShow <- NULL
@@ -298,15 +297,16 @@ browser()
     ## arm, just pick the first half in each cluster to label as cont & 2nd half as vacc, then when
     ## using arm==armShown we're looking at half the simulations for each individual. but note that
     ## the == won't work with armExcl or armVD
-    irsk[,armO:=arm]
-    irsk[grepl('cont', arm), armO:='cont']
+    irsk[,armO:=arm] ## armO is the simple version of the arm (i.e. w/o postfixes)
+    irsk[grepl('cont', arm), armO:='cont'] ## to deal w/ postfixes on cont/vacc
     irsk[grepl('vacc', arm), armO:='vacc']
-    irsk[, armShown:=arm]
+    irsk[, armShown:=arm] # arm to show on plot
     ## *CHANGE* below to use arm from Spop instead of using Oi**
-    irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont']
+    irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont'] ## as is using first 50% of cluster
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display
-    iord <- irsk[lab=='NT',list(Oi,cluster,inf)]
+
+    iord <- irsk[lab=='NT',list(Oi,cluster, inf)]
     iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
     iord <- iord[order(cluster,armShown, -inf)]
     iord[,ordShowArm:=1:(clusSize*numClus)]
