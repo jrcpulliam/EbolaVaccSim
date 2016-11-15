@@ -296,10 +296,11 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
     popH$arm <- 'cont' ## control arm
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
     popH[idByClus > clusSize/2 , arm:= 'vacc'] ## half get vaccinated in each cluster, 1 per interval
-    popH$armMod <- NA ## arm modifier
+    popH$armMod <- as.character(NA) ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay] ## control delayed vacc
-        popH[idByClus <= clusSize/2, armMod := 'delVacc'] ## control delayed vacc
+        browser()
+        popH[idByClus <= clusSize/2, armMod := 'delayVacc'] ## control delayed vacc
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
 
@@ -315,10 +316,10 @@ setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT 
     popH$vaccDay <- Inf
     popH$arm <- 'cont'
     popH[cluster <= numClus/2, .(vaccDay := delayUnit*(cluster-1), arm='vacc')] ## first half of clusters (1 per pair) get vaccinated in sequence
-    popH$armMod <- NA ## arm modifier
+    popH$armMod <- as.character(NA) ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
-        popH[cluster > numClus/2,   armMod:='delVacc']
+        popH[cluster > numClus/2,   armMod:='delayVacc']
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
         ## in their pair is vaccinated and exclud them from analysis (in activeFXN)
