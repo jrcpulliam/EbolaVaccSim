@@ -66,8 +66,8 @@ makeParms <- function(
     if(maxDurationDay < delayUnit*numClus) stop('maxDurationDay too short. Need enough time to rollout vaccines to all clusters')
     if(gsDesArgs$k>1 & length(StatsFxns)>1) stop('Cannot apply multiple statistical functions for simulations of sequential designs since trial progression is conditional on analysis')
     if(!avHaz %in% c('','xClus','xClusxTime','xTime')) stop('invalid avHaz input')
-if(!is.na(contVaccDelay)) if(contVaccDelay%%7 !=0) stop('vaccination delay not in multiples of delayUnit, could cause problems (not setup for immune status changes within the middle of the week)')
-if(!is.na(immunoDelay)) if(immunoDelay%%7 !=0) stop('immuno delay not in multiples of delayUnit, could cause problems (not setup for immune status changes within the middle of the week)')
+    if(!is.na(contVaccDelay)) if(contVaccDelay%%7 !=0) stop('vaccination delay not in multiples of delayUnit, could cause problems (not setup for immune status changes within the middle of the week)')
+    if(!is.na(immunoDelay)) if(immunoDelay%%7 !=0) stop('immuno delay not in multiples of delayUnit, could cause problems (not setup for immune status changes within the middle of the week)')
     if(trial=='FRCT') delayUnit <- delayUnit/2 ## rolling out vaccines as quickly as you would if you were vaccinating whole clusters
     if(gs) {
         gsBounds <- do.call(gsDesign, gsDesArgs)
@@ -296,9 +296,10 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
     popH$arm <- 'cont' ## control arm
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
     popH[idByClus > clusSize/2 , arm:= 'vacc'] ## half get vaccinated in each cluster, 1 per interval
+    popH$armMod <- NA ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay] ## control delayed vacc
-        popH[idByClus <= clusSize/2, arm := 'contDV'] ## control delayed vacc
+        popH[idByClus <= clusSize/2, armMod := 'delVacc'] ## control delayed vacc
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
 
@@ -306,7 +307,7 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
         popH[,minvaccDay:=min(vaccDay), cluster]
         popH[indivRR>maxRRcat, vaccDay := minvaccDay] ## excluded
         popH$minvaccDay <- NULL
-        popH[indivRR>maxRRcat, arm:=paste0(arm, 'Excl')]
+        popH[indivRR>maxRRcat, armMod:='Excl']
     }
 })
 
@@ -314,9 +315,10 @@ setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT 
     popH$vaccDay <- Inf
     popH$arm <- 'cont'
     popH[cluster <= numClus/2, .(vaccDay := delayUnit*(cluster-1), arm='vacc')] ## first half of clusters (1 per pair) get vaccinated in sequence
+    popH$armMod <- NA ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
-        popH[cluster > numClus/2,   arm:='contDV']
+        popH[cluster > numClus/2,   armMod:='delVacc']
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
         ## in their pair is vaccinated and exclud them from analysis (in activeFXN)

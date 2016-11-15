@@ -99,6 +99,7 @@ mtmp <- irsk[type=='cond', .(inf=mean(inf), spent=mean(spent), spent_EV=mean(spe
 mtmp[,ord:=order(Oc, indivRR, Oi)]
 mtmp[, cols:=armO]; mtmp[grepl('cont',cols),cols:='red']; mtmp[grepl('vacc',cols),cols:='dodger blue']
 mtmp[grepl('Excl',arm)]
+mtmp[grepl('Excl',arm) & armO=='cont'] ## not seeing controls in the vaccexcluded group
 ## also not seeing the averted risk amongst the maxRR plot
 
 
@@ -125,7 +126,7 @@ for(ll in mtmp[,unique(lab)]) {
     }
 }
 graphics.off()
-
+## OK seems like I'm missing the m
 
 
 with(itmp[lab==ll], plot(ordShow, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll, xlim = c(0,600)))
