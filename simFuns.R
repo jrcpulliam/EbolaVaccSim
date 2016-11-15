@@ -299,7 +299,6 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
     popH$armMod <- as.character(NA) ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay] ## control delayed vacc
-        browser()
         popH[idByClus <= clusSize/2, armMod := 'delayVacc'] ## control delayed vacc
     }
     if(maxRRcat>0) {    ## exclude high risk individuals by vaccinating them the first time anyone
