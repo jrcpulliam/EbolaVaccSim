@@ -192,7 +192,7 @@ indivLevRes <- function(parms) within(parms, {
             ## remember hazards are daily so multiply time unit
             tmpH[,indivHazVacc := indivHaz * c(rep(1, sum(!immune)), rep(1-vaccEff, sum(immune))), indiv]
             tmp <- merge(tmp, tmpH[, list(cumHaz = sum(indivHazVacc*hazIntUnit)), indiv], by = 'indiv')
-            tmpSM <- tmp[,list(indiv, cluster, Oi, Oc, indivRR, vaccDay, arm, infectDay, SAE, cumHaz)] ## indiv events
+            tmpSM <- tmp[,list(indiv, cluster, Oi, Oc, indivRR, vaccDay, arm, armMod, infectDay, SAE, cumHaz)] ## indiv events
             assign(paste0('S',tmpnm), tmpSM)
         }
     if(doTrial) {## merge EV with no_EV
