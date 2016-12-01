@@ -191,7 +191,7 @@ indivLevRes <- function(parms) within(parms, {
             tmpH <- get(paste0(tmpnm,'H'))
             ## remember hazards are daily so multiply time unit
             tmpH[,indivHazVacc := indivHaz * c(rep(1, sum(!immune)), rep(1-vaccEff, sum(immune))), indiv]
-            tmp <- merge(tmp, tmpH[, list(cumHaz = sum(indivHazVacc*hazIntUnit)), indiv], by = 'indiv')
+            tmp <- merge(tmp, tmpH[, list(cumHaz = sum(indivHazVacc*hazIntUnit), armMod=unique(armMod)), indiv], by = 'indiv')
             tmpSM <- tmp[,list(indiv, cluster, Oi, Oc, indivRR, vaccDay, arm, armMod, infectDay, SAE, cumHaz)] ## indiv events
             assign(paste0('S',tmpnm), tmpSM)
         }
@@ -212,7 +212,6 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         set.seed(simNum)
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
-
         if(parms$verbose==2) browser()
         if(!is.na(vaccProp)[1]) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
