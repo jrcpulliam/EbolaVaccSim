@@ -10,7 +10,7 @@ wid <- 6.5
 heig <- 4
 res <- 300
 
-thing <- 'Equip-Fig5-v2'
+thing <- 'Equip-Fig5-v3'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -68,7 +68,7 @@ itmp <- itmp[lab!='RCT-rp']
 ####################################################################################################
 ## SB version
 ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
-xlim <- c(0,600)
+xlim <- c(0,3000)
 ##pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
 par(mfrow=c(6,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
 for(ll in itmp[,unique(lab)]) {

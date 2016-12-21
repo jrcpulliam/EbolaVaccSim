@@ -21,10 +21,10 @@ thax <- element_text(colour = 'black', size = 8)
 thsb <- theme(axis.text.x = thax, axis.text.y = thax, plot.title = element_text(vjust=1),
               axis.title.y = element_text(vjust = 1), axis.title.x = element_text(vjust = -.5),
               axis.line = element_line(), axis.ticks = element_line(color='black'),
-              panel.margin = unit(1, "lines"), legend.key.height=unit(1.3,"line")
+              panel.spacing = unit(1, "lines"), legend.key.height=unit(1.3,"line")
               , strip.background = element_rect(fill = NA)
               ,legend.position = 'right'
-              , axis.line = element_blank()
+              #, axis.line = element_blank()
               ,panel.grid.major = element_blank()
               , panel.grid.minor = element_blank()
               ,panel.border = element_blank()
@@ -33,7 +33,7 @@ thsb <- theme(axis.text.x = thax, axis.text.y = thax, plot.title = element_text(
             , legend.key =  element_blank()
             , legend.key.width=unit(2.5,"line")
             #,legend.justification=c(1,1), legend.position=c(1,1)
-             ,legend.position='top'
+            # ,legend.position='top'
               )
 theme_set(theme_grey(base_size = 12))
 
