@@ -279,6 +279,7 @@ reordCRCT <- function(parms) within(parms, {
 ## **TO ADD** randomize individuals to vacc order to allow averaging individual risk over simultions
 setVaccDays <- function(parms) { ## wrapper around other functions below
     setVaccFXN <- get(paste0('set',parms$trial,'vaccDays'))
+    parms$popH$armMod <- as.character(NA) ## arm modifier, set up as NA for all trials as default
     parms <- setVaccFXN(parms)
     return(parms)
 }
@@ -296,7 +297,6 @@ setFRCTvaccDays <- setRCTvaccDays <- function(parms) within(parms, { ## assuming
     popH$arm <- 'cont' ## control arm
     popH[idByClus > clusSize/2 , vaccDay := delayUnit*(cluster-1)] ## half get vaccinated in each cluster, 1 per interval
     popH[idByClus > clusSize/2 , arm:= 'vacc'] ## half get vaccinated in each cluster, 1 per interval
-    popH$armMod <- as.character(NA) ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[idByClus <= clusSize/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay] ## control delayed vacc
         popH[idByClus <= clusSize/2, armMod := 'delayVacc'] ## control delayed vacc
@@ -315,7 +315,6 @@ setCRCTvaccDays <- function(parms) within(parms, { ## need a stratified rp cRCT 
     popH$vaccDay <- Inf
     popH$arm <- 'cont'
     popH[cluster <= numClus/2, .(vaccDay := delayUnit*(cluster-1), arm='vacc')] ## first half of clusters (1 per pair) get vaccinated in sequence
-    popH$armMod <- as.character(NA) ## arm modifier
     if(!is.na(contVaccDelay)) {
         popH[cluster > numClus/2, vaccDay := delayUnit*(cluster-1) + contVaccDelay]
         popH[cluster > numClus/2,   armMod:='delayVacc']

@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-v3'
+thing <- 'Equip-Fig5-v4'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -115,8 +115,9 @@ parmsMat[, simNumEnd:=(batch-1)*nsims+nsims]
 save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 
 ## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
-tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
+## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
+tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('') & trialStartDate=='2014-12-01', tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
