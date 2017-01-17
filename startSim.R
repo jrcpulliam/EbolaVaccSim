@@ -18,6 +18,8 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
 
 pid=6;tid=1;batch=1;rcmdbatch=121;trialStartDate="2014-12-01";propInTrial=0.05;avHaz="";indivRRSeed=7;HazTrajSeed=7;nsims=2;trial="RCT";gs="TRUE";ord="TU";contVaccDelay=7*8;maxRRcat=25;vaccEff=.8;DoIndivRRcat="TRUE";randVaccProperties="FALSE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-Fig5-v1";nboot=200;reordLag=14;saveNm="Equip-Fig5-v1";simNumStart=1;simNumEnd=2
 
+pid=9;tid=1;batch=24;rcmdbatch=408;trialStartDate="2014-12-01";propInTrial=0.05;avHaz="";indivRRSeed=7;HazTrajSeed=7;nsims=2;trial="NT";gs="FALSE";ord="TU";contVaccDelay=NA;maxRRcat=0;vaccEff="NA";DoIndivRRcat="TRUE";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="NA";batchdirnm="BigResults/Equip-Fig5-v4";nboot=200;reordLag=14;saveNm="Equip-Fig5-v4";simNumStart=1956;simNumEnd=1958
+
 ## pid=7;tid=1;batch=1;rcmdbatch=289;trialStartDate="2014-12-01";propInTrial=0.05;avHaz="";indivRRSeed=7;HazTrajSeed=7;nsims=1;trial="SWCT";gs="FALSE";ord="none";contVaccDelay=7*8;maxRRcat=30;vaccEff="NA";DoIndivRRcat="TRUE";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doRelabel";batchdirnm="BigResults/Equip-Fig5-v2";nboot=200;reordLag=14;saveNm="Equip-Fig5-v2";simNumStart=1;simNumEnd=1
 
 }

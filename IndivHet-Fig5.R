@@ -1,5 +1,5 @@
 if(grepl('Stevens-MBP', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
-if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
+if(grepl('sbellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
@@ -10,7 +10,7 @@ wid <- 6.5
 heig <- 4
 res <- 300
 
-thing <- 'Equip-Fig5-v3'
+thing <- 'Equip-Fig5-v4'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -38,14 +38,14 @@ punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 
-## playing with shit
-load('~/Documents/R Repos/EbolaVaccSim/BigResults/testRes.Rdata')
-names(resO)
-resList <- resO
-resList <- procIrskSpent(resList, verb=0)
-names(resList)
-irsk <- resList$irsk
-irsk$tid <- 1
+## ## playing with shit
+## load('~/Documents/R Repos/EbolaVaccSim/BigResults/testRes.Rdata')
+## names(resO)
+## resList <- resO
+## resList <- procIrskSpent(resList, verb=0)
+## names(resList)
+## irsk <- resList$irsk
+## irsk$tid <- 1
 
 ## Create plot that shows risk averted
 

@@ -183,19 +183,11 @@ procMetaParms <- function(resList)  within(resList, {
     ## punq[,lab:=factor(lab, levels =levels(lab)[c(1:3,5,4,6:7)])] ## commenting out, not sure what this does?
     setkey(punq, pid)
     ## create parms
-    
     parms <- merge(punq, parms, by = names(punq)[!names(punq) %in% c('lab','pid')])
     setkey(parms, pid, nbatch)
     setcolorder(parms, c('pid','nbatch', names(parms)[!names(parms) %in% c('pid','nbatch')]))
     Spop <- merge(parms[,list(pid, lab, nbatch)], Spop, by = 'nbatch')
     setcolorder(Spop, c('pid','lab','nbatch', names(Spop)[!names(Spop) %in% c('pid','lab', 'nbatch')]))
-
-####################################################################################################
-    Spop[,arm:=c('vacc','cont')[as.numeric(vaccDay==Inf)+1]] ## going to need to fix to deal with delayedVacc groups
-    ## *TO CHANGE*
-    Spop[pid==punq[!is.na(contVaccDelay),pid] & indiv < 150, arm:='contVD']
-    Spop[pid==6 & indivRR > 25, arm:=paste0(arm, "Excl")]
-
     setkey(Spop, simNum, Oi, pid, nbatch)
     ## Spop[,quantile(indivRR, c(.025,.975))]
     Spop[,cumRisk:=1-exp(-cumHaz)] 
@@ -245,23 +237,20 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     irskCond <- Spop[!lab %in% c('VR','NT','SWCT'), ## conditional on control/vacc randomization assignment
                      list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV)
                         , indivRR=unique(indivRR), Oc=Oc[1], type = 'cond'), 
-                     list(pid,Oi,arm)]
+                     list(pid,Oi,arm, armMod)]
     ## maximum spent given worst possible vaccination order (only for random ordered trials)
     irskMax <- Spop[!lab %in% c('VR','NT') & grepl('vacc', arm) & !grepl('rp',lab) & vaccDay==max(vaccDay[grepl('vacc',arm)]),
                     list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], arm='vacc', type='max'),
                     list(pid,Oi,vaccDay)]
-    ## conditional on exact vaccination day (note borrowing control info across all vaccDay==Inf, i.e. whether the cluster they're in is vaccinated early/late)
+    ## conditional on exact vaccination day
     irskCondvd <- Spop[!lab %in% c('VR','NT'),
                        list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV), indivRR=unique(indivRR), Oc=Oc[1], type='condvd'),
-                       list(pid,Oi,arm,vaccDay)]
+                       list(pid,Oi,arm,armMod,vaccDay)]
     irsk <- rbindlist(list(irskMarg, irskCond, irskMax, irskCondvd), use.names=T, fill=T)
     rm(irskMarg, irskCond, irskMax, irskCondvd)
     setkey(irsk, Oi, pid)
     irsk <- merge(punq[,list(pid,gs, lab)], irsk, by = 'pid')
     moveFront(irsk, c('pid','lab','gs','type','arm','vaccDay'))
-    ## irsk
-    ## irsk[, unique(type), lab]
-    ## irsk[Oi==1]
     ## Average risk spent versus marginal VR 
     irsk[, spent   := inf    - inf[lab=='VR'], list(Oi)]
     irsk[, spent_EV:= inf_EV - inf[lab=='VR'], list(Oi)]
@@ -295,17 +284,11 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
     ## what arm to label individuals as for RCTs? since each individual can be randomized to either
     ## arm, just pick the first half in each cluster to label as cont & 2nd half as vacc, then when
-    ## using arm==armShown we're looking at half the simulations for each individual. but note that
-    ## the == won't work with armExcl or armVD
-    irsk[,armO:=arm] ## armO is the simple version of the arm (i.e. w/o postfixes)
-    irsk[grepl('cont', arm), armO:='cont'] ## to deal w/ postfixes on cont/vacc
-    irsk[grepl('vacc', arm), armO:='vacc']
+    ## using arm==armShown we're looking at half the simulations for each individual. 
     irsk[, armShown:=arm] # arm to show on plot
-    ## *CHANGE* below to use arm from Spop instead of using Oi**
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont'] ## as is using first 50% of cluster
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display
-
     iord <- irsk[lab=='NT',list(Oi,cluster, inf)]
     iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
     iord <- iord[order(cluster,armShown, -inf)]
@@ -314,7 +297,6 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
     irsk[lab=='SWCT', ordShowArm:=ordShow]
     irsk <- irsk[order(Oc,indivRR,lab)]
-    irsk[type=='cond' &  !lab %in% c('VR','NT') & pid==2 & Oi==1]
     ## need exemplar SWCT: pick arbitrary example of cluster-day assignment to display
     ## do average SW, where every other cluster from highest to lowest risk is picked
     clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),

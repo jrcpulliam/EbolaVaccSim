@@ -16,7 +16,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
     }
 }
 
-thing <- 'Equip-Fig5-v3'
+thing <- 'Equip-Fig5-v4'
 ## Load VaccProp & hazT
 load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
