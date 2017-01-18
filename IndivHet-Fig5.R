@@ -38,15 +38,6 @@ punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 
-## ## playing with shit
-## load('~/Documents/R Repos/EbolaVaccSim/BigResults/testRes.Rdata')
-## names(resO)
-## resList <- resO
-## resList <- procIrskSpent(resList, verb=0)
-## names(resList)
-## irsk <- resList$irsk
-## irsk$tid <- 1
-
 ## Create plot that shows risk averted
 
 ####################################################################################################
@@ -60,34 +51,49 @@ print(p)
 ggsave(file.path(figdir, paste0('itmp inf bars.pdf')), plot=p, w=wid, h=heig, units='in')
 
 ## Conditional on arms & order randomization
-## itmp <- irsk[tid==1 & ((armO==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
-itmp <- itmp[((armO==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
+itmp <- itmp[((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
 itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
 itmp <- itmp[lab!='RCT-rp']
 
 ####################################################################################################
-## SB version
-ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
-xlim <- c(0,3000)
-##pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
+## SB version (not gg plot)
+## Look at individuals infection risk, but dividing them into their randomization structure (for comparison to below)
+xlim <- c(0,6000)
 par(mfrow=c(6,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
 for(ll in itmp[,unique(lab)]) {
-    itmp[lab==ll, plot(ordShowArm, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, xlim=xlim, 
+    itmp[lab==ll, plot(ordShowArm, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
+             las = 1, xaxt='n', main =ll)]
+    itmp[lab==ll & Oi %%300==1, text(ordShowArm, .9, cluster)]
+}
+
+
+ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
+xlim <- c(0,6000)
+##pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
+par(mfrow=c(7,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
+itmp[pid==1, plot(Oi, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
+         las = 1, xaxt='n', main =ll)]
+itmp[pid==1 & Oi %%300==1, text(Oi, .9, cluster)]
+for(ll in itmp[,unique(lab)]) {
+    itmp[lab==ll, plot(Oi, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, xlim=xlim, 
 las = 1, xaxt='n', main =ll)]
-    with(itmp[lab==ll], points(ordShowArm, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
+    with(itmp[lab==ll], points(Oi, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
     abline(h=0, lty = 1)
     abline(h=.05, lty = 2, col='gray')    
+    itmp[lab==ll & Oi %%300==1, text(Oi, ylim[2]*.9, cluster)]
 }
 title(xlab='individual',outer=T)
 title(ylab='risk',outer=T)
 ##graphics.off()
+
+itmp[cluster%in% c(1,6), list(maxinf = max(inf), maxspent=max(spent_EV), maxavert=max(avert_EV)), .(cluster,Oc)]
 
 ## so the problems are that 1) it's unlikely i'll be able to see the details for 6000, & 2) for all the trials. If I just show the average by risk group within each cluster, that shows complete info except doesn't highlight the breakdown by risk group.
 
 ## the goal is to show how each design affects risk spent by specific groups differently
 
 names(itmp)
-itmp[lab=='RCT-gs-rp-cvd' & armO=='cont', unique(cluster)]
+itmp[lab=='RCT-gs-rp-cvd' & arm=='cont', unique(cluster)]
 itmp[lab=='RCT-gs-rp-cvd' & cluster==2, unique(arm)]
 Spop <- resList$Spop
 Spop[lab=='RCT-gs-rp-cvd' & arm=='contVD', unique(cluster)]

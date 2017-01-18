@@ -26,6 +26,7 @@ procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, 
     system.time(
         resList <- procMetaParms(resList)
     )
+    save.image('temp.Rdata')
     if(verbose>0) print('calculating risk spent/averted metrics summing or taking expectations across simulations')
     system.time(
         resList <- procIrskSpent(resList, verbose=verbose)
@@ -268,43 +269,42 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     ## get clusters in risk-order
 
     cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
-    cOrd[,cluster:=1:nrow(cOrd)]
-    if('cluster' %in% colnames(irsk)) irsk$cluster <- NULL
-    irsk <- merge(irsk, cOrd[,list(Oc, cluster)], by = 'Oc')
-    irsk[,cluster:=factor(cluster)]
-    ## order individuals within clusters by risk for ease of display
+    cOrd[,clusterPostOrd:=1:nrow(cOrd)]
+    irsk <- merge(irsk, cOrd[,list(Oc, clusterPostOrd)], by = 'Oc')
+    irsk[,clusterPostOrd:=factor(clusterPostOrd)]
+    ## order individuals within clusterPostOrds by risk for ease of display
     if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
     clusSize <- as.numeric(parms[1,clusSize])
     if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
     numClus <- as.numeric(parms[1,numClus])
     ## get individuals in order
-    iord <- irsk[lab=='NT',list(Oi,cluster,inf)][order(cluster,-inf)]
+    iord <- irsk[lab=='NT',list(Oi,clusterPostOrd,inf)][order(clusterPostOrd,-inf)]
     iord[,ordShow:=1:(numClus*clusSize)]
     if('ordShow' %in% colnames(irsk)) irsk$ordShow <- NULL
     irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
     ## what arm to label individuals as for RCTs? since each individual can be randomized to either
-    ## arm, just pick the first half in each cluster to label as cont & 2nd half as vacc, then when
+    ## arm, just pick the first half in each clusterPostOrd to label as cont & 2nd half as vacc, then when
     ## using arm==armShown we're looking at half the simulations for each individual. 
     irsk[, armShown:=arm] # arm to show on plot
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont'] ## as is using first 50% of cluster
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display
-    iord <- irsk[lab=='NT',list(Oi,cluster, inf)]
+    iord <- irsk[lab=='NT',list(Oi,clusterPostOrd, inf)]
     iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
-    iord <- iord[order(cluster,armShown, -inf)]
+    iord <- iord[order(clusterPostOrd,armShown, -inf)]
     iord[,ordShowArm:=1:(clusSize*numClus)]
     if('ordShowArm' %in% colnames(irsk)) irsk$ordShowArm <- NULL
     irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
     irsk[lab=='SWCT', ordShowArm:=ordShow]
     irsk <- irsk[order(Oc,indivRR,lab)]
-    ## need exemplar SWCT: pick arbitrary example of cluster-day assignment to display
+    ## need exemplar SWCT: pick arbitrary example of clusterPostOrd-day assignment to display
     ## do average SW, where every other cluster from highest to lowest risk is picked
     clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),
-                   list(cluster = as.factor(c((1:numClus)[1:numClus %% 2==1], (1:numClus)[1:numClus %% 2==0])),
+                   list(clusterPostOrd = as.factor(c((1:numClus)[1:numClus %% 2==1], (1:numClus)[1:numClus %% 2==0])),
                         vaccDay=unique(vaccDay))]
-    setkey(clusVD, cluster, vaccDay)
+    setkey(clusVD, clusterPostOrd, vaccDay)
     irsk[,exmpl:=F]
-    setkey(irsk, cluster, vaccDay)
+    setkey(irsk, clusterPostOrd, vaccDay)
     irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,numClus*clusSize)
     irsk[clusVD][type=='condvd' & 'SWCT'==lab]
     setkey(irsk, Oi, pid)
