@@ -40,6 +40,10 @@ plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above,
 
 ## Create plot that shows risk averted
 
+clustVaccOrd <- irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc' & Oi %% 300 ==1, .(Oc, vaccDay)]
+clustVaccOrd[,clusterPostOrd:= order(order(vaccDay))]
+
+
 ####################################################################################################
 ## infection risk
 itmp <- irsk[tid==1]
@@ -66,27 +70,40 @@ for(ll in itmp[,unique(lab)]) {
     itmp[lab==ll & Oi %%300==1, text(ordShowArm, .9, cluster)]
 }
 
+load('popt.Rdata')
+p1 <- popt[,.(Oc, cluster, Oi, indiv, indivRR, cumHaz)][order(Oc)]
+p2 <- itmp[pid==1,.(Oc, clusterPostOrd, Oi, indivRR, inf, pid)][order(Oc)]
+p3 <- merge(p1,p2, by ='Oi')
+p3[,identical(indivRR.x, indivRR.y)]
+p3[,identical(Oc.x, Oc.y)]
+p3[indiv %% 300 ==1, .(Oi,indiv, Oc.x,cluster,clusterPostOrd, indivRR.x, cumHaz, inf)]
+
+p4 <- unique(popt[,.(Oi, cluster, indiv)])
+itmp <- merge(itmp, p4, by = c('Oi'))
+
+itmp[pid==1 & (Oi %% 300 %in% c(1,151)), .(Oc, clusterPostOrd, vaccDay)]
+
 
 ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
 xlim <- c(0,6000)
 ##pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
 par(mfrow=c(7,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
-itmp[pid==1, plot(Oi, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
-         las = 1, xaxt='n', main =ll)]
+itmp[pid==1, plot(indiv, inf, xlab='individual', ylab='risk', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
+         las = 1, xaxt='n', main ='infection risk')]
 itmp[pid==1 & Oi %%300==1, text(Oi, .9, cluster)]
 for(ll in itmp[,unique(lab)]) {
-    itmp[lab==ll, plot(Oi, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, xlim=xlim, 
+    itmp[lab==ll, plot(indiv, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, xlim=xlim, 
 las = 1, xaxt='n', main =ll)]
-    with(itmp[lab==ll], points(Oi, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
+    with(itmp[lab==ll], points(indiv, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
     abline(h=0, lty = 1)
     abline(h=.05, lty = 2, col='gray')    
-    itmp[lab==ll & Oi %%300==1, text(Oi, ylim[2]*.9, cluster)]
+    itmp[lab==ll & Oi %%300==1, text(Oi, ylim[2]*.9, paste0(cluster,'-',Oc))]
 }
 title(xlab='individual',outer=T)
 title(ylab='risk',outer=T)
 ##graphics.off()
 
-itmp[cluster%in% c(1,6), list(maxinf = max(inf), maxspent=max(spent_EV), maxavert=max(avert_EV)), .(cluster,Oc)]
+itmp[clusterPostOrd%in% c(1,6), list(maxinf = max(inf), maxspent=max(spent_EV), maxavert=max(avert_EV)), .(cluster,clusterPostOrd,Oc)]
 
 ## so the problems are that 1) it's unlikely i'll be able to see the details for 6000, & 2) for all the trials. If I just show the average by risk group within each cluster, that shows complete info except doesn't highlight the breakdown by risk group.
 

@@ -266,45 +266,47 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     ## for(ii in 4:5) sptmp[[ii]] <- formatC(100*signif(sptmp[[ii]],2)) ## % risk spent on average
     ## sptmp ## % risk (multiplied by 100)
     ## ##############################################################################
-    ## get clusters in risk-order
+    ## get clusters' vaccination order (were they risk prioritized
+if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = length(unique(vaccDay))), Oc][,numVaccDays] > 1)) stop("not all simulations had same risk-prioritized vaccination ordering") ## to keep below from breaking if multiple hazard projections run across simulation batches
+    cVaccOrdTab <- irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc' & Oi %% 300 ==1, .(Oc, vaccDay)] 
 
-    cOrd <- irsk[lab=='NT', list(inf=mean(inf)), Oc][order(-inf)]
-    cOrd[,clusterPostOrd:=1:nrow(cOrd)]
-    irsk <- merge(irsk, cOrd[,list(Oc, clusterPostOrd)], by = 'Oc')
-    irsk[,clusterPostOrd:=factor(clusterPostOrd)]
-    ## order individuals within clusterPostOrds by risk for ease of display
+    cVaccOrdTab[,cVaccOrd:= order(order(vaccDay))]
+    irsk <- merge(irsk, cVaccOrdTab[,.(Oc, cVaccOrd)], by = 'Oc')
+    irsk[,cVaccOrd:=factor(cVaccOrd)]
+    ## order individuals within cVaccOrds by risk for ease of display
     if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
     clusSize <- as.numeric(parms[1,clusSize])
     if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
     numClus <- as.numeric(parms[1,numClus])
     ## get individuals in order
-    iord <- irsk[lab=='NT',list(Oi,clusterPostOrd,inf)][order(clusterPostOrd,-inf)]
+browser()
+    iord <- irsk[lab=='NT',list(Oi,cVaccOrd,inf)][order(cVaccOrd,-inf)]
     iord[,ordShow:=1:(numClus*clusSize)]
     if('ordShow' %in% colnames(irsk)) irsk$ordShow <- NULL
     irsk <- merge(irsk, iord[,list(Oi,ordShow)], by = 'Oi')
     ## what arm to label individuals as for RCTs? since each individual can be randomized to either
-    ## arm, just pick the first half in each clusterPostOrd to label as cont & 2nd half as vacc, then when
+    ## arm, just pick the first half in each cVaccOrd to label as cont & 2nd half as vacc, then when
     ## using arm==armShown we're looking at half the simulations for each individual. 
     irsk[, armShown:=arm] # arm to show on plot
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) < clusSize/2), armShown:='cont'] ## as is using first 50% of cluster
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display
-    iord <- irsk[lab=='NT',list(Oi,clusterPostOrd, inf)]
+    iord <- irsk[lab=='NT',list(Oi,cVaccOrd, inf)]
     iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
-    iord <- iord[order(clusterPostOrd,armShown, -inf)]
+    iord <- iord[order(cVaccOrd,armShown, -inf)]
     iord[,ordShowArm:=1:(clusSize*numClus)]
     if('ordShowArm' %in% colnames(irsk)) irsk$ordShowArm <- NULL
     irsk <- merge(irsk, iord[,list(Oi,ordShowArm)], by = 'Oi')
     irsk[lab=='SWCT', ordShowArm:=ordShow]
     irsk <- irsk[order(Oc,indivRR,lab)]
-    ## need exemplar SWCT: pick arbitrary example of clusterPostOrd-day assignment to display
+    ## need exemplar SWCT: pick arbitrary example of cVaccOrd-day assignment to display
     ## do average SW, where every other cluster from highest to lowest risk is picked
     clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),
-                   list(clusterPostOrd = as.factor(c((1:numClus)[1:numClus %% 2==1], (1:numClus)[1:numClus %% 2==0])),
+                   list(cVaccOrd = as.factor(c((1:numClus)[1:numClus %% 2==1], (1:numClus)[1:numClus %% 2==0])),
                         vaccDay=unique(vaccDay))]
-    setkey(clusVD, clusterPostOrd, vaccDay)
+    setkey(clusVD, cVaccOrd, vaccDay)
     irsk[,exmpl:=F]
-    setkey(irsk, clusterPostOrd, vaccDay)
+    setkey(irsk, cVaccOrd, vaccDay)
     irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,numClus*clusSize)
     irsk[clusVD][type=='condvd' & 'SWCT'==lab]
     setkey(irsk, Oi, pid)
