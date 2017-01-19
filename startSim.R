@@ -15,7 +15,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
     }
 }else{
 
-pid=7;tid=1;batch=1;rcmdbatch=289;trialStartDate="2014-12-01";propInTrial=0.05;avHaz="";indivRRSeed=7;HazTrajSeed=7;nsims=1;trial="RCT";gs="FALSE";ord="TU";contVaccDelay=NA;maxRRcat=0;vaccEff="NA";DoIndivRRcat="TRUE";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-Fig5-v4";nboot=200;reordLag=14;saveNm="Equip-Fig5-v4";simNumStart=1;simNumEnd=1;
+pid=7;tid=1;batch=1;rcmdbatch=289;trialStartDate="2014-12-01";propInTrial=0.05;avHaz="";indivRRSeed=7;HazTrajSeed=7;nsims=2;trial="SWCT";gs="FALSE";ord="none";contVaccDelay=NA;maxRRcat=0;vaccEff="NA";DoIndivRRcat="TRUE";randVaccProperties="TRUE";delayUnit=7;immunoDelay=21;returnEventTimes="TRUE";vaccPropStrg="vaccProp1";StatsFxns="doCoxME";batchdirnm="BigResults/Equip-Fig5-v4";nboot=200;reordLag=14;saveNm="Equip-Fig5-v4";simNumStart=1;simNumEnd=2;
 
 }
 load('data/vaccProp1.Rdata')
@@ -37,7 +37,7 @@ if(!is.na(HazTrajSeed)) {
 #    rnorm(1)
     hazT <- setClusHaz(makePop(parms))$hazT
     ## pdf('Figures/tst.pdf')
-     ggplot(hazT) + geom_line(aes(Date,clusHaz, col=factor(cluster))) + geom_vline(xintercept=as.numeric(as.Date(trialStartDate)), linetype=4)
+     ggplot(hazT[cluster %in% c(1:10)]) + geom_line(aes(Date,clusHaz, col=factor(cluster))) + geom_vline(xintercept=as.numeric(as.Date(trialStartDate)), linetype=4)
     ## dev.off()
     ##    save(hazT, file=paste0('BigResults/Equip-indivL/hazT',HazTrajSeed,'.Rdata'))
 }

@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-v4'
+thing <- 'Equip-Fig5-v5'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -21,7 +21,7 @@ print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on e
 ## start dates
 sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
 sdates <- sdates[1:length(sdates) %% 2 ==1]
-sdates <- as.Date(c('2014-12-01', '2015-02-01'))
+sdates <- as.Date(c('2014-10-01', '2014-12-01'))
 
 ## tnms <- c('RCT','SWCT','VR','NT')
 ves <- NA
@@ -117,7 +117,7 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
 ## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
-tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('') & trialStartDate=='2014-12-01', tid]
+tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('') & trialStartDate=='2014-10-01', tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]

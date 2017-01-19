@@ -52,7 +52,7 @@ mids <- seq(150, 6000-150, by = 300)
 mids <- mids + spc
 tcks <- rep(mids, each = 2) + c(-150,150)
 
-avertableTab <- irsk[lab %in% c('NT','VR'), .(avertableRisk = inf[lab=='NT']-inf[lab=='VR'], ordShow, ordShowArm), .(Oi,tid)]
+avertableTab <- irsk[lab %in% c('NT','VR'), .(avertableRisk = inf[lab=='NT']-inf[lab=='VR'], ordShow, ordShowArm, cVaccOrd), .(Oi,tid)]
 avertableTab <- merge(avertableTab, spac, by = 'ordShowArm')
 avertableTab <- merge(avertableTab, spac2, by = 'ordShow')
 
@@ -139,36 +139,42 @@ mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
 ####################################################################################################
 
-par(mfrow=c(6,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
-for(ll in mtmp[,unique(lab)]) {
-    mtmp[lab==ll, plot(ord, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, 
-             las = 1, xaxt='n', main =ll)]
-    with(mtmp[lab==ll], points(ord, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
-    abline(h=0, lty = 1)
-}
-##graphics.off()
 
-## look at all yvars for each trial type to see if things look right
-pdf(file.path(figdir, paste0('irsk InfSpentAvert by trial.pdf')), w = wid, h = heig)
-for(ll in mtmp[,unique(lab)]) {
-    par(mfrow=c(6,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
-    for(yvar in c('inf', 'avert','avert_EV', 'spent', 'spent_EV')) {
-        ymax <- ifelse(yvar=='inf', 1, .15)
-        mtmp[lab==ll, plot(ord, get(yvar), xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, 
-                 ylim = c(0, ymax)
-                 , las = 1, xaxt='n', main =yvar)]
-    abline(h=0, lty = 1)
-        mtext(ll, outer = T, side = 1, line = -1)
+####################################################################################################
+## 3 clusters only
+####################################################################################################
+## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
+ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
+xlim <- c(0,6000)
+##pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
+step <- 0
+selClus <- c(1,8,12)
+
+itmp3 <- itmp[cVaccOrd %in% selClus]
+itmp3[,ord3:=order(order(ordShowArm))]
+avertableTab3 <- avertableTab[cVaccOrd %in% selClus]
+avertableTab3[,ord3:=order(order(ordShowArm))]
+
+par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
+for(ll in itmp3[,unique(lab)]) {
+    if(ll!='SWCT'){
+        avertableTab3[, plot(ord3, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+        itmp3[lab==ll, points(ord3, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
+        if(step==0){
+            legend('topright', col = c('gray', itmp3[,unique(cols)]), 
+                   leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
+            step <- 1
+        }
+    }else{
+        avertableTab3[, plot(ord3, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+        itmp3[lab==ll, points(ord3, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
     }
+    mtext(ll, 3, -4)
 }
-graphics.off()
-## OK seems like I'm missing the m
-
-
-with(itmp[lab==ll], plot(ordShow, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, las = 1, xaxt='n', main =ll, xlim = c(0,600)))
-
-## risk averted & avertable risk not averted for each design
-## avert_EV & spent_EV
+axis(1, at = mids, lab = 1:20, lwd = 0)
+mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line = 3)
+mtext('avertable risk', 2, ,outer=T, line = -1)
+##graphics.off()
 
 ## add error bars to inf spent & frac of information
 ## try fraction of information per person on y-axis
@@ -178,10 +184,4 @@ with(itmp[lab==ll], plot(ordShow, spent_EV, xlab='individual', ylab='risk spent'
 ## histogram within strata groups
 ## look at risk by person/strata by treatment assignment for trials
 ## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
-
-par(mfrow=c(3,1))
-xmax <- 600
-itmp[lab=='RCT',plot(ordShowArm.sp, inf, type = 'h', col = cols, xlim = c(0,xmax))]
-itmp[lab=='RCT',plot(ordShowArm.sp, spent_EV, type = 'h', col = cols, xlim = c(0,xmax))]
-itmp[lab=='RCT',plot(ordShowArm.sp, avert_EV, type = 'h', col = cols, xlim = c(0,xmax))]
 
