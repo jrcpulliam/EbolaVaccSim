@@ -40,15 +40,11 @@ plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above,
 
 ## Create plot that shows risk averted
 
-clustVaccOrd <- irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc' & Oi %% 300 ==1, .(Oc, vaccDay)]
-clustVaccOrd[,clusterPostOrd:= order(order(vaccDay))]
-
-
 ####################################################################################################
 ## infection risk
 itmp <- irsk[tid==1]
 
-p <- ggplot(itmp[lab=='NT'], aes(x=ordShow, y=inf, fill=cluster)) +  ylab('cumulative infection risk') + xlab('individual') +
+p <- ggplot(itmp[lab=='NT'], aes(x=ordShow, y=inf, fill=cVaccOrd)) +  ylab('cumulative infection risk') + xlab('individual') +
     geom_bar(stat='identity', width=1) + theme(legend.key.size = unit(.1, "cm")) + ggtitle('infection risk without vaccination') +
         theme(legend.position="right") #+ theme(axis.title.y = element_text(angle=0))
 print(p)
@@ -70,34 +66,33 @@ for(ll in itmp[,unique(lab)]) {
     itmp[lab==ll & Oi %%300==1, text(ordShowArm, .9, cluster)]
 }
 
-load('popt.Rdata')
-p1 <- popt[,.(Oc, cluster, Oi, indiv, indivRR, cumHaz)][order(Oc)]
-p2 <- itmp[pid==1,.(Oc, clusterPostOrd, Oi, indivRR, inf, pid)][order(Oc)]
-p3 <- merge(p1,p2, by ='Oi')
-p3[,identical(indivRR.x, indivRR.y)]
-p3[,identical(Oc.x, Oc.y)]
-p3[indiv %% 300 ==1, .(Oi,indiv, Oc.x,cluster,clusterPostOrd, indivRR.x, cumHaz, inf)]
-
-p4 <- unique(popt[,.(Oi, cluster, indiv)])
-itmp <- merge(itmp, p4, by = c('Oi'))
-
-itmp[pid==1 & (Oi %% 300 %in% c(1,151)), .(Oc, clusterPostOrd, vaccDay)]
-
 
 ylim <- itmp[,range(-avert_EV,spent_EV, -avert, spent)]
+ylimspent <- c(0, max(itmp[,spent_EV]))
+ylimavert <- c(min(itmp[,-avert_EV]), 0)
 xlim <- c(0,6000)
 ##pdf(file.path(figdir, paste0('irsk spent & avert SB.pdf')), w = wid, h = heig)
-par(mfrow=c(7,1), mar = c(0,3,1,0), oma = c(1,1,0,0))
-itmp[pid==1, plot(indiv, inf, xlab='individual', ylab='risk', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
-         las = 1, xaxt='n', main ='infection risk')]
-itmp[pid==1 & Oi %%300==1, text(Oi, .9, cluster)]
+par(mfrow=c(14,1), mar = c(0,5,0,0), oma = c(1,1,0,0))
+
+avertableTab <- irsk[lab %in% c('VR','NT'), .(avertableRisk = inf[lab=='NT']-inf[lab=='VR'], Oi, Oc, ordShow, ordShowArm, cVaccOrd, indivRR)]
+avertableTab[, points(ordShowArm, avertableRisk, ylab ='avertable', bty = 'n', type = 'h', col = 'black')
+
+## itmp[pid==1, plot(ordShowArm, inf, xlab='individual', ylab='risk', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
+##          las = 1, xaxt='n', main ='')]
+## mtext('infection risk', 3, -2)
+## irsk[lab=='VR', points(ordShowArm, inf, xlab='individual', ylab='risk', bty = 'n', type = 'h', col = 'black')]
+## irsk[lab=='VR', plot(ordShowArm, inf, xlab='individual', ylab='risk', bty = 'n', type = 'h', col = 'black', ylim = c(0,1), xlim=xlim, 
+##          las = 1, xaxt='n', main ='')]
+## mtext('VR infection risk', 3, -2)
 for(ll in itmp[,unique(lab)]) {
-    itmp[lab==ll, plot(indiv, spent_EV, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = ylim, xlim=xlim, 
-las = 1, xaxt='n', main =ll)]
-    with(itmp[lab==ll], points(indiv, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
-    abline(h=0, lty = 1)
-    abline(h=.05, lty = 2, col='gray')    
-    itmp[lab==ll & Oi %%300==1, text(Oi, ylim[2]*.9, paste0(cluster,'-',Oc))]
+    itmp[lab==ll, plot(ordShowArm, spent_EV, xlab='individual', ylab='spent', bty = 'n', type = 'h', col = cols, ylim = ylimspent, xlim=xlim, 
+las = 1, xaxt='n', main ='')]
+mtext(ll, 3, -2)
+    itmp[lab==ll, plot(ordShowArm, -avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = cols, ylim = ylimavert, xlim=xlim, 
+las = 1, xaxt='n', main ='')]
+#    with(itmp[lab==ll], points(ordShowArm, -avert_EV, type = 'h', col = makeTransparent(cols, alpha = 250)))
+ #   abline(h=0, lty = 1)
+##    itmp[lab==ll & Oi %%300==1, text(Oi, ylim[2]*.9, paste0(cVaccOrd,'-',Oc))]
 }
 title(xlab='individual',outer=T)
 title(ylab='risk',outer=T)

@@ -280,6 +280,7 @@ if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = lengt
     numClus <- as.numeric(parms[1,numClus])
     ## get individuals in order
 browser()
+
     iord <- irsk[lab=='NT',list(Oi,cVaccOrd,inf)][order(cVaccOrd,-inf)]
     iord[,ordShow:=1:(numClus*clusSize)]
     if('ordShow' %in% colnames(irsk)) irsk$ordShow <- NULL
@@ -310,7 +311,7 @@ browser()
     irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,numClus*clusSize)
     irsk[clusVD][type=='condvd' & 'SWCT'==lab]
     setkey(irsk, Oi, pid)
-    rm(iord, cOrd)
+    rm(iord, cVaccOrdTab)
 })
 
 
