@@ -26,7 +26,6 @@ procAll <- function(tidDo, verbose=0, maxbatch24 = 30, thresholds = c(.01, .02, 
     system.time(
         resList <- procMetaParms(resList)
     )
-    save.image('temp.Rdata')
     if(verbose>0) print('calculating risk spent/averted metrics summing or taking expectations across simulations')
     system.time(
         resList <- procIrskSpent(resList, verbose=verbose)
@@ -279,7 +278,6 @@ if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = lengt
     if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
     numClus <- as.numeric(parms[1,numClus])
     ## get individuals in order
-browser()
 
     iord <- irsk[lab=='NT',list(Oi,cVaccOrd,inf)][order(cVaccOrd,-inf)]
     iord[,ordShow:=1:(numClus*clusSize)]
