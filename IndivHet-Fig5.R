@@ -38,23 +38,25 @@ punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 
+irsk[,ordX:=ordShowArm]
+irsk[lab=='SWCT',ordX:=ordShow]
+
 ## add spacing b/w clusters for easier visualization
 spc <- seq(0,50*19, by = 50)
-spac <- data.table(ordShowArm = 1:6000)
-spac[, ordShowArm.sp := ordShowArm + rep(spc, each = 300)]
-irsk <- merge(irsk, spac, by = 'ordShowArm')
-spac2 <- data.table(ordShow = 1:6000)
-spac2[, ordShow.sp := ordShow + rep(spc, each = 300)]
-irsk <- merge(irsk, spac2, by = 'ordShow')
+spac <- data.table(ordX = 1:6000)
+spac[, ordX.sp := ordX + rep(spc, each = 300)]
+irsk <- merge(irsk, spac, by = 'ordX')
 
 ## for plotting
 mids <- seq(150, 6000-150, by = 300)
 mids <- mids + spc
 tcks <- rep(mids, each = 2) + c(-150,150)
 
-avertableTab <- irsk[lab %in% c('NT','VR'), .(avertableRisk = inf[lab=='NT']-inf[lab=='VR'], ordShow, ordShowArm, cVaccOrd), .(Oi,tid)]
-avertableTab <- merge(avertableTab, spac, by = 'ordShowArm')
-avertableTab <- merge(avertableTab, spac2, by = 'ordShow')
+avertableTab <- unique(irsk[lab %in% c('NT','VR'), .(arms = T, avertableRisk = inf[lab=='NT']-inf[lab=='VR'], ordX, ordX.sp, cVaccOrd), .(Oi,tid)])
+avertableTab2 <- merge(avertableTab[,.(Oi,tid,arms,avertableRisk,cVaccOrd)], unique(irsk[lab =='SWCT', .(Oi, ordX, ordX.sp)]), by ='Oi')
+avertableTab2$arms <- F
+avertableTab <- rbind(avertableTab, avertableTab2, fill=T)
+#avertableTab$ordShow <- NULL
 
 ####################################################################################################
 ## Plots
@@ -66,11 +68,12 @@ itmp <- itmp[lab!='RCT-rp']
 
 ####################################################################################################
 ## Look at individuals infection risk, but dividing them into their randomization structure (for comparison to below)
-xlim <- c(0,6000)
+xlim <- range(tcks)
 par(mfrow=c(6,1), mar = c(0,3,1,0), oma = c(4,1,0,0))
 for(ll in itmp[,unique(lab)]) {
-    itmp[lab==ll, plot(ordShowArm.sp, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
+    itmp[lab==ll, plot(ordX.sp, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
              las = 1, xaxt='n', main = '')]
+    if(ll == itmp[,unique(lab)][1])    legend('topright', col = c(itmp[,unique(cols)]), leg = c('control arm', 'vaccine arm'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, side = 3, line = -2) 
 }
 axis(1, at = mids, lab = 1:20, lwd = 0)
@@ -79,28 +82,21 @@ axis(1, at = mids, lab = 1:20, lwd = 0)
 ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
 xlim <- c(0,6000)
-pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
-step <- 0
+#pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
 par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
 for(ll in itmp[,unique(lab)]) {
-    if(ll!='SWCT'){
-        avertableTab[, plot(ordShowArm.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmp[lab==ll, points(ordShowArm.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
-        if(step==0){
+        avertableTab[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+        itmp[lab==ll, points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
+        if(ll==itmp[,unique(lab)][1]) {
             legend('topright', col = c('gray', itmp[,unique(cols)]), 
                    leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
-            step <- 1
         }
-    }else{
-        avertableTab[, plot(ordShow.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmp[lab==ll, points(ordShow.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
-    }
     mtext(ll, 3, -4)
 }
 axis(1, at = mids, lab = 1:20, lwd = 0)
 mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
-graphics.off()
+#graphics.off()
 
 
 ####################################################################################################
@@ -114,22 +110,13 @@ itmpMarg <- itmpMarg[lab!='RCT-rp']
 
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
 xlim <- c(0,6000)
-step <- 0
 pdf(file.path(figdir, paste0('avertable risk averted (marginal).pdf')), w = wid, h = heig)
 par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
 for(ll in itmpMarg[,unique(lab)]) {
-    if(ll!='SWCT'){
-        avertableTab[, plot(ordShowArm.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmpMarg[lab==ll, points(ordShowArm.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
-        if(step==0){
-            legend('topright', col = c('gray', itmpMarg[,unique(cols)]), 
+        avertableTab[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+        itmpMarg[lab==ll, points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
+        if(ll==itmp[,unique(lab)][1]) legend('topright', col = c('gray', itmpMarg[,unique(cols)]), 
                    leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
-            step <- 1
-        }
-    }else{
-        avertableTab[, plot(ordShow.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmpMarg[lab==ll, points(ordShow.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
-    }
     mtext(ll, 3, -4)
 }
 axis(1, at = seq(0,6000, by = 300), lab = NA)
@@ -138,7 +125,6 @@ mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line =
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
 ####################################################################################################
-
 
 ####################################################################################################
 ## 3 clusters only
@@ -151,30 +137,33 @@ step <- 0
 selClus <- c(1,8,12)
 
 itmp3 <- itmp[cVaccOrd %in% selClus]
-itmp3[,ord3:=order(order(ordShowArm))]
-avertableTab3 <- avertableTab[cVaccOrd %in% selClus]
-avertableTab3[,ord3:=order(order(ordShowArm))]
+itmp3 <- itmp3[order(ordX.sp)]
+itmp3[,ord3:=1:length(ordX.sp), pid]
+itmp3[,ord3.sp := ord3 + floor((ord3-1)/300)*50]
 
+
+avertableTab3 <- avertableTab[cVaccOrd %in% selClus]
+avertableTab3 <- avertableTab3[order(ordX.sp)]
+avertableTab3[,ord3:=1:length(ordX), arms]
+avertableTab3[,ord3.sp := ord3 + floor((ord3-1)/300)*50]
+
+
+xlim <- c(0,900)
 par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
 for(ll in itmp3[,unique(lab)]) {
-    if(ll!='SWCT'){
-        avertableTab3[, plot(ord3, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmp3[lab==ll, points(ord3, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
-        if(step==0){
-            legend('topright', col = c('gray', itmp3[,unique(cols)]), 
-                   leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
-            step <- 1
-        }
-    }else{
-        avertableTab3[, plot(ord3, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmp3[lab==ll, points(ord3, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
-    }
+    avertableTab3[arms==(ll!='SWCT'), 
+                  plot(ord3.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+    itmp3[lab==ll, points(ord3.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,150))]
+    if(ll==itmp[,unique(lab)][1]) legend('topright', col = c('gray', itmpMarg[,unique(cols)]), 
+           leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, 3, -4)
 }
 axis(1, at = mids, lab = 1:20, lwd = 0)
 mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 ##graphics.off()
+
+itmp3[lab=='RCT' & ord3.sp%in%350:351]
 
 ## add error bars to inf spent & frac of information
 ## try fraction of information per person on y-axis

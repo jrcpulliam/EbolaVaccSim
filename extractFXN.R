@@ -301,7 +301,7 @@ if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = lengt
     ## need exemplar SWCT: pick arbitrary example of cVaccOrd-day assignment to display
     ## do average SW, where every other cluster from highest to lowest risk is picked
     clusVD <- irsk[(arm==armShown & type=='condvd' &  grepl('SWCT',lab)),
-                   list(cVaccOrd = as.factor(c((1:numClus)[1:numClus %% 2==1], (1:numClus)[1:numClus %% 2==0])),
+                   list(cVaccOrd = as.factor(c((1:numClus)[1:numClus %% 2==0], (1:numClus)[1:numClus %% 2==1])),
                         vaccDay=unique(vaccDay))]
     setkey(clusVD, cVaccOrd, vaccDay)
     irsk[,exmpl:=F]
