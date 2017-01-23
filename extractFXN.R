@@ -273,8 +273,11 @@ if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = lengt
     irsk <- merge(irsk, cVaccOrdTab[,.(Oc, cVaccOrd)], by = 'Oc')
     irsk[,cVaccOrd:=factor(cVaccOrd)]
     ## order individuals within cVaccOrds by risk for ease of display
+    save(Spop, punq, file='temp.Rdata')
+         
     if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
     clusSize <- as.numeric(parms[1,clusSize])
+
     if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
     numClus <- as.numeric(parms[1,numClus])
     ## get individuals in order

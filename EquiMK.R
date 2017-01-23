@@ -91,7 +91,7 @@ parmsMat$batchdirnm <- batchdirnm
 names(parmsMat)
 
 ## variables that specify a trial population
-tvars <- c("trialStartDate", "propInTrial", "avHaz", "indivRRSeed" , "HazTrajSeed",'numClus','clusSuze','hazType','nbsize','mu','cvClus','cvClusTime','sdLogIndiv','weeklyDecay','cvWeeklyDecay','hazIntUnit')
+tvars <- c("trialStartDate", "propInTrial", "avHaz", "indivRRSeed" , "HazTrajSeed",'numClus','clusSize','hazType','nbsize','mu','cvClus','cvClusTime','sdLogIndiv','weeklyDecay','cvWeeklyDecay','hazIntUnit')
 tvars <- tvars[tvars %in% colnames(parmsMat)]
 tpop <- unique(parmsMat[,tvars, with=F]) ## make sure to add other variables unique to population
 tpop <- data.table(tid=1:nrow(tpop), tpop)

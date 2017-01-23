@@ -203,6 +203,6 @@ graphics.off()
 ## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
 
 ## delay comparator doesn't provide much benefit when transmission is declining, or when risk accrual rate in the trial is sufficiently fast that control group will receive vaccine soon in a group sequential trial anyways. SO it really shows effect when risk is sustained/increasing, but not so high as to make the trial end very quickly, or if it's a very small trial
-Irsk[lab %in% c('RCT-gs-rp', 'RCT-gs-rp-cvd') & type == 'cond' & arm =='cont', diff(inf), Oi]
+irsk[lab %in% c('RCT-gs-rp', 'RCT-gs-rp-cvd') & type == 'cond' & arm =='cont', diff(inf), Oi]
 
 ## show risk spent profiles in trial w/ placebo vs delayed vacc comparator, across range of trial sizes. Maybe show one very large trial population w/ lower risk, & one very small trial population w/ high risk but same amount of total hazard accumulation?
