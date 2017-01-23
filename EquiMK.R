@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-v5'
+thing <- 'Equip-Fig5-delayvacc'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -29,18 +29,20 @@ ves <- NA
 pits <- .05
 ## avHazs <- c('', 'xTime','xClus','xClusxTime')
 avHazs <- c('', 'xTime')
+clusSizes <- c(300,150)
 parmsMatRCT <- as.data.table(expand.grid(
     batch =  1:numEach
+  , clusSize = clusSizes
   , nsims = nsims
   , trial = 'RCT'
-  , gs = c(F,T)
-  , ord = c('none','TU')
+  , gs = T#c(F,T)
+  , ord = 'TU'#c('none','TU')
   , contVaccDelay = c(NA, 7*9)
-  , maxRRcat = c(0, 25)
+  , maxRRcat = 0#c(0, 25)
   , trialStartDate = sdates
   , propInTrial = pits
   , vaccEff = ves
-  , avHaz = avHazs
+  , avHaz = 'xTime'#avHazs
 ))
 ## only do the threshold and vaccContDelay for gsTU trials
 parmsMatRCT <- parmsMatRCT[!(!is.na(contVaccDelay) & (gs==F | ord=='none'))]
@@ -49,6 +51,7 @@ parmsMatRCT <- parmsMatRCT[!(maxRRcat>0 & !is.na(contVaccDelay))]
 
 parmsMatSWCT <- as.data.table(expand.grid(
     batch =  1:numEach
+  , clusSize = clusSizes
   , nsims = nsims
   , trial = 'SWCT'
   , gs = F
@@ -62,6 +65,7 @@ parmsMatSWCT <- as.data.table(expand.grid(
 ))
 parmsMatCFs <- as.data.table(expand.grid(
     batch =  1:numEach ## do for average vacc eff
+  , clusSize = clusSizes
   , nsims = nsims ## 
   , trial = c('VR','NT')
   , gs = F
@@ -71,12 +75,12 @@ parmsMatCFs <- as.data.table(expand.grid(
   , trialStartDate = sdates
   , propInTrial = pits
   , vaccEff = ves
-  , avHaz = avHazs
+  , avHaz = 'xTime'#avHazs
 ))
 
-parmsMat <- rbind(parmsMatRCT,parmsMatSWCT,parmsMatCFs)
+parmsMat <- rbind(parmsMatRCT,parmsMatCFs)#, parmsMatSWCT
 parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; delayUnit=7; randVaccProperties=T;
-                           DoIndivRRcat=T})
+                               DoIndivRRcat=T})
 parmsMat$StatsFxns <- 'doCoxME'
 parmsMat[trial=='SWCT', StatsFxns:='doRelabel'] ### slow if relabeling
 parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
@@ -117,9 +121,12 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
 ## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
-tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('') & trialStartDate=='2014-10-01', tid]
+tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
+
+parmsMatDo[batch==1, .(pid, batch, rcmdbatch, trial, gs, ord, contVaccDelay, clusSize, trialStartDate)][order(clusSize)]
+
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
 
 ##parmsMatDo <- parmsMatDo[!trial %in% c('NT','VR','SWCT')]

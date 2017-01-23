@@ -10,7 +10,7 @@ wid <- 10
 heig <- 8
 res <- 300
 
-thing <- 'Equip-Fig5-v4'
+thing <- 'Equip-Fig5-v5'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -82,7 +82,7 @@ axis(1, at = mids, lab = 1:20, lwd = 0)
 ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
 xlim <- c(0,6000)
-#pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
+pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
 par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
 for(ll in itmp[,unique(lab)]) {
         avertableTab[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
@@ -96,7 +96,7 @@ for(ll in itmp[,unique(lab)]) {
 axis(1, at = mids, lab = 1:20, lwd = 0)
 mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
-#graphics.off()
+graphics.off()
 
 
 ####################################################################################################
@@ -133,7 +133,7 @@ graphics.off()
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
 xlim <- c(0,6000)
 
-selClus <- c(1,8,13)
+selClus <- c(2,8,13)
 
 
 itmp3 <- itmp[cVaccOrd %in% selClus]
@@ -149,15 +149,17 @@ avertableTab3[,ord3.sp := ord3 + floor((ord3-1)/300)*50]
 
 hazT$lwd <- 1
 hazT[cluster %in% selClus, lwd:=5]
+hazT[,col:=rainbow(length(unique(cluster)))[cluster]]
 
 pdf(file.path(figdir, paste0('3 clusters - avertable risk averted (conditional).pdf')), w = wid, h = heig)
 every <- 3
 xlim <- range(itmp3$ord3.sp)
 par(mfrow=c(7,1), mar = c(2,5,0,0), oma = c(5,2,0,0), ps = 16)
 ## highlight selected clusters
-hazT[,plot(Date,clusHaz, lwd=0, bty = 'n', las = 1, ylab = 'infection hazard', yaxt = 'n')]
-hazT[, lines(Date, clusHaz, lwd = lwd, col = cluster), cluster]
-par(mar=c(0,5,0,0))
+hazT[,plot(Date,clusHaz, lwd=0, bty = 'n', las = 1, ylab = 'hazard', yaxt = 'n', type = 'n')]
+hazT[, lines(Date, clusHaz, lwd = lwd, col = col), cluster]
+unique(hazT[, .(cluster,col)])[cluster %in% selClus, legend('topright', leg = cluster, col= col, bty = 'n', lwd = 3)]
+par(mar=c(1,5,0,0))
 ## show risk breakdown
 for(ll in itmp3[,unique(lab)]) {
     avertableTab3[arms==(ll!='SWCT') & ord3.sp%%every==1, 
@@ -167,10 +169,12 @@ for(ll in itmp3[,unique(lab)]) {
            leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, 3, -4)
 }
- axis(1, at = mids, lab = paste0('cluster ', 1:20), lwd = 0)
+axis(1, at = mids, lab = paste0('cluster ', 1:20), lwd = 0)
 mtext('individuals', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
+
+
  
 ## ## Show total risk too (currently hard to display)
 ## xlim <- range(itmp3$ord3.sp)
@@ -193,12 +197,12 @@ graphics.off()
 ## mtext('risk', 2, ,outer=T, line = -1)
 ## ##graphics.off()
 
-## add error bars to inf spent & frac of information
-## try fraction of information per person on y-axis
-## show inf spent/averted on same plot
-
 ## equipoise perturbed plot
 ## histogram within strata groups
 ## look at risk by person/strata by treatment assignment for trials
 ## vaccinating a greater % of people increases risk averted/spent, but still has problem of withholding treatment from individuals
 
+## delay comparator doesn't provide much benefit when transmission is declining, or when risk accrual rate in the trial is sufficiently fast that control group will receive vaccine soon in a group sequential trial anyways. SO it really shows effect when risk is sustained/increasing, but not so high as to make the trial end very quickly, or if it's a very small trial
+Irsk[lab %in% c('RCT-gs-rp', 'RCT-gs-rp-cvd') & type == 'cond' & arm =='cont', diff(inf), Oi]
+
+## show risk spent profiles in trial w/ placebo vs delayed vacc comparator, across range of trial sizes. Maybe show one very large trial population w/ lower risk, & one very small trial population w/ high risk but same amount of total hazard accumulation?
