@@ -4,7 +4,7 @@ if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/'
 if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
 if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/EbolaVaccSim/')
 rm(list=ls(all=T)); gc()
-require(optiRum); require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
+require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel); require(optiRum); 
 sapply(c('extractFXN.R'), source)
 
 args <- (commandArgs(TRUE)) ## load arguments from R CMD BATCH
@@ -29,6 +29,12 @@ vaccProp[, simNum:=1:length(vaccEff)]
 ## eos <- extractOneSim(fls[1], indivLev=T, verbose = 0)
 
 load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
+## parmsMat[clusSize==150 & trialStartDate=='2014-10-01',tid:=1]
+## parmsMat[clusSize==300 & trialStartDate=='2014-10-01',tid:=2]
+## parmsMat[clusSize==150 & trialStartDate=='2014-12-01',tid:=3]
+## parmsMat[clusSize==300 & trialStartDate=='2014-12-01',tid:=4]
+## save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
+
 ## start dates
 sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
 sdates <- sdates[1:length(sdates) %% 2 ==1]

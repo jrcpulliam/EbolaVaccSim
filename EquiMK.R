@@ -90,6 +90,7 @@ parmsMat$batchdirnm <- batchdirnm
 
 names(parmsMat)
 
+
 ## variables that specify a trial population
 tvars <- c("trialStartDate", "propInTrial", "avHaz", "indivRRSeed" , "HazTrajSeed",'numClus','clusSize','hazType','nbsize','mu','cvClus','cvClusTime','sdLogIndiv','weeklyDecay','cvWeeklyDecay','hazIntUnit')
 tvars <- tvars[tvars %in% colnames(parmsMat)]
@@ -109,6 +110,7 @@ setkey(parmsMat, tid, pid, batch)
 frontcols <- c('pid','tid','batch', 'rcmdbatch')
 setcolorder(parmsMat, c(frontcols, names(parmsMat)[!names(parmsMat) %in% frontcols]))
 parmsMat
+unique(parmsMat[,.(clusSize,avHaz, trialStartDate, .N), tid])
 
 nmtmp <- thing
 parmsMat <- within(parmsMat, {saveNm = nmtmp; reordLag = 14; nboot = 200})
@@ -125,7 +127,8 @@ tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('xTime') & trialStartDate=='
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
-parmsMatDo[batch==1, .(pid, batch, rcmdbatch, trial, gs, ord, contVaccDelay, clusSize, trialStartDate)][order(clusSize)]
+parmsMatDo[batch==1, .(pid, batch, rcmdbatch, trial, gs, ord, contVaccDelay, clusSize, trialStartDate, .N)][order(clusSize)]
+unique(parmsMatDo[,.(clusSize,avHaz, trialStartDate, .N), tid])
 
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
 
