@@ -33,7 +33,7 @@ for(ii in 1:length(fls)) {
     itmp$tid <- ii ## **careful here**, need to make sure it always matches flow from parmsMat
     irsk <- rbind(irsk, itmp)
     speedpow <- with(resList, merge(parms[, list(pid, nbatch)], finTrials[,list(tcal, vaccEff,vaccGood, cvr,nbatch)], by = 'nbatch'))
-    tmp <- merge(tmp, speedpow[, list(tcal = mean(tcal)), pid], by = 'pid')
+    tmp <- merge(tmp, speedpow[, list(tcal = mean(tcal), .N), pid], by = 'pid')
     tmp$tid <- ii
     punq <- rbind(punq, tmp)
 }
@@ -44,6 +44,7 @@ irsk <- merge(irsk, unique(punq[,.(tid,clusSize = as.numeric(clusSize))]), by='t
 
 irsk[,ordX:=ordShowArm]
 irsk[lab=='SWCT',ordX:=ordShow]
+punq[threshold==.01]
 
 ## Add a 6th of a cluster of space b/w each cluster for easier visualization
 irsk[,ordX.sp:=ordX + floor((ordX-1)/clusSize)*(clusSize/6)]
@@ -58,21 +59,23 @@ avertableTab <- rbind(avertableTab, avertableTab2, fill=T)
 ## Plots
 ####################################################################################################
 ## Conditional on arms & order randomization
-itmp <- irsk[tid==1 & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
+tidDo <- 1
+itmp <- irsk[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
 itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
 itmp <- itmp[lab!='RCT-rp']
 
-
 ## for plotting
-clusSizetmp <- itmp[1,clusSize]
-mids <- seq(clusSizetmp/2, 6000-clusSizetmp/2, by = clusSizetmp)
-mids <- mids + spc
+clusSizetmp <- punq[tid==tidDo, as.numeric(clusSize)][1]
+Ntmp <- punq[tid==tidDo, as.numeric(clusSize)*as.numeric(numClus)][1]
+mids <- seq(clusSizetmp/2, Ntmp-clusSizetmp/2, by = clusSizetmp)
+mids <- mids + clusSizetmp/6*c(0:(length(mids)-1))
 tcks <- rep(mids, each = 2) + c(-clusSizetmp/2,clusSizetmp/2)
 
+numPanels <- 2
 ####################################################################################################
-## Look at individuals infection risk, but dividing them into their randomization structure (for comparison to below)
+## INFECTION RISK, divided by randomization structure (for comparison to below)
 xlim <- range(tcks)
-par(mfrow=c(6,1), mar = c(0,3,1,0), oma = c(4,1,0,0))
+par(mfrow=c(numPanels,1), mar = c(0,3,1,0), oma = c(4,1,0,0))
 for(ll in itmp[,unique(lab)]) {
     itmp[lab==ll, plot(ordX.sp, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
              las = 1, xaxt='n', main = '')]
@@ -83,10 +86,11 @@ axis(1, at = mids, lab = 1:20, lwd = 0)
 
 ####################################################################################################
 ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
+## CONDITIONAL
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
-xlim <- c(0,6000)
+xlim <- c(0,Ntmp)
 pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
-par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
+par(mfrow=c(numPanels,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
 for(ll in itmp[,unique(lab)]) {
         avertableTab[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
         itmp[lab==ll, points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
@@ -97,24 +101,22 @@ for(ll in itmp[,unique(lab)]) {
     mtext(ll, 3, -4)
 }
 axis(1, at = mids, lab = 1:20, lwd = 0)
-mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)', 1, outer=T, line = 3)
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
 
-
 ####################################################################################################
 ## Averted by each trial with shadow of avertable, Marginal on randomization assignment
-
-## Conditional on arms & order randomization
+## MARGINAL on arms & order randomization
 itmpMarg <- irsk[tid==1 & type=='marg' & !lab %in% c('NT','VR')]
 itmpMarg[, cols:=armShown]; itmpMarg[cols=='cont',cols:='red']; itmpMarg[cols=='vacc',cols:='dodger blue']
 itmpMarg[lab=='SWCT', cols:='dodger blue']
 itmpMarg <- itmpMarg[lab!='RCT-rp']
 
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
-xlim <- c(0,6000)
+xlim <- c(0,Ntmp)
 pdf(file.path(figdir, paste0('avertable risk averted (marginal).pdf')), w = wid, h = heig)
-par(mfrow=c(6,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
+par(mfrow=c(numPanels,1), mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
 for(ll in itmpMarg[,unique(lab)]) {
         avertableTab[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
         itmpMarg[lab==ll, points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,20))]
@@ -122,19 +124,38 @@ for(ll in itmpMarg[,unique(lab)]) {
                    leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, 3, -4)
 }
-axis(1, at = seq(0,6000, by = clusSizetmp), lab = NA)
-axis(1, at = seq(clusSizetmp/2,6000-clusSizetmp/2, by = clusSizetmp), lab = 1:20, tick = 0)
-mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)', 1, outer=T, line = 3)
+axis(1, at = seq(0,Ntmp, by = clusSizetmp), lab = NA)
+axis(1, at = seq(clusSizetmp/2,Ntmp-clusSizetmp/2, by = clusSizetmp), lab = 1:20, tick = 0)
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
 ####################################################################################################
+
+
+####################################################################################################
+## CONDITIONAL overlaid
+ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
+xlim <- c(0,Ntmp)
+#pdf(file.path(figdir, paste0('avertable risk averted (conditional).pdf')), w = wid, h = heig)
+par(mar = c(0,5,0,0), oma = c(5,2,0,0), ps = 15)
+avertableTab[arms==T, plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+itmp[lab=='RCT-gs-rp-cvd', points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,30))]
+itmp[lab=='RCT-gs-rp', points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,50))]
+legend('topright', col = c('gray', itmp[,unique(cols)]), 
+       leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
+mtext(ll, 3, -4)
+axis(1, at = mids, lab = 1:20, lwd = 0)
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
+mtext('avertable risk', 2, ,outer=T, line = -1)
+#graphics.off()
+
 
 ####################################################################################################
 ## 3 clusters only
 ####################################################################################################
 ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
 ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
-xlim <- c(0,6000)
+xlim <- c(0,Ntmp)
 
 selClus <- c(2,8,13)
 
@@ -155,7 +176,7 @@ hazT[,col:=rainbow(length(unique(cluster)))[cluster]]
 pdf(file.path(figdir, paste0('3 clusters - avertable risk averted (conditional).pdf')), w = wid, h = heig)
 every <- 3
 xlim <- range(itmp3$ord3.sp)
-par(mfrow=c(7,1), mar = c(2,5,0,0), oma = c(5,2,0,0), ps = 16)
+par(mfrow=c(numPanels+1,1), mar = c(2,5,0,0), oma = c(5,2,0,0), ps = 16)
 ## highlight selected clusters
 hazT[,plot(Date,clusHaz, lwd=0, bty = 'n', las = 1, ylab = 'hazard', yaxt = 'n', type = 'n')]
 hazT[, lines(Date, clusHaz, lwd = lwd, col = col), cluster]
