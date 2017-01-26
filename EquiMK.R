@@ -29,7 +29,7 @@ ves <- NA
 pits <- .05
 ## avHazs <- c('', 'xTime','xClus','xClusxTime')
 avHazs <- c('', 'xTime')
-clusSizes <- c(300,150)
+clusSizes <- c(300,150, 100, 50, 20)
 parmsMatRCT <- as.data.table(expand.grid(
     batch =  1:numEach
   , clusSize = clusSizes
@@ -123,7 +123,7 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
 ## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
-tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid]
+tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('xTime') & trialStartDate=='2014-10-01' & clusSize<150, tid]
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
