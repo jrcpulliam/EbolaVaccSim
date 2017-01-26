@@ -249,6 +249,7 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     irsk <- rbindlist(list(irskMarg, irskCond, irskMax, irskCondvd), use.names=T, fill=T)
     rm(irskMarg, irskCond, irskMax, irskCondvd)
     setkey(irsk, Oi, pid)
+
     irsk <- merge(punq[,list(pid,gs, lab)], irsk, by = 'pid')
     moveFront(irsk, c('pid','lab','gs','type','arm','vaccDay'))
     ## Average risk spent versus marginal VR 
@@ -265,21 +266,21 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     ## for(ii in 4:5) sptmp[[ii]] <- formatC(100*signif(sptmp[[ii]],2)) ## % risk spent on average
     ## sptmp ## % risk (multiplied by 100)
     ## ##############################################################################
-    ## get clusters' vaccination order (were they risk prioritized
-if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = length(unique(vaccDay))), Oc][,numVaccDays] > 1)) stop("not all simulations had same risk-prioritized vaccination ordering") ## to keep below from breaking if multiple hazard projections run across simulation batches
-    cVaccOrdTab <- irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc' & Oi %% 300 ==1, .(Oc, vaccDay)] 
+    if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
+    clusSize <- as.numeric(parms[1,clusSize])
 
+    if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
+    numClus <- as.numeric(parms[1,numClus])
+    ## get clusters' vaccination order (were they risk prioritized
+RCTlab <- irsk[grepl('RCT',lab), lab[1]]
+if(any(irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = length(unique(vaccDay))), Oc][,numVaccDays] > 1)) stop("not all simulations had same risk-prioritized vaccination ordering") ## to keep below from breaking if multiple hazard projections run across simulation batches
+    cVaccOrdTab <- irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc' & Oi %% clusSize ==1, .(Oc, vaccDay)] 
     cVaccOrdTab[,cVaccOrd:= order(order(vaccDay))]
     irsk <- merge(irsk, cVaccOrdTab[,.(Oc, cVaccOrd)], by = 'Oc')
     irsk[,cVaccOrd:=factor(cVaccOrd)]
     ## order individuals within cVaccOrds by risk for ease of display
     save(Spop, punq, file='temp.Rdata')
          
-    if(length(unique(parms[,clusSize]))>1) stop("more than 1 clusSize value in simulation batch")
-    clusSize <- as.numeric(parms[1,clusSize])
-
-    if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
-    numClus <- as.numeric(parms[1,numClus])
     ## get individuals in order
 
     iord <- irsk[lab=='NT',list(Oi,cVaccOrd,inf)][order(cVaccOrd,-inf)]
@@ -294,7 +295,7 @@ if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = lengt
     irsk[grepl('RCT',lab) & as.numeric((Oi-1) %% (clusSize) >= clusSize/2), armShown:='vacc']
     ## order individuals within clusters & armShown by risk for ease of display
     iord <- irsk[lab=='NT',list(Oi,cVaccOrd, inf)]
-    iord <- merge(iord, unique(irsk[lab=='RCT' & arm==armShown, list(Oi, armShown)]))
+    iord <- merge(iord, unique(irsk[grepl('RCT',lab) & arm==armShown, list(Oi, armShown)]))
     iord <- iord[order(cVaccOrd,armShown, -inf)]
     iord[,ordShowArm:=1:(clusSize*numClus)]
     if('ordShowArm' %in% colnames(irsk)) irsk$ordShowArm <- NULL
@@ -309,8 +310,10 @@ if(any(irsk[lab=='RCT-rp' & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = lengt
     setkey(clusVD, cVaccOrd, vaccDay)
     irsk[,exmpl:=F]
     setkey(irsk, cVaccOrd, vaccDay)
-    irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,numClus*clusSize)
-    irsk[clusVD][type=='condvd' & 'SWCT'==lab]
+    if('SWCT' %in% irsk[,unique(lab)]) {
+        irsk[clusVD][type=='condvd' & 'SWCT'==lab][["exmpl"]] <- rep(T,numClus*clusSize)
+        irsk[clusVD][type=='condvd' & 'SWCT'==lab]
+    }
     setkey(irsk, Oi, pid)
     rm(iord, cVaccOrdTab)
 })

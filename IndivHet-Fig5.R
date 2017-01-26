@@ -12,6 +12,7 @@ heig <- 8
 res <- 300
 
 thing <- 'Equip-Fig5-v5'
+thing <- 'Equip-Fig5-delayvacc'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -33,25 +34,19 @@ for(ii in 1:length(fls)) {
     irsk <- rbind(irsk, itmp)
     speedpow <- with(resList, merge(parms[, list(pid, nbatch)], finTrials[,list(tcal, vaccEff,vaccGood, cvr,nbatch)], by = 'nbatch'))
     tmp <- merge(tmp, speedpow[, list(tcal = mean(tcal)), pid], by = 'pid')
+    tmp$tid <- ii
     punq <- rbind(punq, tmp)
 }
 punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
+irsk <- merge(irsk, unique(punq[,.(tid,clusSize = as.numeric(clusSize))]), by='tid')## get clusSize in irsk for ordering purposes
 
 irsk[,ordX:=ordShowArm]
 irsk[lab=='SWCT',ordX:=ordShow]
 
-## add spacing b/w clusters for easier visualization
-spc <- seq(0,50*19, by = 50)
-spac <- data.table(ordX = 1:6000)
-spac[, ordX.sp := ordX + rep(spc, each = 300)]
-irsk <- merge(irsk, spac, by = 'ordX')
-
-## for plotting
-mids <- seq(150, 6000-150, by = 300)
-mids <- mids + spc
-tcks <- rep(mids, each = 2) + c(-150,150)
+## Add a 6th of a cluster of space b/w each cluster for easier visualization
+irsk[,ordX.sp:=ordX + floor((ordX-1)/clusSize)*(clusSize/6)]
 
 avertableTab <- unique(irsk[lab %in% c('NT','VR'), .(arms = T, avertableRisk = inf[lab=='NT']-inf[lab=='VR'], ordX, ordX.sp, cVaccOrd, inf=inf[lab=='NT']), .(Oi,tid)])
 avertableTab2 <- merge(avertableTab[,.(Oi,tid,arms,avertableRisk,inf, cVaccOrd)], unique(irsk[lab =='SWCT', .(Oi, ordX, ordX.sp)]), by ='Oi')
@@ -66,6 +61,13 @@ avertableTab <- rbind(avertableTab, avertableTab2, fill=T)
 itmp <- irsk[tid==1 & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
 itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
 itmp <- itmp[lab!='RCT-rp']
+
+
+## for plotting
+clusSizetmp <- itmp[1,clusSize]
+mids <- seq(clusSizetmp/2, 6000-clusSizetmp/2, by = clusSizetmp)
+mids <- mids + spc
+tcks <- rep(mids, each = 2) + c(-clusSizetmp/2,clusSizetmp/2)
 
 ####################################################################################################
 ## Look at individuals infection risk, but dividing them into their randomization structure (for comparison to below)
@@ -95,7 +97,7 @@ for(ll in itmp[,unique(lab)]) {
     mtext(ll, 3, -4)
 }
 axis(1, at = mids, lab = 1:20, lwd = 0)
-mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line = 3)
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
 
@@ -120,9 +122,9 @@ for(ll in itmpMarg[,unique(lab)]) {
                    leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, 3, -4)
 }
-axis(1, at = seq(0,6000, by = 300), lab = NA)
-axis(1, at = seq(150,6000-150, by = 300), lab = 1:20, tick = 0)
-mtext('individuals by cluster (300 individuals per cluster)', 1, outer=T, line = 3)
+axis(1, at = seq(0,6000, by = clusSizetmp), lab = NA)
+axis(1, at = seq(clusSizetmp/2,6000-clusSizetmp/2, by = clusSizetmp), lab = 1:20, tick = 0)
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
 ####################################################################################################
@@ -136,17 +138,15 @@ xlim <- c(0,6000)
 
 selClus <- c(2,8,13)
 
-
 itmp3 <- itmp[cVaccOrd %in% selClus]
 itmp3 <- itmp3[order(ordX.sp)]
 itmp3[,ord3:=1:length(ordX.sp), pid]
-itmp3[,ord3.sp := ord3 + floor((ord3-1)/300)*50]
-
+itmp3[,ord3.sp := ord3 + floor((ord3-1)/clusSizetmp)*clusSizetmp/6]
 
 avertableTab3 <- avertableTab[cVaccOrd %in% selClus]
 avertableTab3 <- avertableTab3[order(ordX.sp)]
 avertableTab3[,ord3:=1:length(ordX), arms]
-avertableTab3[,ord3.sp := ord3 + floor((ord3-1)/300)*50]
+avertableTab3[,ord3.sp := ord3 + floor((ord3-1)/clusSizetmp)*clusSizetmp/6]
 
 hazT$lwd <- 1
 hazT[cluster %in% selClus, lwd:=5]
@@ -165,7 +165,7 @@ par(mar=c(1,5,0,0))
 for(ll in itmp3[,unique(lab)]) {
     avertableTab3[arms==(ll!='SWCT') & ord3.sp%%every==1, 
                   plot(ord3.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1, lwd = 2)]
-    itmp3[lab==ll  & ord3.sp%%every==1, points(ord3.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,150), lwd=2)]
+    itmp3[lab==ll  & ord3.sp%%every==1, points(ord3.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,clusSizetmp/2), lwd=2)]
     if(ll==itmp[,unique(lab)][1]) legend('topright', col = c('gray', itmpMarg[,unique(cols)]), 
            leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, 3, -4)
@@ -188,7 +188,7 @@ graphics.off()
 ##                   plot(ord3.sp, inf, ylab ='', bty = 'n', type = 'h', col = gray(.3), xlim = xlim, ylim = ylim, xaxt='n', main = '', las = 1, lwd = lwd)]
 ##     avertableTab3[arms==(ll!='SWCT') & ord3.sp%%every==1, 
 ##                  points(ord3.sp, avertableRisk, col = gray(.8), lwd = lwd)]
-##     itmp3[lab==ll  & ord3.sp%%every==1, points(ord3.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,150), lwd=lwd)]
+##     itmp3[lab==ll  & ord3.sp%%every==1, points(ord3.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,clusSizetmp/2), lwd=lwd)]
 ##     if(ll==itmp[,unique(lab)][1]) legend('topright', col = c('gray', itmpMarg[,unique(cols)]), 
 ##            leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
 ##     mtext(ll, 3, -4)

@@ -43,6 +43,7 @@ unique(parmsMat[avHaz=='xTime' & propInTrial==c(.05) & trialStartDate==c('2014-1
 ## tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid] )
 tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates & avHaz %in% c('', 'xTime'), tid] )
 tidsDo <- parmsMat[,unique(tid)]
+unique(parmsMat[tid==1, .(tid, trialStartDate, clusSize, avHaz)])
 
 for(tt in 1:length(tidsDo)) {
     ti <- tidsDo[tt]
