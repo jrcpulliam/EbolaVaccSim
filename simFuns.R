@@ -27,6 +27,7 @@ makeParms <- function(
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
   , DoIndivRRcat = F 
   , indivRRcats = list(rr = c(1,5,10,30), prop = c(.55,.3,.1,.05))
+, indivRRsameXclusterXarm = T ## make sure distribution of indivRR is the same in each cluster & arm to allow easier comparability when clusters are small
   , maxRRcat = 0 ## exclude RRcats above this level and just vaccinate them
   , vaccEff = .8
   , pSAE = 10^-4
@@ -168,7 +169,13 @@ setIndHaz <- function(parms=makePop()) within(parms, {
     if(!as.logical(DoIndivRRcat)) {
         pop$indivRR <- rlnorm(numClus*clusSize, meanlog = 0, sdlog = sdLogIndiv)
     }else{ ## categorical individual heterogeneity
-        pop$indivRR <- sample(indivRRcats$rr, numClus*clusSize, replace=T, indivRRcats$prop)
+        if(indivRRsameXclusterXarm) {
+            armRRprofile <- rep(indivRRcats$rr, ceiling(clusSize*indivRRcats$prop/2))
+            armRRprofile <- armRRprofile[1:(clusSize/2)] ## to deal w/ ceiling
+            pop$indivRR <- rep(armRRprofile, numClus*2)
+        }else{
+            pop$indivRR <- sample(indivRRcats$rr, numClus*clusSize, replace=T, indivRRcats$prop)
+        }
     }
     if(!is.na(indivRRSeed)) .Random.seed <<- storedSeed ## revert RNG state
     ## create popH which has weekly hazards for all individuals
@@ -187,7 +194,7 @@ reordPop <- function(parms) { ## wrapper around other functions below
     ## randomize individual order (first half will always be controls, this makes sure different
     ## indiv are in there each time, track indivs with Oi)
     parms <- within(parms, {
-        pop[, idByClus:= sample(idByClus, clusSize), cluster]
+        if(!indivRRsameXclusterXarm) pop[, idByClus:= sample(idByClus, clusSize), cluster] ## otherwise keep order same to make sure balance risk profile across arms/clusters
         pop <- pop[order(cluster, idByClus)]
         pop[,indiv:=1:nrow(pop)]
         popH$idByClus <- popHearly$idByClus<- popH$indiv <- popHearly$indiv <- NULL
