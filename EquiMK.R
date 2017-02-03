@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-delayvacc'
+thing <- 'Equip-Fig5-delayvacc-2'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -29,7 +29,7 @@ ves <- NA
 pits <- .05
 ## avHazs <- c('', 'xTime','xClus','xClusxTime')
 avHazs <- c('', 'xTime')
-clusSizes <- c(300,150, 100, 50, 20)
+clusSizes <- 40*c(1:5)#c(300,150, 100, 50, 20)
 parmsMatRCT <- as.data.table(expand.grid(
     batch =  1:numEach
   , clusSize = clusSizes
