@@ -16,7 +16,7 @@ sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
 hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
 
 thing <- 'Equip-Fig5-v5'
-thing <- 'Equip-Fig5-delayvacc'
+thing <- 'Equip-Fig5-delayvacc-2'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)

@@ -17,7 +17,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
 }
 
 thing <- 'Equip-Fig5-v5'
-thing <- 'Equip-Fig5-delayvacc'
+thing <- 'Equip-Fig5-delayvacc-2'
 ## Load VaccProp & hazT
 load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
@@ -38,18 +38,20 @@ load(file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## start dates
 sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
 sdates <- sdates[1:length(sdates) %% 2 ==1]
+sdates <- as.Date('2014-10-01')
 
+## THIS CODE IS SENSTIVE TO WHAT WAS ACTUALLY RUN FOR THING IN EQUIMK.R
 unique(parmsMat[avHaz=='xTime' & propInTrial==c(.05) & trialStartDate==c('2014-10-01'), list(avHaz, tid)])
 ## tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid] )
-tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates & avHaz %in% c('', 'xTime'), tid] )
-tidsDo <- parmsMat[,unique(tid)]
-tidsDo <- tidsDo[order(tidsDo)]
+tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates & avHaz %in% c('', 'xTime') & clusSize<150, tid] ) ## change <150*****
+## tidsDo <- parmsMat[,unique(tid)]
+## tidsDo <- tidsDo[order(tidsDo)]
 unique(parmsMat[tid==2, .(tid, trialStartDate, clusSize, avHaz)])
 
-for(tt in 1:length(tidsDo)) {
+for(tt in 4:6) {#1:length(tidsDo)) {
     ti <- tidsDo[tt]
     print(ti)
-    procAll(tidDo = ti, verbose = 0, maxbatch24=30)
+    procAll(tidDo = ti, verbose = 0, maxbatch24=3000)
 }
 
 
