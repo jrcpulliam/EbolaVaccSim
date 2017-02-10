@@ -1,5 +1,5 @@
 popNms <- c("Spop", "SpopH", "SpopEvents", "SEVpopEvents")
-dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 'avHaz', 'clusSize', 'numClus', ## **automate 150,300,6000** change later on new batches
+dparms0 <- c('trial','gs','doSL','propInTrial','nbsize', 'avHaz', 'clusSize', 'numClus', ## 
              'ord','reordLag','delayUnit' ,'immunoDelay','trialStartDate', 'HazTrajSeed'
             ,'contVaccDelay', 'maxRRcat'
              )
@@ -227,9 +227,9 @@ procExpRiskSpent <- function(resList, thresholds = c(.01, .02, .05, .1, .2), bre
     rm(powTab, totCasesTab)
 })
 
-## **automate 150,300,6000** change later on new batches
 procIrskSpent <- function(resList, verbose=0) within(resList, {
     if(verbose>1) browser()
+
     ## table by individual the average infection risk in each design
     irskMarg <- Spop[, list(.N, inf = mean(cumRisk), inf_EV = mean(cumRisk_EV) 
                          ,  indivRR=unique(indivRR), Oc=Oc[1], type = 'marg', arm = NA), 
@@ -274,7 +274,10 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     ## get clusters' vaccination order (were they risk prioritized
 RCTlab <- irsk[grepl('RCT',lab), lab[1]]
 if(any(irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = length(unique(vaccDay))), Oc][,numVaccDays] > 1)) stop("not all simulations had same risk-prioritized vaccination ordering") ## to keep below from breaking if multiple hazard projections run across simulation batches
-    cVaccOrdTab <- irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc' & Oi %% clusSize ==1, .(Oc, vaccDay)] 
+
+##################################################
+    OiInVacc <- irsk[arm=='vacc', unique(unique(Oi)%%160)][1]
+    cVaccOrdTab <- irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc' & Oi %% clusSize ==OiInVacc, .(Oc, vaccDay)] 
     cVaccOrdTab[,cVaccOrd:= order(order(vaccDay))]
     irsk <- merge(irsk, cVaccOrdTab[,.(Oc, cVaccOrd)], by = 'Oc')
     irsk[,cVaccOrd:=factor(cVaccOrd)]
