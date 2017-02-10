@@ -43,17 +43,16 @@ sdates <- as.Date('2014-10-01')
 ## THIS CODE IS SENSTIVE TO WHAT WAS ACTUALLY RUN FOR THING IN EQUIMK.R
 unique(parmsMat[avHaz=='xTime' & propInTrial==c(.05) & trialStartDate==c('2014-10-01'), list(avHaz, tid)])
 ## tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid] )
-tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates & avHaz %in% c('', 'xTime') & clusSize<150, tid] ) ## change <150*****
+tidsDo <- unique(parmsMat[propInTrial == c(.05) & trialStartDate %in% sdates & avHaz %in% c('', 'xTime') , tid] ) ## change <150*****
 ## tidsDo <- parmsMat[,unique(tid)]
 ## tidsDo <- tidsDo[order(tidsDo)]
 unique(parmsMat[tid==2, .(tid, trialStartDate, clusSize, avHaz)])
 
-for(tt in 4:6) {#1:length(tidsDo)) {
+for(tt in 1:length(tidsDo)) {
     ti <- tidsDo[tt]
     print(ti)
-    procAll(tidDo = ti, verbose = 0, maxbatch24=3000)
+    try(procAll(tidDo = ti, verbose = 0, maxbatch24=3000), silent=T)
 }
-
 
 ## for(ti in tidsDo) {
 ##     load(file=file.path('BigResults',paste0(thing, '-', ti, '.Rdata')))
