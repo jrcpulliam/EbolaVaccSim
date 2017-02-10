@@ -13,8 +13,8 @@
 # 
 #------------------Scheduler Options--------------------
 #SBATCH -J EquiSims          # Job name
-#SBATCH -N 9                 # Total number of nodes (24 cores/node)
-#SBATCH -n 108                # Total number of tasks
+#SBATCH -N 4                 # Total number of nodes (24 cores/node)
+#SBATCH -n 48                # Total number of tasks
 #SBATCH -p normal          # Queue name
 #SBATCH -o EquiSims.o%j      # Name of stdout output file (%j expands to jobid)
 #SBATCH -t 5:00:00            # Run time (hh:mm:ss)
