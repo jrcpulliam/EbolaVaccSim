@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-delayvacc-2'
+thing <- 'Equip-Fig5-delayvacc-10clus'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -87,6 +87,7 @@ parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
 parmsMat <- parmsMat[order(avHaz,trial)]
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
+parmsMat$numClus <- 10 #### careful, change if necessary!
 
 names(parmsMat)
 

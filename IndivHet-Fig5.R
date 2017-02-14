@@ -232,6 +232,13 @@ graphics.off()
 
 irsk[lab=='NT' & clusSize==20,.(.N), .(indivRR, cVaccOrd)][order(cVaccOrd,-indivRR)]
 
+load('data/vaccProp1.Rdata')
+vaccProp1[,mean(vaccEff)]
+vaccProp1[vaccEff!=0,mean(vaccEff)]
+vaccProp1[, mean(vaccEff==0)]
+
+hist(vaccProp1$vaccEff)
+
 
 tst <- avertableTab[,unique(cVaccOrd),clusSize]
 tst$cls <- 1:20
