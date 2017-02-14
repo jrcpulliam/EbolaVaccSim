@@ -16,7 +16,6 @@ sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
 hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
 
 thing <- 'Equip-Fig5-v5'
-thing <- 'Equip-Fig5-delayvacc-2'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -70,10 +69,7 @@ avertableTab
 clusSizes <- irsk[,unique(clusSize)] 
 clusSizes <- clusSizes[order(clusSizes)]
 
-
-clusSizeDo <- 200                       
-cc <- which(clusSizes==clusSizeDo)
-## unique(irsk[,.(arm, armShown, type, lab, exmpl, clusSize,tid)])
+clusSizeDo <- clusSizes[1]
 
 itmp <- irsk[clusSize==clusSizeDo]
 tidDo <- itmp[,unique(tid)]
@@ -199,45 +195,6 @@ mtext('individuals', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
  
-####################################################################################################
-## Effect of vacc delay by cluster size
-ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
-ylimavertable <- c(0, 1)
-xlim <- c(0,Ntmp)
-pdf(file.path(figdir, paste0('effect of vacc delay (cvd).pdf')), w = wid, h = heig)
-par(mfrow=c(4,1), mar = c(0,5,1,0), oma = c(5,2,0,0), ps = 15)
-magnifier <- max(clusSizes)/clusSizes
-for(cc in 1:(length(clusSizes)-1)) {
-    clusSizeDo <- clusSizes[cc]
-    itmp <- irsk[clusSize==clusSizeDo]
-    tidDo <- itmp[,unique(tid)]
-    itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
-    itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
-    itmp <- itmp[lab!='RCT-rp']
-    atmp <- avertableTab[tid==tidDo & clusSize==clusSizeDo]
-    irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', 
-                       main = paste0(clusSizeDo, '/cluster'), las = 1)]
-    ## atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', 
-    ##                    main = paste0(clusSizeDo, '/cluster'), las = 1)]
-    atmp[arms==T, points(magnifier[cc]*ordX.sp, avertableRisk, type = 'h', col = 'gray')]
-    itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', col = makeTransparent(cols,opacity))]
-    itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', col = makeTransparent(cols,opacity*2))]
-}
-legend('topright', col = c('gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'),
-       leg = c('avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
-axis(1, at = mids, lab = 1:20, lwd = 0)
-mtext(paste0('individuals by cluster'), 1, outer=T, line = 3)
-mtext('risk', 2, ,outer=T, line = -1)
-graphics.off()
-
-irsk[lab=='NT' & clusSize==20,.(.N), .(indivRR, cVaccOrd)][order(cVaccOrd,-indivRR)]
-
-load('data/vaccProp1.Rdata')
-vaccProp1[,mean(vaccEff)]
-vaccProp1[vaccEff!=0,mean(vaccEff)]
-vaccProp1[, mean(vaccEff==0)]
-
-hist(vaccProp1$vaccEff)
 
 
 tst <- avertableTab[,unique(cVaccOrd),clusSize]
