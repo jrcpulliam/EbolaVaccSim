@@ -21,7 +21,7 @@ print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on e
 ## start dates
 sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
 sdates <- sdates[1:length(sdates) %% 2 ==1]
-sdates <- as.Date(c('2014-10-01', '2014-12-01'))
+sdates <- as.Date(c('2014-8-01','2014-10-01', '2014-12-01', '2015-02-01'))
 
 ## tnms <- c('RCT','SWCT','VR','NT')
 ves <- NA
@@ -35,14 +35,14 @@ parmsMatRCT <- as.data.table(expand.grid(
   , clusSize = clusSizes
   , nsims = nsims
   , trial = 'RCT'
-  , gs = T#c(F,T)
-  , ord = 'TU'#c('none','TU')
+  , gs = c(F,T)
+  , ord = c('none','TU')
   , contVaccDelay = c(NA, 7*9)
-  , maxRRcat = 0#c(0, 25)
+  , maxRRcat = c(0, 25)
   , trialStartDate = sdates
   , propInTrial = pits
   , vaccEff = ves
-  , avHaz = 'xTime'#avHazs
+  , avHaz = avHazs
 ))
 ## only do the threshold and vaccContDelay for gsTU trials
 parmsMatRCT <- parmsMatRCT[!(!is.na(contVaccDelay) & (gs==F | ord=='none'))]
@@ -75,7 +75,7 @@ parmsMatCFs <- as.data.table(expand.grid(
   , trialStartDate = sdates
   , propInTrial = pits
   , vaccEff = ves
-  , avHaz = 'xTime'#avHazs
+  , avHaz = avHazs
 ))
 
 parmsMat <- rbind(parmsMatRCT,parmsMatCFs)#, parmsMatSWCT
@@ -124,7 +124,7 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
 ## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
-tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
+tidsDo <- tpop[propInTrial == c(.05),tid]# & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
 
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
