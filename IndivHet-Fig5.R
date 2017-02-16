@@ -101,13 +101,14 @@ numPanels <- 6
 ## INFECTION RISK, divided by randomization structure (for comparison to below)
 pdf(file.path(figdir, paste0(clusSizeDo, '-', 'total infection risk by arm.pdf')), w = wid, h = heig)
 xlim <- range(tcks)
-par(mfrow=c(numPanels,1), mar = c(0,3,1,0), oma = c(4,1,0,0))
+par(mfrow=c(numPanels,1), mar = c(0,5,1,0), oma = c(4,1,0,0))
 for(ll in itmp[,unique(lab)]) {
-    itmp[lab==ll, plot(ordX.sp, inf, xlab='individual', ylab='risk spent', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
+    itmp[lab==ll, plot(ordX.sp, inf, xlab='individual', ylab='', bty = 'n', type = 'h', col = cols, ylim = c(0,1), xlim=xlim, 
                        las = 1, xaxt='n', main = '')]
     if(ll == itmp[,unique(lab)][1])    legend('topright', col = c(itmp[,unique(cols)]), leg = c('control arm', 'vaccine arm'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, side = 3, line = -2) 
 }
+mtext('cumulative infection risk without vaccination', 2, -1, outer = T)
 axis(1, at = mids, lab = 1:20, lwd = 0)
 dev.off()
 
@@ -159,7 +160,7 @@ dev.off()
 ####################################################################################################
 
 ####################################################################################################
-## 3 clusters only
+## Selected clusters only
 ####################################################################################################
 ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
 ## Zoom in on 1 cluster to explain plot
@@ -190,16 +191,17 @@ xlim <- range(itmp3$ord3.sp)
 par(mfrow=c(numPanels+1,1), mar = c(2,5,0,0), oma = c(5,2,0,0), ps = 16)
 ## highlight selected clusters
 hazT[avHaz==avHazDo,plot(Date,clusHaz, lwd=0, bty = 'n', las = 1, ylab = 'hazard', yaxt = 'n', type = 'n')]
-hazT[avHaz==avHazDo, lines(Date, clusHaz, lwd = lwd, col = col), cluster]
-unique(hazT[, .(cluster,col)])[cluster %in% selClus, legend('topright', leg = cluster, col= col, bty = 'n', lwd = 3)]
+hazT[cluster!=selClus & avHaz==avHazDo, lines(Date, clusHaz, lwd = lwd, col = col), cluster]
+hazT[cluster==selClus & avHaz==avHazDo, lines(Date, clusHaz, lwd = lwd, col = col), cluster]
+#unique(hazT[, .(cluster,col)])[cluster %in% selClus, legend('topright', leg = cluster, col= col, bty = 'n', lwd = 3)]
 par(mar=c(1,5,0,0))
 ## show risk breakdown
 for(ll in itmp3[,unique(lab)]) {
     atmp3[arms==(ll!='SWCT') & ord3.sp%%every==0, 
           plot(ord3.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1, lwd = 2)]
-    itmp3[lab==ll  & ord3.sp%%every==0, points(ord3.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', col = makeTransparent(cols,opacity), lwd=2)]
+    itmp3[lab==ll  & ord3.sp%%every==0, points(ord3.sp, avert_EV, xlab='individual', ylab='risk', bty = 'n', type = 'h', col = makeTransparent(cols,opacity), lwd=2)]
     if(ll==itmp[,unique(lab)][1]) legend('topright', col = c('gray', itmpMarg[,unique(cols)]), 
-                                         leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
+                                         leg = c('avertable', 'averted (control arm)', 'averted (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
     mtext(ll, 3, -4)
 }
 axis(1, at = mids[1:length(selClus)], lab = paste0('cluster ', selClus), lwd = 0)
