@@ -78,19 +78,19 @@ parmsMatCFs <- as.data.table(expand.grid(
   , avHaz = avHazs
 ))
 
-parmsMat <- rbind(parmsMatRCT,parmsMatCFs)#, parmsMatSWCT
+parmsMat <- rbind(parmsMatRCT,parmsMatCFs, parmsMatSWCT)
 parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; delayUnit=7; randVaccProperties=T;
                                DoIndivRRcat=T})
 parmsMat$StatsFxns <- 'doCoxME'
 parmsMat[trial=='SWCT', StatsFxns:='doRelabel'] ### slow if relabeling
 parmsMat[trial %in% c('NT','VR') , StatsFxns:=NA]
 parmsMat <- parmsMat[order(avHaz,trial)]
+parmsMat <- rbind(parmsMat[trial!='SWCT'], parmsMat[trial=='SWCT'])
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 parmsMat$numClus <- 10 #### careful, change if necessary!
 
 names(parmsMat)
-
 
 ## variables that specify a trial population
 tvars <- c("trialStartDate", "propInTrial", "avHaz", "indivRRSeed" , "HazTrajSeed",'numClus','clusSize','hazType','nbsize','mu','cvClus','cvClusTime','sdLogIndiv','weeklyDecay','cvWeeklyDecay','hazIntUnit')
@@ -125,11 +125,22 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
 tidsDo <- tpop[propInTrial == c(.05),tid]# & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
-
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
+## fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
+## rcmdsDone <- as.numeric(gsub('.Rdata', '', gsub(thing, '', fls)))
+## rcmdsDone <- rcmdsDone[order(rcmdsDone)]
+## length(rcmdsDone)
+## toDo <- parmsMat[!(rcmdbatch %in% rcmdsDone), rcmdbatch]
+## length(toDo)
+## parmsMat[rcmdbatch %in% toDo, table(trial)]
+## parmsMat[!rcmdbatch %in% toDo, table(trial)]
+## parmsMat[,table(trial)]
+
+## parmsMatDo <- parmsMat[rcmdbatch %in% toDo]
+
 parmsMatDo[batch==1, .(pid, batch, rcmdbatch, trial, gs, ord, contVaccDelay, clusSize, trialStartDate, .N)][order(clusSize)]
-unique(parmsMatDo[,.(clusSize,avHaz, trialStartDate, .N), tid])
+unique(parmsMatDo[,.(clusSize,avHaz, trialStartDate, trial, .N), tid])
 
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
 

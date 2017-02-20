@@ -16,6 +16,7 @@ sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
 hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
 
 thing <- 'Equip-Fig5-delayvacc-2'
+thing <- 'Equip-Fig5-delayvacc-10clus'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
@@ -91,6 +92,7 @@ mids <- seq(clusSizetmp/2, Ntmp-clusSizetmp/2, by = clusSizetmp)
 mids <- mids + clusSizetmp/6*c(0:(length(mids)-1))
 tcks <- rep(mids, each = 2) + c(-clusSizetmp/2,clusSizetmp/2)
 
+numClus <- as.numeric(punq[,unique(numClus)])
 ####################################################################################################
 ## Effect of vacc delay by cluster size
 for(jj in 1:2) {
@@ -130,7 +132,7 @@ legend('topright', col = c('gray', makeTransparent("red", c(opacity*2, opacity))
     legend('topright', col = c('black','gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'),
            leg = c('total', 'avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
 }
-    axis(1, at = mids, lab = 1:20, lwd = 0)
+    axis(1, at = mids, lab = 1:numClus, lwd = 0)
     mtext(paste0('individuals by cluster'), 1, outer=T, line = 3)
     mtext('risk', 2, ,outer=T, line = -1)
     graphics.off()
