@@ -89,7 +89,7 @@ parmsMat <- rbind(parmsMat[trial!='SWCT'], parmsMat[trial=='SWCT'])
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 parmsMat$numClus <- 10 #### careful, change if necessary!
-
+parmsMat$constClusSize <- T
 names(parmsMat)
 
 ## variables that specify a trial population
@@ -127,17 +127,18 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 tidsDo <- tpop[propInTrial == c(.05),tid]# & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
-## fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
-## rcmdsDone <- as.numeric(gsub('.Rdata', '', gsub(thing, '', fls)))
-## rcmdsDone <- rcmdsDone[order(rcmdsDone)]
-## length(rcmdsDone)
-## toDo <- parmsMat[!(rcmdbatch %in% rcmdsDone), rcmdbatch]
-## length(toDo)
-## parmsMat[rcmdbatch %in% toDo, table(trial)]
-## parmsMat[!rcmdbatch %in% toDo, table(trial)]
-## parmsMat[,table(trial)]
+fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
+rcmdsDone <- as.numeric(gsub('.Rdata', '', gsub(thing, '', fls)))
+rcmdsDone <- rcmdsDone[order(rcmdsDone)]
+length(rcmdsDone)
+toDo <- parmsMat[!(rcmdbatch %in% rcmdsDone), rcmdbatch]
+length(toDo)
+parmsMat[rcmdbatch %in% toDo, table(trial)]
+parmsMat[!rcmdbatch %in% toDo, table(trial)]
+parmsMat[,table(trial)]
 
-## parmsMatDo <- parmsMat[rcmdbatch %in% toDo]
+parmsMatDo <- parmsMat[rcmdbatch %in% toDo]
+parmsMatDo[,table(trial)]
 
 parmsMatDo[batch==1, .(pid, batch, rcmdbatch, trial, gs, ord, contVaccDelay, clusSize, trialStartDate, .N)][order(clusSize)]
 unique(parmsMatDo[,.(clusSize,avHaz, trialStartDate, trial, .N), tid])
