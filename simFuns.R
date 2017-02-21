@@ -21,6 +21,7 @@ makeParms <- function(
   , HazTrajSeed = NA ## allows keeping all forecasted hazard trajectories identical between simulations (only demograhic stochasticity)
   , nbsize = .8 ## for above
   , propInTrial = .03 ## for above
+  , constRiskXClusSize = F ## if true then we don't distribute propInTrial cases from the district amongst the cluster size, but just use cluster size of 300 to std across clusSizes
   , mu=.03 * yearToDays ## mean hazard in all participants at baseline
   , cvClus=1 ##  variance in cluster-level hazards for gamma distribution
   , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
@@ -135,7 +136,7 @@ createHazTraj_Phenom <- function(parms) within(parms, {
 createHazTraj_SL <- function(parms) within(parms, {
     if(verbose>10) browser()
     hazT <- data.table(createHazTrajFromSLProjection(fits, trialStartDate = trialStartDate, HazTrajSeed=HazTrajSeed,
-                                                     nbsize = nbsize, propInTrial = propInTrial, verbose=verbose,
+                                                     nbsize = nbsize, propInTrial = propInTrial, verbose=verbose, constRiskXClusSize=constRiskXClusSize,
                                                      clusSize = clusSize, numClus = numClus, weeks = T))
     hazT <- hazT[day %in% daySeq]
     hazT[clusHaz==0, clusHaz := 10^-8] ## to stablize things

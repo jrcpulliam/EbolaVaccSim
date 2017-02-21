@@ -116,7 +116,7 @@ forecast <- function(fit, main=NULL, nbsize = NULL, doPlot = T, xticks = T,  yli
 
 createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = as.Date('2015-02-01'),
                                           xlim = as.Date(c('2014-09-15','2015-12-01')), ## exact = F,
-                                          HazTrajSeed = NA,
+                                          HazTrajSeed = NA, constRiskXClusSize = F, 
                                           propInTrial = .03, numClus = 20, clusSize = 300, weeks = T, verbose=0) {
     hazTList <- NULL
     if(verbose>20) browser()
@@ -135,7 +135,11 @@ createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = a
         src[day < lastDataDay & is.na(cases), cases := 0] ## fill in over interval without reporting
         src$haz <- src$cases
         src[day > lastDataDay, haz := proj] ##         if(!exact)
-        src[, haz := haz * propInTrial / clusSize]
+        if(!constRiskXClusSize) 
+        {   src[, haz := haz * propInTrial / clusSize]
+        }else{
+            src[, haz := haz * propInTrial / 300] ## using 300 as the constant cluster size if we want hazard profiles to remain constant regardless of trial size
+        }
         src[day > -60, list(day, haz)]
         if(weeks) {
             src$week <- src[, floor(day/7)]
