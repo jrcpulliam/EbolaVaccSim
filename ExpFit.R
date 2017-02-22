@@ -136,7 +136,8 @@ createHazTrajFromSLProjection <- function(fits, nbsize = 1.2, trialStartDate = a
         src$haz <- src$cases
         src[day > lastDataDay, haz := proj] ##         if(!exact)
         if(!constRiskXClusSize) 
-        {   src[, haz := haz * propInTrial / clusSize]
+        {   
+            src[, haz := haz * propInTrial / clusSize]
         }else{
             src[, haz := haz * propInTrial / 300] ## using 300 as the constant cluster size if we want hazard profiles to remain constant regardless of trial size
         }
