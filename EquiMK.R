@@ -21,7 +21,7 @@ print(paste0('doing ', nsims*numEach, ' per scenario with ', nsims , ' done on e
 ## start dates
 sdates <- seq.Date(as.Date('2014-10-01'), as.Date('2015-04-01'), by = 'month')
 sdates <- sdates[1:length(sdates) %% 2 ==1]
-sdates <- as.Date(c('2014-8-01','2014-10-01', '2014-12-01', '2015-02-01'))
+sdates <- as.Date(c('2014-10-01', '2014-12-01', '2015-02-01'))
 
 ## tnms <- c('RCT','SWCT','VR','NT')
 ves <- NA
@@ -124,24 +124,27 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 ## tidsDo <- tpop[propInTrial == c(.05) & trialStartDate %in% sdates[c(1,3)] & avHaz %in% c('', 'xTime'), tid]
 ## tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% c('', 'xTime'), tid]
 ##tidsDo <- tpop[propInTrial %in% c(.05,.1) & trialStartDate %in% c('2014-10-01','2014-12-01'), tid]
-tidsDo <- tpop[propInTrial == c(.05),tid]# & avHaz %in% c('xTime') & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
+tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
-fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
-rcmdsDone <- as.numeric(gsub('.Rdata', '', gsub(thing, '', fls)))
-rcmdsDone <- rcmdsDone[order(rcmdsDone)]
-length(rcmdsDone)
-toDo <- parmsMat[!(rcmdbatch %in% rcmdsDone), rcmdbatch]
-length(toDo)
-parmsMat[rcmdbatch %in% toDo, table(trial)]
-parmsMat[!rcmdbatch %in% toDo, table(trial)]
-parmsMat[,table(trial)]
+parmsMatDo <- parmsMat[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-10-01']
+nrow(parmsMatDo)
 
-parmsMatDo <- parmsMat[rcmdbatch %in% toDo]
+## fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
+## rcmdsDone <- as.numeric(gsub('.Rdata', '', gsub(thing, '', fls)))
+## rcmdsDone <- rcmdsDone[order(rcmdsDone)]
+## length(rcmdsDone)
+## toDo <- parmsMat[!(rcmdbatch %in% rcmdsDone), rcmdbatch]
+## length(toDo)
+## parmsMat[rcmdbatch %in% toDo, table(trial)]
+## parmsMat[!rcmdbatch %in% toDo, table(trial)]
+## parmsMat[,table(trial)]
+## parmsMatDo <- parmsMat[rcmdbatch %in% toDo]
+
 parmsMatDo[,table(trial)]
 
-parmsMatDo[batch==1, .(pid, batch, rcmdbatch, trial, gs, ord, contVaccDelay, clusSize, trialStartDate, .N)][order(clusSize)]
-unique(parmsMatDo[,.(clusSize,avHaz, trialStartDate, trial, .N), tid])
+## summary of runs
+unique(parmsMatDo[,.(nruns = nsims *.N),.(clusSize,avHaz, trialStartDate, gs, ord, maxRRcat, contVaccDelay, trial, tid)])
 
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
 
