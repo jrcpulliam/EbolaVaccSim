@@ -89,7 +89,7 @@ parmsMat <- rbind(parmsMat[trial!='SWCT'], parmsMat[trial=='SWCT'])
 parmsMat$rcmdbatch <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
 parmsMat$numClus <- 10 #### careful, change if necessary!
-parmsMat$constClusSize <- T
+parmsMat$constRiskXClusSize <- T
 names(parmsMat)
 
 ## variables that specify a trial population

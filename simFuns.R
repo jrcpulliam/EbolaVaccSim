@@ -79,6 +79,7 @@ makeParms <- function(
             return(sum(sampSizes*cumHazs))
         })
     }
+    constRiskXClusSize <- as.logical(constRiskXClusSize)
     doTrial <- !(trial %in% c('VR','NT'))
     ## if(!is.null(vaccProp)) {
     ##     vaccEff <- vaccProp[numInBatch, vaccEff]
