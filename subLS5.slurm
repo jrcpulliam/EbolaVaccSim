@@ -36,6 +36,6 @@
 
 export LAUNCHER_PLUGIN_DIR=$LAUNCHER_DIR/plugins
 export LAUNCHER_RMI=SLURM
-export LAUNCHER_JOB_FILE="SLsims.txt"
+export LAUNCHER_JOB_FILE="SLsimsCVD.txt"
 
 $LAUNCHER_DIR/paramrun
