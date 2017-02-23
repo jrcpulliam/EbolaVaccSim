@@ -13,10 +13,10 @@
 # 
 #------------------Scheduler Options--------------------
 #SBATCH -J EquiSims          # Job name
-#SBATCH -N 9                 # Total number of nodes (24 cores/node)
-#SBATCH -n 108                # Total number of tasks
+#SBATCH -N 1                 # Total number of nodes (24 cores/node)
+#SBATCH -n 12                # Total number of tasks
 #SBATCH -p normal          # Queue name
-#SBATCH -o EquiSims.o%j      # Name of stdout output file (%j expands to jobid)
+#SBATCH -o EquiSumm.o%j      # Name of stdout output file (%j expands to jobid)
 #SBATCH -t 24:00:00            # Run time (hh:mm:ss)
 #SBATCH --mail-user=steve.bellan@gmail.com
 #SBATCH --mail-type=all  # email me all messages
@@ -34,8 +34,9 @@
 #
 #------------------------------------------------------
 
+source lmtacc 
 export LAUNCHER_PLUGIN_DIR=$LAUNCHER_DIR/plugins
 export LAUNCHER_RMI=SLURM
-export LAUNCHER_JOB_FILE="SLsims.txt"
+export LAUNCHER_JOB_FILE="SLSumm.txt"
 
 $LAUNCHER_DIR/paramrun

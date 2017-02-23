@@ -1,0 +1,1 @@
+R CMD BATCH '--no-restore --no-save ' EquiSumm.R BigResults/EquiSumm.Rout &
