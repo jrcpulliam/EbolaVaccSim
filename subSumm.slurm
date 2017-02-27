@@ -13,11 +13,11 @@
 # 
 #------------------Scheduler Options--------------------
 #SBATCH -J EquiSims          # Job name
-#SBATCH -N 1                 # Total number of nodes (24 cores/node)
-#SBATCH -n 12                # Total number of tasks
+#SBATCH -N 2                 # Total number of nodes (24 cores/node)
+#SBATCH -n 2                # Total number of tasks
 #SBATCH -p largemem512GB          # Queue name
 #SBATCH -o EquiSumm.o%j      # Name of stdout output file (%j expands to jobid)
-#SBATCH -t 24:00:00            # Run time (hh:mm:ss)
+#SBATCH -t 4:00:00            # Run time (hh:mm:ss)
 #SBATCH --mail-user=steve.bellan@gmail.com
 #SBATCH --mail-type=all  # email me all messages
 #      <------------ Account String ------------>
