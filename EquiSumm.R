@@ -14,12 +14,14 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
     for(i in 1:length(args)) {
         eval(parse(text=args[[i]]))
     }
+}else{
+    thing <- 'Equip-Fig5-v5'
+    thing <- 'Equip-Fig5-delayvacc-2'
+    thing <- 'Equip-Fig5-delayvacc-10clus'
+    thing <- 'Equip-Fig5-10clus'
 }
+print(thing)
 
-thing <- 'Equip-Fig5-v5'
-thing <- 'Equip-Fig5-delayvacc-2'
-thing <- 'Equip-Fig5-delayvacc-10clus'
-thing <- 'Equip-Fig5-10clus'
 ## Load VaccProp & hazT
 load('data/vaccProp1.Rdata')
 vaccProp <- vaccProp1
