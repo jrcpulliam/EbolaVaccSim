@@ -271,10 +271,11 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
 
     if(length(unique(parms[,numClus]))>1) stop("more than 1 numClus value in simulation batch")
     numClus <- as.numeric(parms[1,numClus])
-    ## get clusters' vaccination order (were they risk prioritized
-    RCTlab <- irsk[grepl('RCT',lab) & grepl('rp',lab), lab[1]]
-    if(any(irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = length(unique(vaccDay))), Oc][,numVaccDays] > 1)) stop("not all simulations had same risk-prioritized vaccination ordering") ## to keep below from breaking if multiple hazard projections run across simulation batches
-
+    ## get clusters' vaccination order (were they risk prioritized)
+    if(sum(grepl('rp', irsk[,unique(lab)]))>0) { ## give error if risk-prioritized order varied (conditions on having at least 1 rp design)
+        RCTlab <- irsk[grepl('RCT',lab) & grepl('rp',lab), lab[1]]
+        if(any(irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc', .(numVaccDays = length(unique(vaccDay))), Oc][,numVaccDays] > 1)) stop("not all simulations had same risk-prioritized vaccination ordering") ## to keep below from breaking if multiple hazard projections run across simulation batches
+    }
     irsk[arm=='vacc', unique(unique(Oi)%%clusSize)]
     irsk[pid==1 & Oi%%clusSize==21, .(Oi, Oc, pid, lab)]
 ##################################################
