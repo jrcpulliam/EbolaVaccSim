@@ -15,9 +15,7 @@ if(length(args)>0)  { ## Then cycle through each element of the list and evaluat
         eval(parse(text=args[[i]]))
     }
 }else{
-    thing <- 'Equip-Fig5-v5'
-    thing <- 'Equip-Fig5-delayvacc-2'
-    thing <- 'Equip-Fig5-delayvacc-10clus'
+    thing <- 'Equip-Fig-SX-vaccDel'
     thing <- 'Equip-Fig5-10clus'
 }
 print(thing)
