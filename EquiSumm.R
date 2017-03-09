@@ -56,8 +56,10 @@ unique(parmsMat[, .(tid, trialStartDate, clusSize, avHaz)])[order(trialStartDate
 for(tt in 1:length(tidsDo)) {
     ti <- tidsDo[tt]
     print(ti)
-    try(procAll(tidDo = ti, verbose = 0, maxbatch24=3000), silent=T)
+    try(procAll(tidDo = ti, verbose = 0, maxbatch24=3000), silent=F)
 }
+
+## procAll(tidDo = 1, verbose = 0, maxbatch24=3000)
 
 ## for(ti in tidsDo) {
 ##     load(file=file.path('BigResults',paste0(thing, '-', ti, '.Rdata')))

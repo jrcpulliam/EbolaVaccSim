@@ -7,11 +7,6 @@ if(grepl('wrang', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/Ebola
 rm(list=ls(all=T)); gc()
 require(optiRum); require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
 sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
-wid <- 10
-heig <- 8
-res <- 300
-opacity <- 60
-
 sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
 hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
 
@@ -69,20 +64,23 @@ avertableTab
 clusSizes <- irsk[,unique(clusSize)] 
 clusSizes <- clusSizes[order(clusSizes)]
 
-
 clusSizeDo <- 200                 
 if(!clusSizeDo %in% clusSizes) clusSizeDo <- clusSizes[1]
 cc <- which(clusSizes==clusSizeDo)
 ## unique(irsk[,.(arm, armShown, type, lab, exmpl, clusSize,tid)])
 
-itmp <- irsk[clusSize==clusSizeDo]
-tidDo <- itmp[,unique(tid)]
+tidDo <- 2
+labDo <- c('RCT-gs-rp-cvd', 'RCT-gs-rp')
+itmp <- irsk[clusSize==clusSizeDo & tid==tidDo & lab %in% labDo]
+##tidDo <- itmp[,unique(tid)]
 unique(itmp[,.(arm, armShown, type, lab, exmpl, tid)])
 itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
 itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
 itmp <- itmp[lab!='RCT-rp']
+unique(itmp[,.(arm, armShown, type, lab, exmpl, tid)])
 
 atmp <- avertableTab[tid==tidDo & clusSize==clusSizeDo]
+
 
 ## for plotting
 clusSizetmp <- punq[tid==tidDo, as.numeric(clusSize)][1]
@@ -90,8 +88,17 @@ Ntmp <- punq[tid==tidDo, as.numeric(clusSize)*as.numeric(numClus)][1]
 mids <- seq(clusSizetmp/2, Ntmp-clusSizetmp/2, by = clusSizetmp)
 mids <- mids + clusSizetmp/6*c(0:(length(mids)-1))
 tcks <- rep(mids, each = 2) + c(-clusSizetmp/2,clusSizetmp/2)
+ncol <- 2
 
+wid <- 9
+heig <- 6
+res <- 300
+opacity <- 35
+
+ 
 numClus <- as.numeric(punq[,unique(numClus)])
+avHazDo <- 'xTime'
+lwdhbase <- 1.2
 ####################################################################################################
 ## Effect of vacc delay by cluster size
 for(jj in 1:2) {
@@ -100,43 +107,45 @@ for(jj in 1:2) {
     }else{
         ylimavertable <- c(0, 1)
     }
-    xlim <- c(0,Ntmp)
-#    pdf(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.pdf')), w = wid, h = heig)
-    png(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.png')), w = wid*100, h = heig*100)
-    par(mfrow=c(4,1), mar = c(0,5,1,0), oma = c(5,2,0,0), ps = 17)
+    xlim <- c(0,max(mids))
+    pdf(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.pdf')), w = wid, h = heig); lwdhbase <- lwdhbase/1.2
+#    png(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.png')), w = wid*100, h = heig*100)
+    par(mfrow=c(4,1), mar = c(0,8,1,0), oma = c(5,2,0,0), ps = 17)
     magnifier <- max(clusSizes)/clusSizes
     for(cc in 1:(length(clusSizes)-1)) {
         clusSizeDo <- clusSizes[cc]
-        itmp <- irsk[clusSize==clusSizeDo]
-        tidDo <- itmp[,unique(tid)]
+        lwdh <- lwdhbase * max(clusSizes)/clusSizeDo
+        itmp <- irsk[clusSize==clusSizeDo & lab %in% labDo]
+        tidDo <- punq[clusSize==clusSizeDo & avHaz==avHazDo & lab %in% labDo, unique(tid)]
         itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
         itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
         itmp <- itmp[lab!='RCT-rp']
         atmp <- avertableTab[tid==tidDo & clusSize==clusSizeDo]
         if(jj==1) {
-            irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', 
-                                                                     main = paste0(clusSizeDo, '/cluster'), las = 1)]
-            atmp[arms==T, points(magnifier[cc]*ordX.sp, avertableRisk, type = 'h', col = 'gray')]
+            irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', lwd = lwdh, 
+                                                                     lend=1, col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', main = , las = 1)]
+            atmp[arms==T, points(magnifier[cc]*ordX.sp, avertableRisk, type = 'h', lwd = lwdh, lend=1, col = 'gray')]
         }else{
-            atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', 
-                               main = paste0(clusSizeDo, '/cluster'), las = 1)]
+            atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1, col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', 
+                               main = '', las = 1)]
         }
-        itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', col = makeTransparent(cols,opacity))]
-        itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', col = makeTransparent(cols,opacity*2))]
+        itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity))]
+        itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity*2))]
+        mtext(clusSizeDo, side = 2, 6, las = 1)
     }
     if(jj==2) {
-legend('topright', col = c('gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'),
-           leg = c('avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
-}else{
-    legend('topright', col = c('black','gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'),
-           leg = c('total', 'avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
-}
+        legend('topright', col = c('gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'), ncol = ncol, 
+               leg = c('avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
+    }else{
+        legend('topright', col = c('black','gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'), ncol = ncol,
+               leg = c('total', 'avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
+    }
     axis(1, at = mids, lab = 1:numClus, lwd = 0)
-    mtext(paste0('individuals by cluster'), 1, outer=T, line = 3)
-    mtext('risk', 2, ,outer=T, line = -1)
+    mtext(paste0('individuals (grouped by cluster and arm)'), 1, outer=T, line = 3)
+    mtext('risk', 2,outer=T, line = -4)
     graphics.off()
 }
-
+   
 
 ## For PPT
 
@@ -156,6 +165,7 @@ for(jj in 1:2) {
     magnifier <- max(clusSizes)/clusSizes
     for(cc in 1) {
         clusSizeDo <- clusSizes[cc]
+        lwdh <- lwdhbase * max(clusSizes)/clusSizeDo
         itmp <- irsk[clusSize==clusSizeDo]
         tidDo <- itmp[,unique(tid)]
         itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
@@ -163,15 +173,15 @@ for(jj in 1:2) {
         itmp <- itmp[lab!='RCT-rp']
         atmp <- avertableTab[tid==tidDo & clusSize==clusSizeDo]
         if(jj==1) {
-            irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', 
+            irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1, col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', 
                                                                      main = paste0(clusSizeDo, '/cluster'), las = 1)]
-            atmp[arms==T, points(magnifier[cc]*ordX.sp, avertableRisk, type = 'h', col = 'gray')]
+            atmp[arms==T, points(magnifier[cc]*ordX.sp, avertableRisk, type = 'h', lwd = lwdh, lend=1, col = 'gray')]
         }else{
-            atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', 
+            atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1, col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', 
                                main = paste0(clusSizeDo, '/cluster'), las = 1)]
         }
-#        itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', col = makeTransparent(cols,opacity))]
-        itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', col = makeTransparent(cols,opacity*2))]
+#        itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity))]
+        itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity*2))]
     }
     if(jj==2) {
 legend('topright', col = c('gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'),

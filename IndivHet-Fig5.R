@@ -14,7 +14,7 @@ opacity <- 60
 
 sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
 
-thing <- 'Equip-Fig5-v5'
+thing <- 'Equip-Fig5-10clus'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
 fls <- list.files('BigResults', pattern = paste0(thing,'-'), full.names=T)
