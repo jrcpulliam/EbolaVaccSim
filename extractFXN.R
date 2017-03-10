@@ -279,8 +279,7 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
     irsk[arm=='vacc', unique(unique(Oi)%%clusSize)]
     irsk[pid==1 & Oi%%clusSize==21, .(Oi, Oc, pid, lab)]
 ##################################################
-    OiInVacc <- irsk[arm=='vacc', unique(unique(Oi)%%clusSize)][1]
-    cVaccOrdTab <- irsk[lab==RCTlab & !is.na(vaccDay) & arm=='vacc' & Oi %% clusSize ==OiInVacc, .(Oc, vaccDay)] 
+    cVaccOrdTab <- unique(irsk[!is.na(vaccDay), .(Oc, lab, vaccDay)][lab==RCTlab & vaccDay!=Inf,.(Oc, vaccDay)])
     cVaccOrdTab[,cVaccOrd:= order(order(vaccDay))]
     irsk <- merge(irsk, cVaccOrdTab[,.(Oc, cVaccOrd)], by = 'Oc')
     irsk[,cVaccOrd:=factor(cVaccOrd)]
@@ -321,6 +320,7 @@ procIrskSpent <- function(resList, verbose=0) within(resList, {
         irsk[clusVD][type=='condvd' & 'SWCT'==lab]
     }
     setkey(irsk, Oi, pid)
+    if(nrow(irsk)==0) stop("error in merging irsk")
     rm(iord, cVaccOrdTab)
 })
 
