@@ -114,7 +114,7 @@ for(jj in 1:2) {
     magnifier <- max(clusSizes)/clusSizes
     for(cc in 1:(length(clusSizes)-1)) {
         clusSizeDo <- clusSizes[cc]
-        lwdh <- lwdhbase * max(clusSizes)/clusSizeDo
+        lwdh <- lwdhbase * (max(clusSizes)/clusSizeDo)^.5
         itmp <- irsk[clusSize==clusSizeDo & lab %in% labDo]
         tidDo <- punq[clusSize==clusSizeDo & avHaz==avHazDo & lab %in% labDo, unique(tid)]
         itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
