@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-10clus'
+thing <- 'Equip-Fig5-10clus-3cat'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -38,7 +38,7 @@ parmsMatRCT <- as.data.table(expand.grid(
   , gs = c(F,T)
   , ord = c('none','TU')
   , contVaccDelay = c(NA, 7*9)
-  , maxRRcat = c(0, 25)
+  , maxRRcat = c(0, 9)
   , trialStartDate = sdates
   , propInTrial = pits
   , vaccEff = ves
