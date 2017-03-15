@@ -114,6 +114,7 @@ cexleg <- .8
 lwd <- 2
 par(mar = c(4 ,4,1,.5))                
 tmpM[,pchs2:=as.numeric(as.character(factor(lab, labels=c(2,6:5,3:4,16))))]
+tmpM[lab=='RCT', pchs2:=13]
 tmpM[,cols2:=makeTransparent(ifelse(date==date[1], 'purple','orange'), alpha = 160)]
 xmax <- 45
 ## power

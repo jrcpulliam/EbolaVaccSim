@@ -1,1 +1,1 @@
-R CMD BATCH '--no-restore --no-save --args thing="Equip-Fig5-10clus" ' EquiSumm.R BigResults/EquiSumm-10clus.Rout
+R CMD BATCH '--no-restore --no-save --args thing="Equip-Fig5-10clus-3cat" ' EquiSumm.R BigResults/Equip-Fig5-10clus-3cat.Rout
