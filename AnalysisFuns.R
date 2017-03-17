@@ -213,6 +213,7 @@ simNtrials <- function(batch = 1, parms=makeParms(), N = 2,
         if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
         if(parms$verbose==2) browser()
+
         if(!is.na(vaccProp)[1]) { ## set vaccine properties to value from pre-determined bayesian prior deviate
             parms$vaccEff <- vaccProp[simNum, vaccEff]
             parms$pSAE <- vaccProp[simNum, pSAE]
