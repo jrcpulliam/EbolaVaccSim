@@ -27,7 +27,7 @@ makeParms <- function(
   , cvClusTime=1 ##  temporal fluctuation variance in cluster-level hazards around smooth trajectories for gamma distribution 
   , sdLogIndiv = 1 ## variance of lognormal distribution of individual RR within a hazard (constant over time, i.e. due to job)
   , DoIndivRRcat = F 
-  , indivRRcats = list(rr = c(1,5,10), prop = c(.5,.35,.15))
+  , indivRRcats = list(rr = c(1,2,10), prop = c(.5,.35,.15))
 , indivRRsameXclusterXarm = T ## make sure distribution of indivRR is the same in each cluster & arm to allow easier comparability when clusters are small
   , maxRRcat = 0 ## exclude RRcats above this level and just vaccinate them
   , vaccEff = .8
