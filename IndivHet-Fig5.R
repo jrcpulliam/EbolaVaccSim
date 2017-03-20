@@ -44,12 +44,14 @@ punq[,date:=format.Date(trialStartDate, '%b-%y')]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
 irsk <- merge(irsk, unique(punq[,.(tid,clusSize = as.numeric(clusSize))]), by='tid')## get clusSize in irsk for ordering purposes
 
+numClus <- as.numeric(punq[,unique(numClus)])
+
 if(!exists('hazT1')) {
-    hazT1 <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
+    hazT1 <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7, numClus=numClus)))$hazT
     hazT1$avHaz <- 'xTime'
 }
 if(!exists('hazT2')) {
-    hazT2 <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="",indivRRSeed=7,HazTrajSeed=7)))$hazT
+    hazT2 <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="",indivRRSeed=7,HazTrajSeed=7, numClus=numClus)))$hazT
     hazT2$avHaz <- ''
 }
 hazT <- rbind(hazT1, hazT2)
@@ -196,7 +198,7 @@ for(clusSizeDo in clusSizes) {
 ylimavertable <- c(0, max(atmp[,avertableRisk]))
 xlim <- c(0,Ntmp)
 
-selClus <- 1#c(2,8,13)
+selClus <- c(1,6,7)
 
 itmp3 <- itmp[cVaccOrd %in% selClus]
 itmp3 <- itmp3[order(ordX.sp)]
@@ -214,7 +216,8 @@ hazT[,col:=rainbow(length(unique(cluster)))[cluster]]
 avHazDo <- punq[,unique(avHaz)]
 
 lwdh <- 2
-pdf(file.path(figdir, paste0(clusSizeDo, '-', '3 clusters - avertable risk averted (conditional).pdf')), w = wid, h = heig)
+#pdf(file.path(figdir, paste0(clusSizeDo, '-', '3 clusters - avertable risk averted (conditional).pdf')), w = wid, h = heig)
+png(file.path(figdir, paste0(clusSizeDo, '-', '3 clusters - avertable risk averted (conditional).png')), w = wid*res/3, h = heig*res/3)
 every <- 1
 xlim <- range(itmp3$ord3.sp)
 par(mfrow=c(lenL+1,1), mar = c(2,5,0,0), oma = c(5,2,0,0), ps = 16)
@@ -238,5 +241,3 @@ axis(1, at = mids[1:length(selClus)], lab = paste0('cluster ', selClus), lwd = 0
 mtext('individuals', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
-
-
