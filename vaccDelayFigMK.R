@@ -7,7 +7,7 @@ if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sb
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 ## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig-SX-vaccDel'
+thing <- 'Equip-Fig-SX-vaccDel-3cat'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
