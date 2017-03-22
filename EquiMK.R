@@ -127,7 +127,7 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
-parmsMatDo <- parmsMat[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-10-01']
+parmsMatDo <- parmsMat[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-12-01']
 nrow(parmsMatDo)
 
 ## fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
