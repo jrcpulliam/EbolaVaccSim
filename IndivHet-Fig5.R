@@ -98,6 +98,8 @@ labsDisplay <- paste0('(',LETTERS[1:lenL],') ', c(
 #nmtag <- '-6pan'
 nmtag <- ''
 
+showtotalrisk <- T
+
 for(clusSizeDo in clusSizes) {
 
     itmp <- irsk[clusSize==clusSizeDo]
@@ -147,31 +149,35 @@ for(clusSizeDo in clusSizes) {
     ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
     ## CONDITIONAL
     ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
+    if(showtotalrisk) ylimavertable <- c(0,1)
     xlim <- range(tcks)
-    xlim[2] <- xlim[2]+160
-    pdf(file.path(figdir, paste0(clusSizeDo,nmtag, '-', 'avertable risk averted (conditional).pdf')), w = wid, h = heig)
-    par(mfrow=c(lenL,1), mar = c(.5,5,1,0), oma = c(5,2,.5,0), ps = 15)
+    xlim[2] <- xlim[2]+250
+    pdf(file.path(figdir, paste0(clusSizeDo,nmtag, '-', 'total-'[showtotalrisk], 'avertable risk averted (conditional).pdf')), w = wid, h = heig)
+    par(mfrow=c(lenL,1), mar = c(.5,5,1,2), oma = c(5,2,.5,0), ps = 15)
     for(li in 1:lenL) {
         ll <- labsToDo[li]
-        atmp[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1,col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
-        itmp[lab==ll, points(ordX.sp, avert_EV, xlab='individual', ylab='averted', bty = 'n', type = 'h', lwd = lwdh, lend=1,col = makeTransparent(cols,opacity))]
-        if(ll==itmp[,unique(lab)][1]) {
-            ## legend('topright', col = c('gray', itmp[,unique(cols)]), 
-            ##        leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
+        if(showtotalrisk) {
+            itmp[lab==ll, plot(ordX.sp, inf_EV, xlab='', ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1,col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+            atmp[arms==(ll!='SWCT'), points(ordX.sp, avertableRisk, type = 'h', lwd = lwdh, lend=1,col = 'gray')]
+            itmp[lab==ll, points(ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1,col = makeTransparent(cols,opacity))]
+        }else{
+            atmp[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1,col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+            itmp[lab==ll, points(ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1,col = makeTransparent(cols,opacity))]
         }
         mtext(labsDisplay[li], side = 3, line = 0, adj = .01) 
-        points(max(tcks)+100, plunq[clusSize==clusSizeDo & lab==ll, power]*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'black')
-        points(max(tcks)+150, plunq[clusSize==clusSizeDo & lab==ll, tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'dark green')
+        xbump <- 150
+        points(max(tcks)+xbump, plunq[clusSize==clusSizeDo & lab==ll, power]*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'black')
+        points(max(tcks)+xbump+120, plunq[clusSize==clusSizeDo & lab==ll, tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'dark green')
                                         #        mtext(paste0('(',LETTERS[li],')'), side = 3, line = 0, adj = .01)
-    axis(4, at = ylimavertable[2]*seq(0,1,by=.25), labels=NA, line = -2)
+        axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = -1,  las = 1)
+        axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -61, las = 1)
     }
     axis(1, at = mids, lab = 1:numClus, lwd = 0)
-    axis(1, at = max(tcks) + c(100), lab = c('power'), las = 2, lwd = 0)
-    axis(1, at = max(tcks) + c(150), lab = c('duration'), las = 2, lwd = 0, col.axis = 'dark green')
+    axis(1, at = max(tcks) + xbump, lab = c('power'), las = 2, lwd = 0)
+    axis(1, at = max(tcks) + xbump+120, lab = c('duration\n(weeks)'), las = 2, lwd = 0, col.axis = 'dark green')
     mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
-    mtext('risk', 2, ,outer=T, line = -1)
-    dev.off()
-
+    mtext('individual risk', 2, ,outer=T, line = -1)
+    graphics.off()
 
 ####################################################################################################
     ## Averted by each trial with shadow of avertable, Marginal on randomization assignment
@@ -197,6 +203,44 @@ for(clusSizeDo in clusSizes) {
 ####################################################################################################
 
 }
+
+####################################################################################################
+## Figure S5 Exclusion of high risk individuals (conditional risk partitioning)
+## ****  why doesn't maxRR reduce power? because trial ends eventually anyways. just takes longer!!
+
+plunq[lab %in% labsToDo, .(clusSize, lab, power, tcal)]
+
+labsToDo <- c('RCT-gs-rp','RCT-gs-rp-maxRR')
+lenL <- length(labsToDo)
+labsDisplay <- paste0('(',LETTERS[1:lenL],') ', c(
+                      'RCT (risk-prioritized rollout, three analyses)',
+                      'RCT (risk-prioritized rollout, three analyses, exclude highest risk category'))
+#nmtag <- '-6pan'
+nmtag <- ''
+ylimavertable <- c(0, max(avertableTab[,avertableRisk])) 
+xlim <- range(tcks)
+xlim[2] <- xlim[2]+250
+pdf(file.path(figdir, paste0(clusSizeDo,'-EHR-avertable risk averted (conditional).pdf')), w = wid, h = heig)
+par(mfrow=c(lenL,1), mar = c(.5,5,1,2), oma = c(5,2,.5,0), ps = 15)
+for(li in 1:lenL) {
+    ll <- labsToDo[li]
+    atmp[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1,col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
+    itmp[lab==ll, points(ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1,col = makeTransparent(cols,opacity))]
+    mtext(labsDisplay[li], side = 3, line = 0, adj = .01) 
+    xbump <- 150
+    points(max(tcks)+xbump, plunq[clusSize==clusSizeDo & lab==ll, power]*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'black')
+    points(max(tcks)+xbump+130, plunq[clusSize==clusSizeDo & lab==ll, tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'dark green')
+                                        #        mtext(paste0('(',LETTERS[li],')'), side = 3, line = 0, adj = .01)
+    axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = -.5,  las = 1)
+    axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -37, las = 1)
+}
+axis(1, at = mids, lab = 1:numClus, lwd = 0)
+axis(1, at = max(tcks) + xbump, lab = c('power'), las = 2, lwd = 0)
+axis(1, at = max(tcks) + xbump+130, lab = c('duration\n(weeks)'), las = 2, lwd = 0, col.axis = 'dark green')
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
+mtext('individual risk', 2, ,outer=T, line = -1)
+graphics.off()
+ 
 
 ####################################################################################################
 ## Selected clusters only
