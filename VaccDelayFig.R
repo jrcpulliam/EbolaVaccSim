@@ -8,14 +8,12 @@ rm(list=ls(all=T)); gc()
 require(optiRum); require(RColorBrewer); require(boot); require(data.table); require(ggplot2); require(grid); require(reshape2); require(parallel)
 sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
 sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
-hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
+avHazDo <- ''
 
 ####################################################################################################
 ## Delayed vaccination comparators & threshold-risk spending modifications for Supplementary Appendix
 ####################################################################################################
 ## Need to load both CVD and general simulations (careful not to double up on CVD which may be represeneted in both for some scenarios)
-
-
 thing <- 'Equip-Fig-SX-vaccDel'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)
@@ -46,6 +44,9 @@ punq[,date:=format.Date(trialStartDate, '%b-%y')]
 punq[,clusSize:=as.numeric(clusSize)]
 plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date, clusSize)]
 irsk <- merge(irsk, unique(punq[,.(tid, clusSize= as.numeric(clusSize))]), by='tid')## get clusSize in irsk for ordering purposes
+
+numClus <- as.numeric(punq[,unique(numClus)])
+hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz=avHazDo,indivRRSeed=7,HazTrajSeed=7, numClus=numClus)))$hazT
 
 irsk[,ordX:=ordShowArm]
 irsk[lab=='SWCT',ordX:=ordShow]
@@ -99,12 +100,13 @@ ncol <- 2
 wid <- 9
 heig <- 6
 res <- 300
-opacity <- 35
+opacity <- 100
 
  
 numClus <- as.numeric(punq[,unique(numClus)])
-avHazDo <- 'xTime'
 lwdhbase <- 1.2
+contcol <- 'red'
+cvdcol <- 'purple'
 ####################################################################################################
 ## Effect of vacc delay by cluster size
 for(jj in 1:2) {
@@ -113,10 +115,10 @@ for(jj in 1:2) {
     }else{
         ylimavertable <- c(0, 1)
     }
-    xlim <- c(0,max(mids) + 150)
+    xlim <- c(0,max(mids) + 350)
     pdf(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.pdf')), w = wid, h = heig); lwdhbase <- lwdhbase/1.2
-#    png(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.png')), w = wid*100, h = heig*100)
-    par(mfrow=c(4,1), mar = c(0,8,1,0), oma = c(5,2,0,0), ps = 17)
+                                        #    png(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.png')), w = wid*100, h = heig*100)
+    par(mfrow=c(4,1), mar = c(0,8,1,3), oma = c(5.5,3,1.5,0), ps = 17)
     magnifier <- max(clusSizes)/clusSizes
     for(cc in 1:(length(clusSizes)-1)) {
         clusSizeDo <- clusSizes[cc]
@@ -124,7 +126,7 @@ for(jj in 1:2) {
         itmp <- irsk[clusSize==clusSizeDo & lab %in% labDo]
         tidDo <- punq[clusSize==clusSizeDo & avHaz==avHazDo & lab %in% labDo, unique(tid)]
         itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
-        itmp[, cols:=armShown]; itmp[cols=='cont',cols:='red']; itmp[cols=='vacc',cols:='dodger blue']
+        itmp[, cols:=armShown]; itmp[cols=='cont',cols:=contcol]; itmp[armShown=='cont' & grepl('cvd',lab) ,cols:=cvdcol]; itmp[cols=='vacc',cols:='dodger blue']
         itmp <- itmp[lab!='RCT-rp']
         atmp <- avertableTab[tid==tidDo & clusSize==clusSizeDo]
         if(jj==1) {
@@ -136,12 +138,25 @@ for(jj in 1:2) {
                                main = '', las = 1)]
         }
         itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity))]
-        itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity*2))]
+        itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity))]
         mtext(clusSizeDo, side = 2, 6, las = 1)
+        xbump <- 120
+        xbump2 <- 280
+        ## power
+        points(max(tcks)+xbump+25, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp', power]*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = contcol)
+        points(max(tcks)+xbump+50, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp-cvd', power]*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = cvdcol)
+        ## duration
+        points(max(tcks)+xbump2+25, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp', tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = contcol)
+        points(max(tcks)+xbump2+50, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp-cvd', tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = cvdcol)
+        axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = .3, las = 1)
+        axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -49.5, las = 1)
     }
+    axis(1, at = max(tcks) + xbump + 37.5, lab = c('power'), las = 2, lwd = 0)
+    axis(1, at = max(tcks) + xbump2 + 37.5, lab = c('duration\n(weeks)'), las = 2, lwd = 0)#, col.axis = 'dark green')
     axis(1, at = mids, lab = 1:numClus, lwd = 0)
     mtext(paste0('individuals (grouped by cluster and arm)'), 1, outer=T, line = 3)
     mtext('risk', 2,outer=T, line = -4)
+    mtext('cluster size', 3, outer = T, adj = 0)
     graphics.off()
 }
 
@@ -149,7 +164,7 @@ for(jj in 1:2) {
 pdf(file.path(figdir, paste0('vaccDel leg.pdf')), width = 3, height = 2)
 plot(0,0,type='n', bty ='n', axes =F, xlab='',ylab='')
 par(xpd=T)
-legend('center', col = c('gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'), 
+legend('center', col = c('gray', contcol, cvdcol, 'dodger blue'), 
        leg = c('avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = .8, bty = 'n')
 dev.off()
 
@@ -157,8 +172,8 @@ dev.off()
 pdf(file.path(figdir, paste0('vaccDel leg total.pdf')), width = 3, height = 2)
 plot(0,0,type='n', bty ='n', axes =F, xlab='',ylab='')
 par(xpd=T)
-legend('topright', col = c('black','gray', makeTransparent("red", c(opacity*2, opacity)), 'dodger blue'), ncol = ncol,
-       leg = c('total', 'avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = 1.3, bty = 'n')
+legend('topright', col = c('black','gray', contcol, cvdcol, 'dodger blue'), 
+       leg = c('total', 'avertable', 'averted (control)', 'averted (60-day delayed vaccine)', 'averted (vaccine)'), pch = 15, cex = .8, bty = 'n')
 dev.off()
  
 
