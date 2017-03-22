@@ -40,13 +40,13 @@ punq[lab=='RCT-gs-rp-maxRR',pchs:=24]
 ## Fig 4
 labstoshow <- c('RCT' ,'RCT-gs', 'RCT-rp', 'RCT-gs-rp', 'SWCT') 
 labstoshow <- punq[,unique(lab)]
-plunq <- punq[threshold==.05 & lab %in% labstoshow, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent_EV, totCase, totCase_EV,avHaz, tcal,date, cols, pchs)]
+plunq <- punq[threshold==.05 & lab %in% labstoshow, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent_EV, totCase, totCase_EV,avHaz, tcal,date, cols, pchs, clusSize)]
 
 names(punq)
-plunq[, 
+plunq
 
 ## Fig 4B with just power vs avertable cases that aren't averted
-tmpM <-  plunq[lab!='RCT-rp' & avHaz=='' & date %in% c('Oct-14') & clusSize==200]
+tmpM <-  plunq[lab!='RCT-rp' & avHaz==''  & clusSize==200]
 
 cex <- 2
 #pdf(file.path(figdir, paste0('Fig4B.pdf')), width =5.5, h=3)
@@ -65,46 +65,47 @@ for(dd in tmpM[,unique(date)]) {
 #graphics.off()
 
 load(file='data/WAevddat.Rdata')
-SLdistr[col=
 
-SLdistr[, plot(date, cases, type = 'n', las = 1)]
-SLdistr[,lines(date, cases, col = Location)]
+tmpM[,pchs2:=as.numeric(as.character(factor(lab, labels=c(2,6:5,3:4,16))))]
+tmpM[lab=='RCT', pchs2:=13]
+tmpM[,cols2:=makeTransparent(ifelse(date=='Oct-14', 'purple','orange'), alpha = 160)]
 
 pdf(file.path(figdir, paste0('Fig4B.pdf')), width =6.5, h=3)
 par(mfrow=c(1,3), ps='14')
-par(mar = c(4 ,6,1,.5))#par(mar=c(5,5,.5,.5))
+par(mar = c(4 ,6,1,0), oma = c(0,0,0,2))
 hazT$lwd <- 1
 hazT[,col:=makeTransparent(rainbow(length(unique(cluster)))[cluster], alpha = 180)]
 hazT[,plot(Date,clusHaz, lwd=0, bty = 'n', las = 1, ylab = '', type = 'n', xlab='')]
 hazT[, lines(Date, clusHaz, lwd = lwd, col = col), cluster]
 par(xpd=T)
-rect(head(tmpM$trialStartDate,1), -.00095, head(tmpM$trialStartDate,1)+24*7, -.0008, col = 'purple', border=NA)
-rect(tail(tmpM$trialStartDate,1), -.0010, tail(tmpM$trialStartDate,1)+24*7, -.0012, col = 'orange', border=NA)
+rect(tail(tmpM$trialStartDate,1), -.00095, tail(tmpM$trialStartDate,1)+24*7, -.0008, col = 'purple', border=NA)
+rect(head(tmpM$trialStartDate,1), -.0010, head(tmpM$trialStartDate,1)+24*7, -.0012, col = 'orange', border=NA)
 #mtext('daily hazard', 2, 4, cex = .7)
 title(ylab='daily hazard', line = 4)
 title(main = 'A')
 cex <- 2
+mcex <- .7
 cexleg <- .8
 lwd <- 2
-par(mar = c(4 ,4,1,.5))                
-tmpM[,pchs2:=as.numeric(as.character(factor(lab, labels=c(2,6:5,3:4,16))))]
-tmpM[lab=='RCT', pchs2:=13]
-tmpM[,cols2:=makeTransparent(ifelse(date==date[1], 'purple','orange'), alpha = 160)]
-xmax <- 45
+par(mar = c(4 ,4,1,1))
+xmax <- 170
 ## power
 plot(0, 0, type = 'n', xlim = c(0,xmax), ylim = c(0,1), las = 1, bty = 'n', ylab = 'power', xlab = '')
 tmpM[, points(caseSpent_EV, power, xlim = c(0,xmax), ylim = c(0,1), pch = pchs2, las = 1, col = cols2, cex = cex, lwd=lwd), date]
-tmpM[date==date[1], legend('bottomright', leg = lab, pch = pchs2, cex = cexleg, bty = 'n')]
-tmpM[lab==lab[1], legend('bottomleft', leg = date, pch = 16, col=cols2, cex = cexleg, bty = 'n', title = 'start date')]
+#tmpM[date==date[1], legend('bottomright', leg = lab, pch = pchs2, cex = cexleg, bty = 'n')]
+#tmpM[lab==lab[1], legend('bottomleft', leg = date, pch = 16, col=cols2, cex = cexleg, bty = 'n', title = 'start date')]
 title(main = 'B')
 ## speed
 plot(0, 0, type = 'n', xlim = c(0,xmax), ylim = c(24,0), las = 1, bty = 'n', ylab = 'trial duration (weeks)', xlab = '', yaxt = 'n')
 axis(2, at = 0:6*4, las = 1)
 tmpM[, points(caseSpent_EV, tcal/7, pch = pchs2, col = cols2, cex = cex, lwd=lwd), date]
-mtext('cases spent relative to optimized rollout', 1, -1, outer = T, at = .65, cex = .7)
+mtext('cases spent relative to optimized rollout', 1, -1, outer = T, at = .65, cex = mcex)
+par(xpd=T)
+arrows(xmax*1.05, 0, xmax*1.05, 24, code = 1, len = .1)
+mtext('trial speed', 4, .75, cex = mcex)
 title(main = 'C')
 graphics.off()
-  
+    
 
  
 

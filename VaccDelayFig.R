@@ -10,6 +10,12 @@ sapply(c('multiplot.R','extractFXN.R','ggplotTheme.R'), source)
 sapply(c('simFuns.R','AnalysisFuns.R','ExpFit.R'), source)
 hazT <- setClusHaz(makePop(makeParms(trialStartDate="2014-10-01",propInTrial=0.05,avHaz="xTime",indivRRSeed=7,HazTrajSeed=7)))$hazT
 
+####################################################################################################
+## Delayed vaccination comparators & threshold-risk spending modifications for Supplementary Appendix
+####################################################################################################
+## Need to load both CVD and general simulations (careful not to double up on CVD which may be represeneted in both for some scenarios)
+
+
 thing <- 'Equip-Fig-SX-vaccDel'
 figdir <- file.path('Figures', thing)
 dir.create(figdir)

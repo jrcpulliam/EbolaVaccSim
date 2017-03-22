@@ -41,8 +41,11 @@ for(ii in 1:length(fls)) {
 }
 punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
-plunq <- punq[threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date)]
+
+sdate <- '2014-10-01'
+plunq <- punq[trialStartDate==sdate & threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date, clusSize, tid)]
 irsk <- merge(irsk, unique(punq[,.(tid,clusSize = as.numeric(clusSize))]), by='tid')## get clusSize in irsk for ordering purposes
+irsk <- irsk[tid %in% plunq[,unique(tid)]]
 
 numClus <- as.numeric(punq[,unique(numClus)])
 
@@ -120,10 +123,9 @@ for(clusSizeDo in clusSizes) {
     mids <- mids + clusSizetmp/6*c(0:(length(mids)-1))
     tcks <- rep(mids, each = 2) + c(-clusSizetmp/2,clusSizetmp/2)
     numClus <- as.numeric(punq[,unique(numClus)])
-
-
     lwdhbase <- 1
     lwdh <- lwdhbase * (max(clusSizes)/clusSizeDo)^.5
+
 ####################################################################################################
     ## INFECTION RISK, divided by randomization structure (for comparison to below)
     pdf(file.path(figdir, paste0(clusSizeDo, nmtag, '-', 'total infection risk by arm.pdf')), w = wid, h = heig)
@@ -145,7 +147,8 @@ for(clusSizeDo in clusSizes) {
     ## Averted by each trial with shadow of avertable, conditional on randomization assignment (exemplar for SWCT)
     ## CONDITIONAL
     ylimavertable <- c(0, max(avertableTab[,avertableRisk]))
-    xlim <- c(0,Ntmp)
+    xlim <- range(tcks)
+    xlim[2] <- xlim[2]+160
     pdf(file.path(figdir, paste0(clusSizeDo,nmtag, '-', 'avertable risk averted (conditional).pdf')), w = wid, h = heig)
     par(mfrow=c(lenL,1), mar = c(.5,5,1,0), oma = c(5,2,.5,0), ps = 15)
     for(li in 1:lenL) {
@@ -157,12 +160,18 @@ for(clusSizeDo in clusSizes) {
             ##        leg = c('avertable risk', 'averted risk (control arm)', 'averted risk (vaccine arm)'), pch = 15, cex = 1.3, bty = 'n')
         }
         mtext(labsDisplay[li], side = 3, line = 0, adj = .01) 
-#        mtext(paste0('(',LETTERS[li],')'), side = 3, line = 0, adj = .01)
+        points(max(tcks)+100, plunq[clusSize==clusSizeDo & lab==ll, power]*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'black')
+        points(max(tcks)+150, plunq[clusSize==clusSizeDo & lab==ll, tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'dark green')
+                                        #        mtext(paste0('(',LETTERS[li],')'), side = 3, line = 0, adj = .01)
+    axis(4, at = ylimavertable[2]*seq(0,1,by=.25), labels=NA, line = -2)
     }
     axis(1, at = mids, lab = 1:numClus, lwd = 0)
+    axis(1, at = max(tcks) + c(100), lab = c('power'), las = 2, lwd = 0)
+    axis(1, at = max(tcks) + c(150), lab = c('duration'), las = 2, lwd = 0, col.axis = 'dark green')
     mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
     mtext('risk', 2, ,outer=T, line = -1)
     dev.off()
+
 
 ####################################################################################################
     ## Averted by each trial with shadow of avertable, Marginal on randomization assignment
@@ -241,3 +250,5 @@ axis(1, at = mids[1:length(selClus)], lab = paste0('cluster ', selClus), lwd = 0
 mtext('individuals', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
+
+
