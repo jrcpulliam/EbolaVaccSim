@@ -101,6 +101,13 @@ wid <- 9
 heig <- 6
 res <- 300
 opacity <- 100
+mcex <- .7
+
+labsToDo <- c('RCT-gs-rp','RCT-gs-rp-cvd')
+lenL <- length(labsToDo)
+labsDisplayRaw <-c( 'RCT (risk-prioritized rollout, three analyses)',
+                   'RCT (risk-prioritized rollout, three analyses, 60-day delayed vacc. comparator')
+labsDisplay <- paste0('(',LETTERS[1:lenL],') ', labsDisplayRaw)
 
  
 numClus <- as.numeric(punq[,unique(numClus)])
@@ -115,14 +122,15 @@ for(jj in 1:2) {
     }else{
         ylimavertable <- c(0, 1)
     }
-    xlim <- c(0,max(mids) + 350)
-    pdf(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.pdf')), w = wid, h = heig); lwdhbase <- lwdhbase/1.2
-                                        #    png(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.png')), w = wid*100, h = heig*100)
-    par(mfrow=c(4,1), mar = c(0,8,1,3), oma = c(5.5,3,1.5,0), ps = 17)
+    xlim <- c(0,max(mids) + 390)
+    #pdf(file.path(figdir, paste0('effect of vacc delay', 'avertable'[jj==0], 'total'[jj==1], '.pdf')), w = wid, h = heig); lwdhbase <- lwdhbase/1.2
+    png(file.path(figdir, paste0('Fig S4 VaccDel', 'avertable'[jj==0], 'total'[jj==1], '.png')), w = wid, h = heig, res = res, units = 'in')
+    layout(matrix(c(1:5, 1:4, 6),5,2), heights = c(rep(1,4),3))
+    par(mar = c(0,8,1,3), oma = c(1,1.5,2,.5), ps = 17)
     magnifier <- max(clusSizes)/clusSizes
     for(cc in 1:(length(clusSizes)-1)) {
         clusSizeDo <- clusSizes[cc]
-        lwdh <- lwdhbase * (max(clusSizes)/clusSizeDo)^.1
+        lwdh <- lwdhbase * (max(clusSizes)/clusSizeDo)^.06
         itmp <- irsk[clusSize==clusSizeDo & lab %in% labDo]
         tidDo <- punq[clusSize==clusSizeDo & avHaz==avHazDo & lab %in% labDo, unique(tid)]
         itmp <- itmp[tid==tidDo & ((arm==armShown & type=='cond' &  grepl('RCT',lab)) | (type=='condvd' & lab=='SWCT' & exmpl==T))]
@@ -130,35 +138,67 @@ for(jj in 1:2) {
         itmp <- itmp[lab!='RCT-rp']
         atmp <- avertableTab[tid==tidDo & clusSize==clusSizeDo]
         if(jj==1) {
-            irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', lwd = lwdh, 
-                                                                     lend=1, col = 'black', xlim = xlim, ylim = ylimavertable, xaxt='n', main = , las = 1)]
+            irsk[lab=='NT' & clusSize==clusSizeDo & tid==tidDo, plot(magnifier[cc]*ordX.sp, inf, ylab ='', bty = 'n', type = 'h', lwd = lwdh, xaxt='n',
+                                                                     lend=1, col = 'black', xlim = xlim, ylim = ylimavertable, main = , las = 1)]
             atmp[arms==T, points(magnifier[cc]*ordX.sp, avertableRisk, type = 'h', lwd = lwdh, lend=1, col = 'gray')]
         }else{
-            atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1, col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', 
+            atmp[arms==T, plot(magnifier[cc]*ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1, col = 'gray', xlim = xlim, ylim = ylimavertable, axes=F,
                                main = '', las = 1)]
+            axis(2, at = seq(0,.25, by = .05), labels = NA)
+            axis(2, at = seq(0,.2, by = .1), lwd = 0,las=1)
         }
         itmp[lab=='RCT-gs-rp-cvd', points(magnifier[cc]*ordX.sp, avert_EV,  type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity))]
         itmp[lab=='RCT-gs-rp', points(magnifier[cc]*ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1, col = makeTransparent(cols,opacity))]
-        mtext(clusSizeDo, side = 2, 6, las = 1)
-        xbump <- 120
-        xbump2 <- 280
+        mtext(clusSizeDo, side = 2, 6, las = 1, cex=mcex)
+        xbump <- 160
+        xbump2 <- 300
         ## power
         points(max(tcks)+xbump+25, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp', power]*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = contcol)
-        points(max(tcks)+xbump+50, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp-cvd', power]*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = cvdcol)
+        points(max(tcks)+xbump+65, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp-cvd', power]*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = cvdcol)
         ## duration
         points(max(tcks)+xbump2+25, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp', tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = contcol)
-        points(max(tcks)+xbump2+50, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp-cvd', tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = cvdcol)
+        points(max(tcks)+xbump2+65, plunq[avHaz==avHazDo & clusSize==clusSizeDo & lab=='RCT-gs-rp-cvd', tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*7, lend=1, col = cvdcol)
         axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = .3, las = 1)
-        axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -49.5, las = 1)
+        axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -50.5, las = 1)
+        mtext(paste0('(',LETTERS[cc],')'), side = 3, line = 0, adj = .01, cex=mcex) 
+        for(ii in 1:numClus) segments(tcks[2*ii-1],0, tcks[2*ii],0, lwd = .7)
+        par(xpd=T)
+        if(cc==1) legend(800, ifelse(jj==2, .35, 1.3), c('avertable', 'averted (vaccine arm)','averted (control)', 'averted (60-day delayed vacc. comparator)'), 
+                         col = c('gray','blue','red','purple'), bty = 'n', pch = 15, cex =  1)
+        par(xpd=F)
     }
     axis(1, at = max(tcks) + xbump + 37.5, lab = c('power'), las = 2, lwd = 0)
     axis(1, at = max(tcks) + xbump2 + 37.5, lab = c('duration\n(weeks)'), las = 2, lwd = 0)#, col.axis = 'dark green')
     axis(1, at = mids, lab = 1:numClus, lwd = 0)
-    mtext(paste0('individuals (grouped by cluster and arm)'), 1, outer=T, line = 3)
-    mtext('risk', 2,outer=T, line = -4)
-    mtext('cluster size', 3, outer = T, adj = 0)
+    mtext(paste0('individuals (grouped by cluster and arm)'), 1, outer=F, line = 3, cex=mcex)
+    mtext('individual risk', 2,outer=T, line = -4, cex=mcex, adj = .75)
+    par(xpd=T)
+    mtext('cluster\nsize', 3, outer = T, adj = 0, line = -1, cex = mcex)
+    plunq[,col:='black']
+    plunq[lab==labsToDo[1],col:='red']
+    plunq[lab==labsToDo[2],col:='purple']
+    ## power vs clusSize
+    par(mar = c(4,5,7,1))
+    plunq[avHaz== avHazDo & lab %in% labsToDo, plot(clusSize, power, col = col, type = 'n', xlab = '', ylab = 'power', bty = 'n',las=1, axes=F, ylim = c(.5,.9))]
+    plunq[avHaz== avHazDo & lab %in% labsToDo, points(clusSize, power, col = col, type = 'b', pch = 16), lab]
+    axis(1, clusSizes)
+    axis(2, c(.5,.7,.9), las = 1)
+    legend('bottomright', c('control arm', '60-day delayed vacc. comparator arm'), col = c('red','purple'), bty = 'n', pch = 16, cex =  1)
+    mtext('(E)', side = 3, line = 0, adj = .01, cex=mcex) 
+    ## speed vs clusSize
+    plunq[avHaz== avHazDo & lab %in% labsToDo, plot(clusSize, tcal/7, col = col, type = 'n', xlab = '', ylab = 'duration (weeks)', bty = 'n',las=1, axes=F, ylim = c(24,0))]
+    plunq[avHaz== avHazDo & lab %in% labsToDo, points(clusSize, tcal/7, col = col, type = 'b', pch = 16), lab]
+    axis(1, clusSizes)
+    axis(2, at = seq(0,24,4), las = 1)
+    mtext('(F)', side = 3, line = 0, adj = .01, cex=mcex) 
+    par(xpd=T)
+    arrows(205,0,205,24, len = .1, code = 1)
+    mtext('speed', 4, cex=mcex)
+    mtext('individuals per cluster', 1, outer=T, line = -.5, cex = mcex)
     graphics.off()
-}
+ }
+
+plunq[avHaz==avHazDo &lab %in% labsToDo, .(clusSize, lab, power, tcal)]
 
 ## standalone legend
 pdf(file.path(figdir, paste0('vaccDel leg.pdf')), width = 3, height = 2)
