@@ -206,41 +206,73 @@ for(clusSizeDo in clusSizes) {
 
 ####################################################################################################
 ## Figure S5 Exclusion of high risk individuals (conditional risk partitioning)
-## ****  why doesn't maxRR reduce power? because trial ends eventually anyways. just takes longer!!
 
 plunq[lab %in% labsToDo, .(clusSize, lab, power, tcal)]
 
 labsToDo <- c('RCT-gs-rp','RCT-gs-rp-maxRR')
 lenL <- length(labsToDo)
-labsDisplay <- paste0('(',LETTERS[1:lenL],') ', c(
-                      'RCT (risk-prioritized rollout, three analyses)',
-                      'RCT (risk-prioritized rollout, three analyses, exclude highest risk category'))
-#nmtag <- '-6pan'
-nmtag <- ''
+labsDisplayRaw <-c( 'RCT (risk-prioritized rollout, three analyses)',
+                   'RCT (risk-prioritized rollout, three analyses, exclude highest risk category')
+labsDisplay <- paste0('(',LETTERS[1:lenL],') ', labsDisplayRaw)
+itmp[armShown=='cont' & lab==labsToDo[2], cols:='purple']
+mcex <- .7
 ylimavertable <- c(0, max(avertableTab[,avertableRisk])) 
 xlim <- range(tcks)
 xlim[2] <- xlim[2]+250
-pdf(file.path(figdir, paste0(clusSizeDo,'-EHR-avertable risk averted (conditional).pdf')), w = wid, h = heig)
-par(mfrow=c(lenL,1), mar = c(.5,5,1,2), oma = c(5,2,.5,0), ps = 15)
+                                        #pdf(file.path(figdir, paste0(clusSizeDo,'-EHR-avertable risk averted (conditional).pdf')), w = wid, h = heig)
+png(file.path(figdir, paste0(clusSizeDo,'-EHR-avertable risk averted (conditional).png')), w = wid*.8, h = heig*.8, res = res, units = 'in')
+layout(matrix(c(1,2,3,1,2,4),3,2), heights = c(1,1,1.2))
+par(mar = c(1,5,2 ,2), ps = 15, oma = c(1,1,0,0)) # mfrow=c(lenL,1)
 for(li in 1:lenL) {
     ll <- labsToDo[li]
     atmp[arms==(ll!='SWCT'), plot(ordX.sp, avertableRisk, ylab ='', bty = 'n', type = 'h', lwd = lwdh, lend=1,col = 'gray', xlim = xlim, ylim = ylimavertable, xaxt='n', main = '', las = 1)]
     itmp[lab==ll, points(ordX.sp, avert_EV, type = 'h', lwd = lwdh, lend=1,col = makeTransparent(cols,opacity))]
-    mtext(labsDisplay[li], side = 3, line = 0, adj = .01) 
+    mtext(labsDisplay[li], side = 3, line = 0, adj = .01, cex=mcex) 
     xbump <- 150
     points(max(tcks)+xbump, plunq[clusSize==clusSizeDo & lab==ll, power]*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'black')
     points(max(tcks)+xbump+130, plunq[clusSize==clusSizeDo & lab==ll, tcal]/168*ylimavertable[2], type = 'h', lwd = lwdh*10, lend=1, col = 'dark green')
                                         #        mtext(paste0('(',LETTERS[li],')'), side = 3, line = 0, adj = .01)
     axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = -.5,  las = 1)
-    axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -37, las = 1)
+    axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -62, las = 1)
+    for(ii in 1:numClus) segments(tcks[2*ii-1],0, tcks[2*ii],0)
+if(li==1) legend('top', c('avertable', 'averted (vaccine arm)','averted (control)', 'averted (control with exclusion of high risk)'), col = c('gray','blue','red','purple'), 
+       bty = 'n', pch = 15, cex =  1)
 }
 axis(1, at = mids, lab = 1:numClus, lwd = 0)
 axis(1, at = max(tcks) + xbump, lab = c('power'), las = 2, lwd = 0)
 axis(1, at = max(tcks) + xbump+130, lab = c('duration\n(weeks)'), las = 2, lwd = 0, col.axis = 'dark green')
-mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3)
-mtext('individual risk', 2, ,outer=T, line = -1)
-graphics.off()
+mtext(paste0('individuals by cluster (', clusSizetmp,' individuals per cluster)'), 1, outer=T, line = 3, cex=mcex)
+mtext('individual risk', 2, ,outer=T, line = -1, adj = .7, cex = mcex)
+par(mar = c(4,5,4 ,2), ps = 15) # mfrow=c(lenL,1)
+                                        #par(mfrow=c(2,1))
+plunq[,col:='black']
+plunq[lab==labsToDo[1],col:='red']
+plunq[lab==labsToDo[2],col:='purple']
+## power vs clusSize
+plunq[lab %in% labsToDo, plot(clusSize, power, col = col, type = 'n', xlab = '', ylab = 'power', bty = 'n',las=1, axes=F, ylim = c(.5,.9))]
+plunq[lab %in% labsToDo, points(clusSize, power, col = col, type = 'b', pch = 16), lab]
+axis(1, clusSizes)
+axis(2, c(.5,.7,.9), las = 1)
+legend('bottomright', c('high risk included', 'high risk excluded'), col = c('red','purple'), bty = 'n', pch = 16, cex =  1)
+mtext('(C)', side = 3, line = 0, adj = .01, cex=mcex) 
+                                        #plunq[lab %in% labsToDo[2] & clusSize==40, points(clusSize, .65, col = 'orange', type = 'b', cex = 2, pch = '*'), lab]
+## speed vs clusSize
+plunq[lab %in% labsToDo, plot(clusSize, tcal/7, col = col, type = 'n', xlab = '', ylab = 'duration (weeks)', bty = 'n',las=1, xaxt='n', ylim = c(24,0))]
+plunq[lab %in% labsToDo, points(clusSize, tcal/7, col = col, type = 'b', pch = 16), lab]
+axis(1, clusSizes)
+mtext('(D)', side = 3, line = 0, adj = .01, cex=mcex) 
+                                        #plunq[lab %in% labsToDo[2] & clusSize==40, points(clusSize, 24, col = 'orange', type = 'b', cex = 2, pch = '*'), lab]
+par(xpd=T)
+arrows(205,0,205,24, len = .1, code = 1)
+mtext('speed', 4, cex=mcex)
+mtext('individuals per cluster', 1, outer=T, line = -.5, cex = mcex)
+graphics.off() 
  
+## only clusSize=40 has maxRR having significantly different power
+for(cc in plunq[,unique(clusSize)]) {
+print(paste0('clusSize=',cc,' odds ratio confidence interval on power (standard vs ehr):'))
+print(signif(as.numeric(fisher.test(matrix(c(round(plunq[lab %in% labsToDo, .(clusSize, lab, power, tcal)][clusSize==cc,power]*2000),2000,2000),2,2))$conf.int),2))
+}
 
 ####################################################################################################
 ## Selected clusters only
