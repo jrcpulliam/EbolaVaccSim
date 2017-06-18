@@ -114,6 +114,6 @@ plot(0, 0, type = 'n', xlab='',ylab='', bty='n', axes=F)
 mtext('(B)', side = 3, line = mline, adj = mtextadj)
 graphics.off()
      
-
+save(tmpM, file = 'BigResults/Fig4data.Rdata')
  
 

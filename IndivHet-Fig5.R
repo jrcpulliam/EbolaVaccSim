@@ -122,6 +122,17 @@ numClus <- as.numeric(punq[,unique(numClus)])
 lwdhbase <- 1
 lwdh <- lwdhbase * (max(clusSizes)/clusSizeDo)^.5
 
+
+##################################################
+## Risk spent vs cum infection risk by arm (color)
+pdf(file.path(figdir, 'spent vs cumulative infection risk for Fig 4.pdf'))
+par(mfrow=c(lenL,1))
+for(li in 1:lenL) {
+    ll <- labsToDo[li]
+    itmp[lab==ll, plot(inf_EV, spent_EV, col=cols, pch = 16, main = ll, bty = 'n')]
+}
+graphics.off()
+
 showtotalrisk <- T
 for(showtotalrisk in c(T,F)) {
 ####################################################################################################
@@ -388,5 +399,4 @@ axis(1, at = mids[1:length(selClus)], lab = paste0('cluster ', selClus), lwd = 0
 mtext('individuals', 1, outer=T, line = 3)
 mtext('avertable risk', 2, ,outer=T, line = -1)
 graphics.off()
-
 
