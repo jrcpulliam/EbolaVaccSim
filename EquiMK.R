@@ -5,9 +5,8 @@ if(grepl('ls4', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/'
 if(grepl('nid', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/EbolaVaccSim/')
 if(grepl('wrangler', Sys.info()['nodename'])) setwd('/home/02413/sbellan/work/sbellan/wrangler/EbolaVaccSim/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
-## CHANGE SWCT to relabel when want power again ***
 
-thing <- 'Equip-Fig5-10clus-3cat'
+thing <- 'Equip-Fig5-10clus-3cat-v2'
 batchdirnm <- file.path('BigResults',thing)
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
@@ -43,6 +42,7 @@ parmsMatRCT <- as.data.table(expand.grid(
   , propInTrial = pits
   , vaccEff = ves
   , avHaz = avHazs
+  , delayUnit = 7
 ))
 ## only do the threshold and vaccContDelay for gsTU trials
 parmsMatRCT <- parmsMatRCT[!(!is.na(contVaccDelay) & (gs==F | ord=='none'))]
@@ -62,7 +62,9 @@ parmsMatSWCT <- as.data.table(expand.grid(
   , propInTrial = pits
   , vaccEff = ves
   , avHaz = avHazs
+  , delayUnit = 7
 ))
+parmsMatSWCT <- rbind(parmsMatSWCT, parmsMatSWCT2 <- within(parmsMatSWCT, {delayUnit <- 14})) ## both fast & slow SWCT (same average vaccination pace)
 parmsMatCFs <- as.data.table(expand.grid(
     batch =  1:numEach ## do for average vacc eff
   , clusSize = clusSizes
@@ -76,6 +78,7 @@ parmsMatCFs <- as.data.table(expand.grid(
   , propInTrial = pits
   , vaccEff = ves
   , avHaz = avHazs
+  , delayUnit = 7
 ))
 
 parmsMat <- rbind(parmsMatRCT,parmsMatCFs, parmsMatSWCT)
