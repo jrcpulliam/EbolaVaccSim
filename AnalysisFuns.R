@@ -59,7 +59,7 @@ getEndResults <- function(parms, bump = T) {
             analysisNum <- analysisNum+1 ## iterate
             if(parms$verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
             analysisDay <- parms$intTab[analysisNum, tcal]
-    if(parms$verbose==2.935) browser()
+            if(parms$verbose==2.935) browser()
             tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
             if(parms$verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
             ## Bump in case of 0-event arms
@@ -111,7 +111,8 @@ getEndResults <- function(parms, bump = T) {
                 endTrialDay <- tail(intStats$tcal, 1) ## when trial stopped (two-sided)
                 firstVaccDayAfterTrialEnd <- min(daySeqLong[daySeqLong>endTrialDay])
             }else{
-                endTrialDay <- maxDurationDay ## or maximum duration
+                endTrialDay <- maxDurationDay ## or maximum duration for non-SWCT
+                if(trial=='SWCT') endTrialDay <-  stActive[,max(vaccDay)] ## and last day anyone is vaccinated for SWCT (last day we have both vaccinated and unvaccinated comparators)
             }
         })
     }else{
