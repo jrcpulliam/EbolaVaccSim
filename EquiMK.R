@@ -82,7 +82,7 @@ parmsMatCFs <- as.data.table(expand.grid(
 ))
 
 parmsMat <- rbind(parmsMatRCT,parmsMatCFs, parmsMatSWCT)
-parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; delayUnit=7; randVaccProperties=T;
+parmsMat <- within(parmsMat, { vaccPropStrg='vaccProp1'; HazTrajSeed=7; indivRRSeed=7; returnEventTimes=TRUE; immunoDelay=21; randVaccProperties=T;
                                DoIndivRRcat=T})
 parmsMat$StatsFxns <- 'doCoxME'
 parmsMat[trial=='SWCT', StatsFxns:='doRelabel'] ### slow if relabeling
@@ -130,7 +130,7 @@ save(parmsMat, file=file.path('BigResults', paste0(thing, 'parmsMat','.Rdata')))
 tidsDo <- tpop[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-10-01', tid] ### CHANGE*** as appropriate
 parmsMatDo <- parmsMat[tid %in% tidsDo]
 
-parmsMatDo <- parmsMat[propInTrial == c(.05) & avHaz %in% '' & trialStartDate=='2014-12-01']
+parmsMatDo <- parmsMat[propInTrial == c(.05) & avHaz %in% '' & trialStartDate %in% as.Date(c('2014-12-01', '2014-10-01')) & clusSize==200]
 nrow(parmsMatDo)
 
 ## fls <- list.files(file.path('BigResults', thing), pattern='.Rdata')
@@ -147,7 +147,7 @@ nrow(parmsMatDo)
 parmsMatDo[,table(trial)]
 
 ## summary of runs
-unique(parmsMatDo[,.(nruns = nsims *.N),.(clusSize,avHaz, trialStartDate, gs, ord, maxRRcat, contVaccDelay, trial, tid)])
+unique(parmsMatDo[,.(nruns = nsims *.N),.(clusSize,avHaz, trialStartDate, gs, ord, maxRRcat, contVaccDelay, trial, tid, delayUnit)])
 
 #parmsMatDo <- parmsMatDo[trial %in% c('NT','VR')]
 
