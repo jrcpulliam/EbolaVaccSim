@@ -43,9 +43,13 @@ punq[,trialStartDate:=as.Date(trialStartDate)]
 punq[,date:=format.Date(trialStartDate, '%b-%y')]
 
 sdate <- '2014-10-01'
-plunq <- punq[trialStartDate==sdate & threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date, clusSize, tid)]
+
+plunq <- punq[trialStartDate==sdate & threshold==.05, list(lab, power, trialStartDate, threshold, above, above_EV, caseSpent, totCase, totCase_EV,avHaz, tcal,date, clusSize, tid, numClus, delayUnit)]
 irsk <- merge(irsk, unique(punq[,.(tid,clusSize = as.numeric(clusSize))]), by='tid')## get clusSize in irsk for ordering purposes
 irsk <- irsk[tid %in% plunq[,unique(tid)]]
+
+## make sure SWCT has right duration (fixed bug upstream, but not rerunning simulations for it)
+plunq[lab=='SWCT', tcal := (as.numeric(numClus)-1)*as.numeric(delayUnit)]
 
 numClus <- as.numeric(punq[,unique(numClus)])
 
@@ -89,12 +93,12 @@ labsToDo <- itmp[,unique(lab)]
 labsToDo <- c('RCT','RCT-gs','RCT-gs-rp', 'SWCT')
 lenL <- length(labsToDo)
 labsDisplay <- paste0('(',LETTERS[1:lenL],') ', c(
-                      'RCT (random cluster rollout order, single final analysis)',
-                      'RCT (random cluster rollout order, three analyses)',
-                      'RCT (risk-prioritized cluster rollout order, three analyses)',
-                      #'RCT (risk-prioritized cluster rollout order, three analyses, delayed vaccine comparator)',
-                      #'RCT (risk-prioritized cluster rollout order, three analyses, risk-spending threshold)',
-                      'stepped wedge cluster trial (random cluster rollout order, single final analysis)'))
+                      'RCT'
+                      ,'RCT int.'
+                      ,'RCT int. r.p.'
+#                      ,'RCT int. r.p. e.h.r'
+ #                     ,'RCT int. r.p. d.v.c'
+                      ,'SWCT'))
 
 itmp <- irsk[clusSize==clusSizeDo]
 tidDo <- itmp[,unique(tid)]
@@ -133,6 +137,7 @@ for(li in 1:lenL) {
 }
 graphics.off()
 
+nmtag <- ''
 showtotalrisk <- T
 for(showtotalrisk in c(T,F)) {
 ####################################################################################################
@@ -162,6 +167,9 @@ for(showtotalrisk in c(T,F)) {
         axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = -1,  las = 1)
         axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -61, las = 1)
         for(ii in 1:numClus) segments(tcks[2*ii-1],0, tcks[2*ii],0, lwd = .7)
+        if(li==1) legend('top', c('total', 'avertable', 'averted (vaccine arm)','averted (control)'), col = c('black','gray','blue','red'), 
+                         bty = 'n', pch = 15, cex =  1)
+
     }
     axis(1, at = mids, lab = 1:numClus, lwd = 0)
     axis(1, at = max(tcks) + xbump, lab = c('power'), las = 2, lwd = 0)
@@ -175,11 +183,14 @@ for(showtotalrisk in c(T,F)) {
 ## Figure S5 Exclusion of high risk individuals (conditional risk partitioning)
 
 plunq[lab %in% labsToDo, .(clusSize, lab, power, tcal)]
+plunq[, clusSize:=as.numeric(clusSize)]
+plunq$clusSizeMult <- 1
+plunq[lab=='RCT-gs-rp-maxRR', clusSizeMult := .85]
 
 labsToDo <- c('RCT-gs-rp','RCT-gs-rp-maxRR')
 lenL <- length(labsToDo)
-labsDisplayRaw <-c( 'RCT (risk-prioritized rollout, three analyses)',
-                   'RCT (risk-prioritized rollout, three analyses, exclude highest risk category')
+labsDisplayRaw <-c( 'RCT int. r.p.'
+                   ,'RCT int. r.p. e.h.r')
 labsDisplay <- paste0('(',LETTERS[1:lenL],') ', labsDisplayRaw)
 itmp[armShown=='cont' & lab==labsToDo[2], cols:='purple']
 mcex <- .7
@@ -202,7 +213,7 @@ for(li in 1:lenL) {
     axis(4, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5)*24, line = -.5,  las = 1)
     axis(2, at = ylimavertable[2]*seq(0,1,by=.5), labels=seq(0,1,by=.5), line = -62, las = 1)
     for(ii in 1:numClus) segments(tcks[2*ii-1],0, tcks[2*ii],0)
-if(li==1) legend('top', c('avertable', 'averted (vaccine arm)','averted (control)', 'averted (control with exclusion of high risk)'), col = c('gray','blue','red','purple'), 
+if(li==1) legend('top', c('avertable', 'averted (vaccine arm)','averted (control)', 'averted (control with e.h.r.)'), col = c('gray','blue','red','purple'), 
        bty = 'n', pch = 15, cex =  1)
 }
 axis(1, at = mids, lab = 1:numClus, lwd = 0)
@@ -216,14 +227,14 @@ plunq[lab==labsToDo[1],col:='red']
 plunq[lab==labsToDo[2],col:='purple']
 ## power vs clusSize
 plunq[lab %in% labsToDo, plot(clusSize, power, col = col, type = 'n', xlab = '', ylab = 'power', bty = 'n',las=1, axes=F, ylim = c(.5,.9))]
-plunq[lab %in% labsToDo, points(clusSize, power, col = col, type = 'b', pch = 16), lab]
+plunq[lab %in% labsToDo, points(clusSize*clusSizeMult, power, col = col, type = 'b', pch = 16), lab]
 axis(1, clusSizes)
 axis(2, c(.5,.7,.9), las = 1)
-legend('bottomright', c('high risk included', 'high risk excluded'), col = c('red','purple'), bty = 'n', pch = 16, cex =  1)
+legend('bottomright', c('RCT int. r.p.', 'RCT int. r.p. e.h.r.'), col = c('red','purple'), bty = 'n', pch = 16, cex =  1)
 mtext('(C)', side = 3, line = 0, adj = .01, cex=mcex) 
 ## speed vs clusSize
 plunq[lab %in% labsToDo, plot(clusSize, tcal/7, col = col, type = 'n', xlab = '', ylab = 'duration (weeks)', bty = 'n',las=1, xaxt='n', ylim = c(24,0))]
-plunq[lab %in% labsToDo, points(clusSize, tcal/7, col = col, type = 'b', pch = 16), lab]
+plunq[lab %in% labsToDo, points(clusSize*clusSizeMult, tcal/7, col = col, type = 'b', pch = 16), lab]
 axis(1, clusSizes)
 mtext('(D)', side = 3, line = 0, adj = .01, cex=mcex) 
 par(xpd=T)
@@ -231,7 +242,8 @@ arrows(205,0,205,24, len = .1, code = 1)
 mtext('speed', 4, cex=mcex)
 mtext('individuals per cluster', 1, outer=T, line = -.5, cex = mcex)
 graphics.off() 
- 
+
+
 ## only clusSize=40 has maxRR having significantly different power
 for(cc in plunq[,unique(clusSize)]) {
 print(paste0('clusSize=',cc,' odds ratio confidence interval on power (standard vs ehr):'))
