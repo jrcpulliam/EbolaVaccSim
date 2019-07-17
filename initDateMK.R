@@ -24,11 +24,13 @@ parmsMat <- as.data.table(expand.grid(
     , vaccEff = ves
     , trialStartDate = trialSDseq
     ))
+parmsMat$remProtDel <- T
+parmsMat$remStartFin <- F
 parmsMat$ord <- 'TU'
 parmsMat[trial=='SWCT', ord := 'none']
 parmsMat$simNum <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
-nmtmp <- 'simSL-initD-'
+nmtmp <- 'simSL-initD-remPD-'
 parmsMat$saveNm <- nmtmp
 parmsMat$nsims <- 17 ## 17*12 is ~ 2000 simulations each (2040 but we'll round)
 parmsMat$reordLag <- 14
@@ -56,6 +58,7 @@ addParm <- function(x, parmsMat,ii) {
     return(x)
 }
 
+parmsMat <- parmsMat[trial=='SWCT']
 parmsMat[, length(nboot), trial]
 jbs <- NULL
 jn <- 0

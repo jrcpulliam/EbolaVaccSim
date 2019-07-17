@@ -1,13 +1,13 @@
-
-library(geepack)
+require(gsDesign)
+require(geepack)
 
 ## make the highest hazard uninfected individuals in a vacc and control group be infected to allow
 ## for conservative CI calculation when 0 infections in certain groups
-infBump <- function(parms) {
-    if(parms$verbose==3.9) browser()
+infBump <- function(parms, censorDay=parms$maxDurationDay) {
     if(parms$verbose>0) print('bumping infections to deal with divergence')
     parmsE <- copy(parms)
     parmsE <- within(parmsE, {
+        if(verbose==3.9) browser()
         infecteds <- popH[, list(infected = sum(infectDay!=Inf)), indiv]
         uninfecteds <- infecteds[infected==0, indiv]
         popH$immuneDayThink <- popH[, vaccDay + immunoDelay]
@@ -17,13 +17,13 @@ infBump <- function(parms) {
         if(trial %in% c('RCT','FRCT')) ## active once anyone considered immune in cluster
             popH[, firstActive := min(immuneDayThink), cluster]
         popH$active <- popH[,day>=firstActive]
-        newInfs <- arrange(popH[indiv %in% uninfecteds & active==T], desc(indivHaz))
+        newInfs <- arrange(popH[indiv %in% uninfecteds & active==T & (day+hazIntUnit)<=censorDay], desc(indivHaz))
         contInf <- newInfs[immune==F, list(indiv = indiv[indivHaz==max(indivHaz)], day = day[indivHaz==max(indivHaz)])][1,]
         vaccInf <- newInfs[immune==T & indiv!=contInf[,indiv], 
                            list(indiv = indiv[indivHaz==max(indivHaz)], day = day[indivHaz==max(indivHaz)])][1,]
         newInfs <- rbind(contInf,vaccInf)
-        popH[indiv==newInfs[1,indiv] & day==newInfs[1,day], infectDay := day + 6.9]
-        popH[indiv==newInfs[2,indiv] & day==newInfs[2,day], infectDay := day + 6.9]
+        popH[indiv==newInfs[1,indiv] & day==newInfs[1,day], infectDay := day + hazIntUnit*.99]
+        popH[indiv==newInfs[2,indiv] & day==newInfs[2,day], infectDay := day + hazIntUnit*.99]
         indivInfDays <- popH[infectDay!=Inf & indiv %in% newInfs[,indiv], list(indiv,infectDay)]
         indivInfDays <- arrange(indivInfDays, indiv)
         pop[indiv %in% indivInfDays[,indiv], infectDay:= indivInfDays[,infectDay]]
@@ -140,16 +140,16 @@ doBoot <- function(parms, csd, nboot=200, bump=F, doMods=modsToDo, verbFreqBoot=
         }
 
         bootVee <- data.frame(mean = as.numeric(veeBoot[1])
-                              , lci = apply(veeBoot[-1], 2, function(x) quantile(x,.025,na.rm=T)) ## [-1] exclude real estimate
-                              , uci = apply(veeBoot[-1], 2, function(x) quantile(x,.975,na.rm=T)) 
-                              , p = NA
-                              , mod = paste0('boot',unlist(doMods)), bump = F, err = colSums(is.na(veeBoot)))
+                            , lci = apply(veeBoot[-1], 2, function(x) quantile(x,.025,na.rm=T)) ## [-1] exclude real estimate
+                            , uci = apply(veeBoot[-1], 2, function(x) quantile(x,.975,na.rm=T)) 
+                            , p = NA
+                            , mod = paste0('boot',unlist(doMods)), bump = F, err = colSums(is.na(veeBoot)))
     }else{
         bootVee <- data.frame(mean = as.numeric(veeBoot[1])
-                              , lci = NA
-                              , uci = NA
-                              , p = NA
-                              , mod = paste0('boot',unlist(doMods)), bump = F, err = NA)
+                            , lci = NA
+                            , uci = NA
+                            , p = NA
+                            , mod = paste0('boot',unlist(doMods)), bump = F, err = NA)
     }
     return(bootVee)
 }
@@ -175,21 +175,45 @@ bumpAdjust <- function(vee, csd, bump, nonpar=F) {
     return(vee)
 }
 
+## require(gsDesign)
+## gsDesign(k=3, test.type = 1, alpha = 0.025, beta = .1, delta = 0, timing=1,
+##          sfu =sfHSD, sfupar=-4 ## Hwang-Shih-DeCani alpha-spending functions with O'Brien Fleming-type parameters
+##          )
+
 doCoxME <- function(parms, csd, bump = F) { ## take censored survival object and return vacc effectiveness estimates
     if(parms$verbose==3.1) browser()
     if(parms$verbose>0) print('fitting vanilla coxME')
     mod <- try(coxme(Surv(startDay, endDay, infected) ~ immuneGrp + (1|cluster), data = csd), silent=T)
     if(!inherits(mod, 'try-error')) {
         vaccEffEst <- 1-exp(mod$coef + c(0, 1.96, -1.96)*sqrt(vcov(mod)))
-        pval <- pnorm(mod$coef/sqrt(vcov(mod)), lower.tail = vaccEffEst[1]>0)*2
-        vaccEffEst <- signif(c(vaccEffEst, pval), 3)
+        zval <- mod$coef/sqrt(vcov(mod))
+        pval <- pnorm(zval, lower.tail = vaccEffEst[1]>0)*2
+        vaccEffEst <- signif(c(vaccEffEst, pval, zval), 3)
         if(is.na(vcov(mod)) | vcov(mod)==0) 
             vaccEffEst[2:4] <- NA ## if failing to converge on effect estimate (i.e. 0 variance in beta coefficient)
         vaccEffEst <- data.frame(t(vaccEffEst), 'coxME', bump = bump, err = 0)
-        names(vaccEffEst) <- c('mean','lci','uci','p','mod', 'bump', 'err')
+        names(vaccEffEst) <- c('mean','lci','uci','p','z','mod', 'bump', 'err')
         vaccEffEst <- bumpAdjust(vaccEffEst, csd, bump)
     }else{
-        vaccEffEst <- data.frame(mean=NA, lci=NA, uci=NA, p=NA,  mod='coxME', bump = bump, err = 1)
+        ## ####################################################################################################
+        ## If can't fit coxme &  IFF there is randomization within each cluster (RCT), then
+        ## ignore cluster-effect, using coxph model
+        if(parms$trial %in% c('RCT','FRCT')) {
+            mod <- try(coxph(Surv(startDay, endDay, infected) ~ immuneGrp, data = csd), silent=T)
+            if(!inherits(mod, 'try-error')) {
+                mcoef <- summary(mod)$coef['immuneGrp',]
+                vaccEffEst <- 1-exp(mcoef['coef'] + c(0, 1.96, -1.96)*mcoef['se(coef)'])
+                vaccEffEst <- signif(c(vaccEffEst, mcoef[c('Pr(>|z|)','z')]), 3)
+                vaccEffEst <- data.frame(t(vaccEffEst), 'coxME', bump = bump, err = -1) ## -1 signals no cluster effect
+                names(vaccEffEst) <- c('mean','lci','uci','p','z','mod', 'bump', 'err')
+                vaccEffEst <- bumpAdjust(vaccEffEst, csd, bump)
+                ## ####################################################################################################
+            }else{ ## can't fit either
+                vaccEffEst <- data.frame(mean=NA, lci=NA, uci=NA, p=NA, z = NA, mod='coxME', bump = bump, err = 1)
+            }
+        }else{ ## not randomized w/in cluster & can't use coxph
+            vaccEffEst <- data.frame(mean=NA, lci=NA, uci=NA, p=NA, z = NA, mod='coxME', bump = bump, err = 1)
+        }
     }
     return(vaccEffEst)
 }

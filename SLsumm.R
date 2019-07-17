@@ -1,16 +1,19 @@
 if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
-library(RColorBrewer)
+library(RColorBrewer); library(boot)
 ## Simulate SWCT vs RCT vs CRCT for SL
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
 
-thing <- 'initDateSens'
+thing <- 'SLSimsFinalPTCorr'
 batchdirnm <- file.path('BigResults',thing)
 fls <- list.files(batchdirnm, pattern='.Rdata', full.names = T)
+fls <- fls[grepl('pit', fls)]
 length(fls)
 
-dparms <- c('trial','sdLogIndiv','vaccEff','doSL','propInTrial','nbsize','ord','reordLag','delayUnit','immunoDelay','trialStartDate')
+dparms <- c('trial','sdLogIndiv','vaccEff','doSL','propInTrial','nbsize','ord','reordLag','delayUnit','immunoDelay','trialStartDate'
+            , 'weeklyDecay', 'cvWeeklyDecay', 'cvClus', 'cvClusTime', 'remStartFin', 'remProtDel'
+            )
 nbatch <- length(fls)
 finInfoList <- finModList <- stopList <- parmsList <- list(NULL)
 for(ii in 1:nbatch) {
@@ -21,12 +24,13 @@ for(ii in 1:nbatch) {
     if(exists('sim')) {
         sim$parms[['trialStartDate']] <- as.character(sim$parms[['trialStartDate']])
         parmsList[[ii]] <- data.frame(nbatch = ii, t(unlist(sim$parms[dparms])))
-         tmpMod <- data.frame(nbatch = ii, sim$sim$finMods)
+        tmpMod <- data.frame(nbatch = ii, sim$sim$finMods)
         finModList[[ii]] <- merge(tmpMod, sim$sim$finInfo, by = 'sim')
     }
 }
 
-parmsDT <- rbindlist(parmsList)
+parmsDT <- rbindlist(parmsList, use.names = T, fill = T)
+
 finTrials <- merge(rbindlist(finModList), parmsDT, by = c('nbatch'))
 finTrials[,vaccEff := levels(vaccEff)[vaccEff]]
 
@@ -36,10 +40,11 @@ finTrials[, length(lci), list(propInTrial, mod)]
 finTrials[mod=='coxME' & is.na(p), err:=1] ## sometimes cox returns NaNs, or partial NA's for certain values
 finTrials$vaccEff <- as.numeric(finTrials$vaccEff)
 
-## Simulations with less than 10 cases are considered to not have any power
-finTrials$tooSmall <- finTrials[, (caseCXimmGrpEnd + caseVXimmGrpEnd) < 10]
-finTrials[tooSmall, c('vaccGood','vaccBad','stopped') := F]
-finTrials[tooSmall, c('lci','uci','p') := list(-Inf,1,1)]
+## ## Simulations with less than 10 cases are considered to not have any power
+## finTrials$tooSmall <- finTrials[, (caseCXimmGrpEnd + caseVXimmGrpEnd) < 10]
+## finTrials[tooSmall==T, c('vaccGood','vaccBad','stopped') := F]
+## finTrials[tooSmall==T, c('lci','uci','p') := list(-Inf,1,1)]
+    
 ## Determine if stopped
 finTrials[grepl('boot',mod), stopped := lci > 0 | uci < 0]
 finTrials[grepl('relab',mod), stopped := p < .025]
@@ -61,11 +66,13 @@ front <- c('mod','stopped','vaccGood','vaccBad')
 setcolorder(finTrials, c(front, setdiff(names(finTrials), front)))
 back <- c('nbatch','sim')
 setcolorder(finTrials, c(setdiff(names(finTrials), back), back))
+
 save(finTrials, file=file.path('BigResults', paste0(thing, '.Rdata')))
 
 load(file=file.path('BigResults',paste0(thing, '.Rdata')))
 
-powFin <- summarise(group_by(finTrials, vaccEff, trial, propInTrial, ord, delayUnit, mod, immunoDelay,trialStartDate)
+powFin <- summarise(group_by(finTrials, vaccEff, trial, propInTrial, ord, delayUnit, mod, immunoDelay,trialStartDate
+                             , weeklyDecay, cvWeeklyDecay, cvClus, remProtDel, remStartFin) #, cvClusTime)
                     , nsim = length(stopped)
                     , stopped = mean(stopped)
                     , vaccGood = mean(vaccGood)
@@ -123,4 +130,23 @@ save(pf, file=file.path('Results',paste0('powFin_',thing,'.Rdata')))
 ## to delete a range of jobs
 ## qdel echo `seq -f "%.0f" 2282389 2282404`
 
+## Combine results from several analysis for plotting
+thing <- 'SLSimsFinal'
+load(file=file.path('Results',paste0('powFin_',thing,'.Rdata')))
+pfOld <- pf
+pfOld$remStartFin <- pfOld$remProtDel <- as.logical(NA)
+pfOld[trial=='SWCT', c('remStartFin','remProtDel') := F]
 
+thing <- 'SLSimsFinalPTCorr' ## adding results with new SWCT pt calculations
+load(file=file.path('Results',paste0('powFin_',thing,'.Rdata')))
+pfNew <- pf
+arrange(pfNew[immunoDelay==21, length(design), list(trial, remProtDel, remStartFin,propInTrial,immunoDelay)], propInTrial)
+
+thing <- 'SWCTkeepStartFin' ## adding results with new SWCT pt calculations
+load(file=file.path('Results',paste0('powFin_',thing,'.Rdata')))
+pfSF <- pf
+arrange(pfSF[immunoDelay==21, length(design), list(trial, remProtDel, remStartFin,propInTrial,immunoDelay)], propInTrial)
+
+pf <- rbindlist(list(pfOld, pfNew, pfSF), use.names=T, fill=T)
+arrange(pf[trial=='SWCT' & immunoDelay==21, length(mean), list(trial, remProtDel,remStartFin,propInTrial)], propInTrial)
+save(pf, file=file.path('Results','powFin_All.Rdata'))

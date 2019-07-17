@@ -3,16 +3,17 @@ if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVa
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R'), source)
  
-batchdirnm <- file.path('BigResults','SLSimsFinal')
+batchdirnm <- file.path('BigResults','SLSimsFinalPTCorr')
 routdirnm <- file.path(batchdirnm,'Routs')
 if(!file.exists(batchdirnm)) dir.create(batchdirnm)
 if(!file.exists(routdirnm)) dir.create(routdirnm)
-tnms <- c('SWCT','RCT','FRCT')#,'CRCT')
+tnms <- c('SWCT')#,'RCT','FRCT')#,'CRCT')
 numEach <- 12*10
 
 ves <- c(0, seq(.5, .9, by = .2))
 ## ves <- 0
-pits <- c(.025, .05, .075, .1)
+##pits <- c(.025, .05, .075, .1)##
+pits <- c(.15,.2,.3)
 parmsMat <- as.data.table(expand.grid(
     seed =  1:numEach
     , trial = tnms
@@ -23,12 +24,14 @@ parmsMat <- as.data.table(expand.grid(
     , immunoDelay = c(5, 21)
     , vaccEff = ves
     ))
+parmsMat$remStartFin <- TRUE ##***
+parmsMat$remProtDel <- TRUE
 parmsMat <- parmsMat[!(trial=='SWCT' & (delayUnit==0 | ord=='TU'))] ## SWCT must have delay and cannot be ordered
 parmsMat <- parmsMat[!(delayUnit==0 & ord=='TU')] ## ordering is meaningless with simultaneous instant vacc
 parmsMat <- parmsMat[ !(delayUnit==0 & trial=='FRCT')]  ## FRCT = RCT when delayUnit=0
 parmsMat$simNum <- 1:nrow(parmsMat)
 parmsMat$batchdirnm <- batchdirnm
-nmtmp <- 'simSL-'
+nmtmp <- 'simSL-bigPit-'
 parmsMat$saveNm <- nmtmp
 parmsMat$nsims <- 17 ## 17*12 is ~ 2000 simulations each (2040 but we'll round)
 parmsMat$reordLag <- 14
@@ -56,20 +59,23 @@ addParm <- function(x, parmsMat,ii) {
     return(x)
 }
 
+parmsMat <- parmsMat[trial=='SWCT']
 parmsMat <- parmsMat[!(propInTrial!=.05 & immunoDelay!=21)]
 parmsMat[, length(nboot), propInTrial]
 parmsMat[, length(nboot), vaccEff]
 parmsMat[, length(nboot), list(vaccEff,propInTrial)]
 parmsMat[, length(nboot), list(immunoDelay,vaccEff,propInTrial)]
+nrow(parmsMat)
 jbs <- NULL
 immDs <- parmsMat[,unique(immunoDelay)]
 jn <- 0
-for(dd in 1:length(immDs)) {
-    for(vv in 1:length(ves)) {
-        for(pp in 1:length(pits)) {
-            parmsMatDo <- parmsMat[vaccEff==ves[vv] & propInTrial==pits[pp] & immunoDelay==immDs[dd]]
+
+## for(dd in 1:length(immDs)) {
+##for(vv in 1:length(ves)) {
+        ## for(pp in 1:length(pits)) {
+            parmsMatDo <- parmsMat#[vaccEff==ves[vv]]# & propInTrial==pits[pp] & immunoDelay==immDs[dd]]            
             jn <- jn+1
-            jbs <- rbind(jbs, data.table(jn=jn, vaccEff=ves[vv], propInTrial=pits[pp], immunoDelay=immDs[dd]))
+##            jbs <- rbind(jbs, data.table(jn=jn, vaccEff=ves[vv]))#, propInTrial=pits[pp], immunoDelay=immDs[dd]))
             sink(paste0('SLsims',jn,'.txt'))
             for(ii in parmsMatDo$simNum) {
                 cmd <- "R CMD BATCH '--no-restore --no-save --args"
@@ -80,8 +86,8 @@ for(dd in 1:length(immDs)) {
                 cat('\n')              # add new line
             }
             sink()
-        }
-    }
-}
+##        }
+##     }
+## }
 
 jbs

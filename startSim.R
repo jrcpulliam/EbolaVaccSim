@@ -2,36 +2,40 @@ if(grepl('stevebe', Sys.info()['nodename'])) setwd('~/Documents/R Repos/EbolaVac
 if(grepl('stevebellan', Sys.info()['login'])) setwd('~/Documents/R Repos/EbolaVaccSim/')
 if(grepl('tacc', Sys.info()['nodename'])) setwd('/home1/02413/sbellan/VaccEbola/')
 ## Simulate SWCT vs RCT vs CRCT for SL
-sapply(c('simFuns.R','AnalysisFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R'), source)
+sapply(c('simFuns.R','AnalysisFuns.R', 'MungeFuns.R','CoxFxns.R','EndTrialFuns.R','ExpFit.R','equipoiseFuns.R'), source)
 
 args <- (commandArgs(TRUE)) ## load arguments from R CMD BATCH
 print(args)
-if(length(args)>0)  {## Then cycle through each element of the list and evaluate the expressions.
+if(length(args)>0)  { ## Then cycle through each element of the list and evaluate the expressions.
     print(paste0('loading in ', args, ' from R CMD BATCH'))
     for(i in 1:length(args)) {
         eval(parse(text=args[[i]]))
     }
 }else{
-    parmArgs <- list(trial='RCT', vaccEff = 0, weeklyDecay = 1, weeklyDecayVar = 0, varClus = 0, sdLogIndiv=0, small=F)
-    nsims <- 1
-    seed <- 1
-    simNum <- 99999
-    saveNm <- 'simFPX-'
+seed=120;trial="RCT";ord="TU";propInTrial=0.1;sdLogIndiv=1;delayUnit=7;immunoDelay=21;vaccEff=0.7;remStartFin="TRUE";remProtDel="TRUE";simNum=2880;batchdirnm="BigResults/gsRCT1";saveNm="gsRCT";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"; gs=T
 }
 
-## seed=1;trial="RCT";ord="none";propInTrial=0.05;sdLogIndiv=1;delayUnit=0;immunoDelay=5;vaccEff=0.7;simNum=11641;batchdirnm="BigResults/SLSimsFinal";saveNm="simSL-";nsims=1;reordLag=14;nboot=20;trialStartDate="2015-02-18"
+## hazType='Phenom'
+## mu <- .15*yearToDays
+## weeklyDecay <- .9
+## cvWeeklyDecay <- .01
+## cvClus <- .01
+## cvClusTime <- .01
+## gs <- T
+## nsims <- 1#2000
+## RCTendOption <- 3
+## vaccEff <- 0
+## doCFs <- T
 
 verbose <- 1
 parmArgs <- subsArgs(as.list(environment()), makeParms)
 print(parmArgs)
 parms <- do.call(makeParms, parmArgs)
 saveFl <- file.path(batchdirnm, paste0(saveNm, sprintf("%06d", simNum),'.Rdata'))
-modsToDo <- list('CoxME','GLMclus','GLMFclus') ##,'GLMMclusBy') #'GLMMclusFr')
 
-system.time(sim <- simNtrials(seed=seed, parms=parms, N=nsims, flnm=saveFl, verbFreq=10))
+system.time(sim <- simNtrials(seed=seed, parms=parms, N=nsims, verbFreq=10))
 sim <- list(sim=sim, parms=parms, seed=seed, simNum=simNum)
 save(sim, file = saveFl)
 
 rm(list=ls(all=T))
 gc()
-

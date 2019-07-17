@@ -1,245 +1,250 @@
-## Construct survival data from waiting times
-makeSurvDat <- function(parms,  whichDo='pop', browse=F) within(parms, {
-    if(browse) browser()
-    popTmp <- get(whichDo)
-    popTmp$immuneDayThink <- popTmp[,vaccDay] + immunoDelayThink ## vaccine refractory period ASSUMED in analysis
-    ## pre-immunity table
-    stPre <- copy(popTmp) # st = survival table
-    stPre$startDay <- 0
-    stPre$endDay <- stPre[, pmin(immuneDayThink, infectDay)]
-    stPre$infected <- stPre[ ,as.numeric(infectDay <= immuneDayThink)]
-    stPre$immuneGrp <-  0     ## immuneGrp is variable used for analysis, not omnietient knowledge of vaccination/immune status
-    stPre <- stPre[,list(indiv, cluster, pair, idByClus, vaccDay, immuneDay, 
-                         immuneDayThink, startDay, endDay, infectDay, infected, immuneGrp)]
-    ## post-immunity table
-    stPost <- copy(popTmp)[infectDay > immuneDayThink,]
-    stPost$startDay <- stPost[,immuneDayThink]
-    stPost$endDay   <-  stPost[,infectDay]
-    stPost$infected <- 1 ## everyone gets infected eventually, but will truncate this in a separate function
-    stPost$immuneGrp <- 1
-    stPost <- stPost[,list(indiv, cluster, pair, idByClus, vaccDay, immuneDay, 
-                           immuneDayThink, startDay, endDay, infectDay,  infected, immuneGrp)]
-    nmSt <- paste0('st', sub('pop','',whichDo)) ## makes EVpop into EVst for example
-    assign(nmSt, rbind(stPre, stPost)) ## combine tables
-    rm(stPre, stPost, popTmp, nmSt)
-}) ## careful with modifying parms, st depends on analysis a bit too (immunoDelayThink), so we can have different st for same popH
 
-## Restructure for GEE/GLMM with weekly observations of each cluster.
-makeGEEDat <- function(parms, whichDo='popH') within(parms, {
-    if(verbose ==1.5) browser()
-    popHTmp <- get(whichDo)
-    popHTmp$immuneDayThink <- popHTmp[,vaccDay] + immunoDelayThink ## vaccine refractory period ASSUMED in analysis
-    popHTmp$infectDayRCens <- popHTmp$infectDay
-    popHTmp[infectDay==Inf, infectDayRCens := NA]
-    popHTmp$immuneGrp <- 0
-    popHTmp[day >= immuneDayThink, immuneGrp := 1]
-    popHTmp$firstActive <- 0
-    if(trial=='CRCT' & ord!='none') ## active once anyone considered immune in matched cluster pair
-        popHTmp[, firstActive := min(immuneDayThink), by = pair]
-    if(trial %in% c('RCT','FRCT')) ## active once anyone considered immune in cluster
-        popHTmp[, firstActive := min(immuneDayThink), cluster]
-    popHTmp$active <- popHTmp[,day>=firstActive]
-    clusD <- popHTmp[active==T, list(cases = sum(!is.na(infectDayRCens))), list(cluster, day, immuneGrp)]
-    clusD <- clusD[order(cluster, day)]
-    clusD <- mutate(group_by(clusD, cluster), atRisk = clusSize - c(0, cumsum(cases[-length(cases)])))
-    nmSt <- paste0('clusDat', sub('popH','',whichDo)) ## makes EVpop into EVst for example
-    assign(nmSt, clusD) ## combine tables
-    rm(popHTmp, clusD, nmSt)
-})
-
-## Select subset of survival table to analyze
-activeFXN <- function(parms, whichDo='st', browse=F) within(parms, { 
-    if(browse) browser()
-    ## for SWCT or unmatched CRCT always include all clusters in analysis because unvaccinated
-    ## clusters are still considered to provide useful information from baseline
-    stA <- copy(get(whichDo))
-    stA$firstActive <- 0
-    if(!includeAllControlPT) { ## remove person-time observed prior to post-refractory period from data
-        if(trial=='CRCT' & ord!='none') ## active once anyone considered immune in matched cluster pair
-            stA[, firstActive := min(immuneDayThink), by = pair]
-        if(trial %in% c('RCT','FRCT')) ## active once anyone considered immune in cluster
-            stA[, firstActive := min(immuneDayThink), by = cluster]
-    }
-    stA <- stA[!endDay <= firstActive] ## remove inactive observation intervals
-    stA[startDay < firstActive, startDay := firstActive] ## set accumulation of person time as when the cluster/pair is active
-    nmStA <- paste0('stActive', sub('st','',whichDo)) ## makes EVpop into EVst for example
-    assign(nmStA, stA)
-    rm(stA, nmStA)
-})
-## p1 <- simTrial(makeParms('RCT', ord='BL', small=F), br=F)
-## s1 <- makeSurvDat(p1)
-## s1 <- activeFXN(s1)
-## s1$st[idByClus%in%1:2, list(indiv, cluster, pair, idByClus,immuneDayThink, startDay,endDay)]
-
-## Take a survival data from above function and censor it by a specified time in months
-censSurvDat <- function(parms, censorDay = parms$maxInfectDay+parms$hazIntUnit, whichDo = 'stActive') with(parms, {
-    if(verbose==2.7) browser()
-    stTmp <- copy(get(whichDo))
-    intervalNotStarted <- stTmp[,startDay] > censorDay
-    stTmp <- stTmp[!intervalNotStarted,] 
-    noInfectionBeforeCensor <- stTmp[,endDay] > censorDay
-    stTmp[noInfectionBeforeCensor, infected:=0]
-    stTmp[noInfectionBeforeCensor, endDay:=censorDay]
-    stTmp[,perstime := (endDay-startDay)]
-    stTmp <- stTmp[perstime > 0,] 
-    return(stTmp)
-})
-
-summTrial <- function(st) list(summarise(group_by(st, cluster), sum(infected))
-                               , summarise(group_by(st, cluster, immuneGrp), sum(infected))
-                               , summarise(group_by(st, immuneGrp), sum(infected))
-                               )
-
-## Check whether stopping point has been reached at intervals
-seqStop <- function(parms, start = parms$immunoDelayThink + 14, checkIncrement = 7, minCases = 15,
-                    fullSeq = F, maxDay = parms$maxInfectDay) {
-    trialOngoing <- T
-    checkDay <- start
-    first <- T
-    while(trialOngoing) {
-        if(parms$verbose>1) browser()
-        if(parms$verbose>0) print(checkDay)
-        tmp <- censSurvDat(parms, checkDay)
-        vaccEffEst <- try(doCoxPH(tmp), silent=T) ## converting midDay to days from months
-        ## if cox model has enough info to converge check for stopping criteria
-        if(!inherits(vaccEffEst, 'try-error') & !is.nan(vaccEffEst['p'])) { 
-            newout <- compileStopInfo(checkDay, vaccEffEst, tmp) 
-            if(first) out <- newout else out <- rbind(out, newout)
-            first <- F
-            numCases <- newout['caseCXimmGrpEnd'] + newout['caseVXimmGrpEnd']
-            if(!fullSeq & !is.na(newout['p']) & numCases > minCases)
-                if(newout['p'] < .05)
-                    trialOngoing <- F
+gsTimeCalc <- function(parms) {
+    parms <- within(parms, {
+        if(gs) { ## prepare group sequential analysis times
+            if(verbose==2.89) browser()
+            ## # events at which analyses occur
+            intTab <- data.table(events = round(gsBounds$timing * maxInfo))
+            ## Get vector of event (infection) timings
+            infDays <- stActive$infectDay[stActive$infectDay!=Inf]
+            infDays <- infDays[order(infDays)]
+            ## Calculate interim analyses times
+            intTab[, tcal:= ceiling(infDays[events])] ## calendar time (as opposed to information time)
+            intTab <- intTab[!is.na(tcal)]
+            intTab$trigger <- 'events'
+            intTab <- intTab[tcal <= maxDurationDay]
+            ## If don't do all analyses, add one more at maximum trial duration
+            if(nrow(intTab) < gsBounds$k) intTab <- rbind(intTab, data.table(events=NA, tcal=maxDurationDay, trigger='end time'))
+            intTab
+            if(nrow(intTab) < gsBounds$k) { ## if don't have full # of analyses, must readjust design to spend all remaining alpha at maximum trial duration
+                gsDesArgsAdj <- within(gsDesArgs, {
+                    k <- nrow(intTab)
+                    timing <- c(timing[k-1],1)
+                })
+                if(gsDesArgsAdj$k>1) { ## if any interims
+                    gsBoundsAdj <- do.call(gsDesign, gsDesArgsAdj)
+                    intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
+                }else{ ## otherwise non-sequential
+                    intTab <- data.table(events = NA, tcal = maxDurationDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
+                }
+            }else{ ## use original boundsQ
+                gsBoundsAdj <- gsBounds
+                intTab <- cbind(intTab, upperZ = gsBoundsAdj$upper$bound, lowerZ = gsBoundsAdj$lower$bound)
+            }
+            rm(maxInfo, infDays)
+        }else{ ## non-sequential design
+            intTab <- data.table(events = NA, tcal = maxDurationDay, trigger = 'end time', upperZ = qnorm(.975), lowerZ = qnorm(.025) )
         }
-        checkDay <- checkDay + 7
-        if(checkDay > maxDay) trialOngoing <- F
-    }
-    rownames(out) <- NULL
-    out <- as.data.table(out)
-    parms$weeklyAns <- out
-    parms$endTrialDay <- tail(out$stopDay,1)
-    parms$vaccEffEst <- vaccEffEst
+        intTab$contCases <- intTab$vaccCases <- intTab$obsZ <- as.numeric(NA)
+        intTab$vaccGood <- intTab$vaccBad <- as.logical(NA)
+        if(verbose>3) print(intTab)
+    })
     return(parms)
 }
 
-testZeros <- function(parmsTmp) {
-    tmpCSD <- censSurvDat(parmsTmp)
+testZeros <- function(tmpCSD) {
     casesXgroup <- tmpCSD[,list(cases = sum(infected)), immuneGrp]
     return(0 %in% casesXgroup[,cases])
 }
 
-compileStopInfo <- function(minDay, tmp, verbose=0) {
+getEndResults <- function(parms, bump = T) {
+    if(verbose==2.93) browser()
+    ## initialize
+    trialStopped <- F
+    analysisNum <- 0
+    parms$intStats <- list()
+    ## loop over sequential analyses (only do loop once for non-sequential analysis)
+    while(!trialStopped) { 
+        analysisNum <- analysisNum+1 ## iterate
+        if(verbose>1) print(paste0('interim analysis ', analysisNum, ' of ', nrow(parms$intTab)))
+        analysisDay <- parms$intTab[analysisNum, tcal]
+        tmpCSDE <- tmpCSD <- censSurvDat(parms, censorDay = analysisDay)
+        if(verbose>2) print(tmpCSD[, list(numInfected=sum(infected)), immuneGrp])
+        ## Bump in case of 0-event arms
+        if(!testZeros(tmpCSD)) { ## >0 events in each arm
+            parmsE <- parms
+            parmsE$bump <- F
+        }else{ ## at least 1 arm has 0 events
+            parmsE <- infBump(parms, censorDay=analysisDay)
+            parmsE$bump <- T
+            tmpCSDE <- censSurvDat(parmsE, censorDay = analysisDay)
+            if(verbose>2) print(tmpCSDE[, list(numInfected=sum(infected)), immuneGrp])
+        }
+        parms <- within(parms, {
+            ## Call analysis functions
+            intStats[[analysisNum]] <- doStats(parmsE, tmpCSDE, analysisNum=analysisNum)
+            ## Use negative z, since we think about crossing upper Z threshold as identifying
+            ## positive vaccine, yet HR < 1 is equivaleynt.  use first StatsFxns item to determine stopping
+            ## (usually CoxME), could vectorize this later but confusing to have different vaccination rollout
+            ## strategies for one simulation due to different stopping times by different analyses
+
+            intTab[analysisNum, obsZ:= - intStats[[analysisNum]][sf==StatsFxns[1], z]]
+            intStats[[analysisNum]] <- cbind(intStats[[analysisNum]], analysis = analysisNum, numAnalyses = nrow(parms$intTab), intTab[analysisNum])
+            ## Even for non-GS analyses, using beta/se = Z for significance testing, equivalent to p value from CoxPH
+            intStats[[analysisNum]][, vaccGood :=  intTab[analysisNum, obsZ > upperZ] ]
+            intStats[[analysisNum]][, vaccBad :=  intTab[analysisNum, obsZ < lowerZ] ]
+            intStats[[analysisNum]][, contCases := tmpCSD[immuneGrp==0,sum(infected)]]
+            intStats[[analysisNum]][, vaccCases := tmpCSD[immuneGrp==1,sum(infected)]]
+        })
+        earlyStop <- parms$intStats[[analysisNum]][, vaccGood | vaccBad]
+        ## Determine whether trial stopped for boundary crossing or last analysis
+        if(earlyStop | analysisNum==nrow(parms$intTab)) trialStopped <- T
+    }
+    parms <- within(parms, {
+        ## Make intStats into one data table
+        if(gsDesArgs$k>1) {
+            intStats <- rbindlist(intStats)
+        }else{
+            intStats <- intStats[[1]]
+        }
+        if(tail(intStats[, vaccGood | vaccBad],1)) {
+            endTrialDay <- tail(intStats$tcal, 1) ## when trial stopped (two-sided)
+            firstVaccDayAfterTrialEnd <- min(daySeqLong[daySeqLong>endTrialDay])
+        }else{
+            endTrialDay <- maxDurationDay ## or maximum duration
+        }
+    })
+    return(parms)
+}
+
+
+doStats <- function(parmsE, tmpCSDE, analysisNum=1) {
+    with(parmsE, {
+        if(verbose==2.94) browser()
+        vEEs <- list()
+        length(vEEs) <- length(StatsFxns)
+        for(sf.ind in 1:length(StatsFxns)) {
+            tempsf <- get(StatsFxns[sf.ind])
+            argList <- list(parms=parmsE, csd=tmpCSDE, bump=parmsE$bump, nboot=parmsE$nboot)
+            argList <- subsArgs(argList, tempsf)
+            vEEs[[sf.ind]] <- do.call(tempsf, args = argList)
+        }
+        tmpStat <- rbindlist(vEEs)
+        tmpStat$sf <- StatsFxns
+        return(tmpStat)
+    })
+}
+## StatsFxns <- c('doCoxMe','doGLMFclus','doGMMclus','doGLMclus','doRelabel','doBoot')
+
+compileStopInfo <- function(atDay, tmp, verbose=0) {
     if(verbose==4) browser()
-    out <- data.table(stopDay=minDay
-                      , caseCXimmGrpEnd = tmp[immuneGrp==0, sum(infected)]
-                      , caseVXimmGrpEnd = tmp[immuneGrp==1, sum(infected)]
-                      , hazCXimmGrpEnd = tmp[immuneGrp==0, sum(infected)/sum(perstime)]
-                      , hazVXimmGrpEnd = tmp[immuneGrp==1, sum(infected)/sum(perstime)]
-                      , ptRatioCVXimmGrpEnd = tmp[immuneGrp==0, sum(perstime)] / tmp[immuneGrp==1, sum(perstime)]
+    out <- data.table(atDay=atDay
+                    , caseC = tmp[immuneGrp==0, sum(infected)]
+                    , caseV = tmp[immuneGrp==1, sum(infected)]
+                    , hazC = tmp[immuneGrp==0, sum(infected)/sum(perstime)]
+                    , hazV = tmp[immuneGrp==1, sum(infected)/sum(perstime)]
+                    , ptRatioCV = tmp[immuneGrp==0, sum(perstime)] / tmp[immuneGrp==1, sum(perstime)]
                       )
     out <- as.data.frame(out)
     return(out)
 }
 
-getEndResults <- function(parms, bump = T) {
-    if(!testZeros(parms)) {
-        parmsE <- parms
-        parmsE$bump <- F
-    }else{
-        parmsE <- infBump(parms)
-        parmsE$bump <- T
+finInfoFxn <- function(parms) {
+    tempFXN <- function(atDay, whichDo, verbose=parms$verbose)
+        compileStopInfo(tmp=censSurvDat(parms, censorDay=atDay, whichDo=whichDo), 
+                        atDay=atDay, verbose=verbose)
+    if(!parms$doCFs) { ## factuals
+        compTab <- data.table(atDay = with(parms, c(endTrialDay, trackUntilDay))[c(1,1,2,2)]
+                            , whichDo = c('stActive', 'st','stEV', 'st')
+                            , lab = c('analyzed','all','allFinalEV','allFinal_noEV')
+                            , cf = F
+                              )
+        for(ii in 1:nrow(compTab)) {
+            finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
+            if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+        }
+        finInfo$cat <- compTab$lab
+    }else{ ## for counterfactuals
+        compTab <- data.table(atDay = parms$trackUntilDay
+                            , whichDo = c('stNT', 'stVR')
+                            , lab = c('allFinal_NT', 'allFinal_VR')
+                            , cf = T
+                              )
+        for(ii in 1:nrow(compTab)) {
+            finInfoTmp <- do.call(tempFXN, args = as.list(compTab[ii, list(atDay, whichDo)]))
+            if(ii==1) finInfo <- finInfoTmp else finInfo <- rbind(finInfo, finInfoTmp)
+        }
+        finInfo$cat <- compTab$lab
     }
-    tmpCSDE <- tmpCSD <- censSurvDat(parms)
-    if(testZeros(parms))  tmpCSDE <- censSurvDat(parmsE)
-    within(parmsE, {
-        if(verbose==2.9) browser()
-        vaccEE_ME <- doCoxME(parmsE, tmpCSDE, bump = bump)
-        ## vaccEE_GEEclusAR1 <- doGEEclusAR1(clusDat, csd=tmpCSDE, bump = bump)
-        ## vaccEE_GLMMclus <- doGLMMclus(parmsE,, csd=tmpCSDE, bump = bump)
-        vaccEE_GLMclus <- doGLMclus(parmsE, csd=tmpCSDE, bump = bump)
-        vaccEE_GLMFclus <- doGLMFclus(parmsE, csd=tmpCSDE, bump = bump)
-        vaccEE_MErelab <- doRelabel(parms, csd=tmpCSD, bump=F, nboot=nboot, verbFreqRelab=10)
-        vaccEE_MEboot <- doBoot(parms, csd=tmpCSD, bump=F, nboot=nboot, verbFreqBoot=10)
-        vEEs <- list(vaccEE_ME
-                     ## , vaccEE_GLMMclus
-                     , vaccEE_GLMclus
-                     , vaccEE_GLMFclus
-                     ## , vaccEE_GEEclusAR1
-                     , vaccEE_MEboot
-                     , vaccEE_MErelab
-                     )
-        finMods <- rbindlist(vEEs)
-        finInfo <- compileStopInfo(tmp = tmpCSD, minDay=maxInfectDay,  verbose=verbose)
-        rm(vaccEE_ME, vaccEE_MEboot, vaccEE_MErelab
-           ## , vaccEE_GEEclusAR1
-           ## , vaccEE_GLMMclus 
-           , vaccEE_GLMFclus , vaccEE_GLMclus
-           , vEEs
-           )
-        return(list(finInfo=finInfo, finMods=finMods))
-    })
+    finInfo <- as.data.table(finInfo)[order(atDay)]
+    ## vaccEff estimate should roughly equate to 
+    ## 1-finInfo[1,hazV/hazC]
+    finInfo$caseTot <- finInfo[,caseC+caseV]
+    setcolorder(finInfo, c('cat','atDay','caseTot','caseC','caseV','hazC','hazV','ptRatioCV'))
+    parms$finInfo <- finInfo
+    return(parms)
 }
 
-simNtrials <- function(seed = 1, parms=makeParms(), N = 2, returnAll = F,
-                       doSeqStops = F, showSeqStops = F, flnm='test', verbose=1, verbFreq=10) {
+simNtrials <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
     set.seed(seed)
-    caseXVaccRandGrpList <- caseXPT_ImmuneList <- weeklyAnsList <- list()
-    length(caseXVaccRandGrpList) <- length(caseXPT_ImmuneList) <- length(weeklyAnsList) <- N
-    finInfo <- finMods <- stopPoints <- data.frame(NULL)
+    finInfo <- finMods <- data.frame(NULL)
     for(ss in 1:N) {
-        if(verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
-        if(verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
-        if(verbose==2) browser()
+        if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
+        if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
+        if(parms$verbose==2) browser()
         res <- simTrial(parms)
         res <- makeSurvDat(res)
         res <- makeGEEDat(res)
         res <- activeFXN(res)
+        res <- gsTimeCalc(res)
+        ## plotSTA(res$stActive) ## look at person-time for each data structure
+        ## plotClusD(res$clusD)
         res <- getEndResults(res)
-        finTmp <- data.frame(sim = ss, res$finMods)
+        res <- endT(res)
+##      res <- cfSims(res)
+        res <- finInfoFxn(res)
+        ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
+        finTmp <- data.table(sim = ss, res$intStats[analysis==max(res$intStats$analysis)]) 
         finMods <- rbind(finMods, finTmp)
-        finITmp <- data.frame(sim = ss, res$finInfo)
+        finITmp <- data.table(sim = ss, res$finInfo)
         finInfo <- rbind(finInfo, finITmp)
-        if(doSeqStops) {
-            res <- seqStop(res)
-            ## if(showSeqStops) {
-            ##     resfull <- seqStop(res, fullSeq = T)
-            ##     showSeqStop(resfull)
-            ## }
-            res <- endT(res)
-            res <- makeCaseSummary(res)
-            stopPt <- as.data.frame(tail(res$weeklyAns,1)) ## active cases by immmune grouping at time of case at end of trial
-            stopPt <- with(res, {
-                cbind(stopPt
-                      , caseCXrandFinA = casesXVaccRandGrp[type=='EVstActive', contCases] ## active cases by vaccination randomization group at final
-                      , caseVXrandFinA = casesXVaccRandGrp[type=='EVstActive', vaccCases]
-                      , hazCXrandFinA = casesXVaccRandGrp[type=='EVstActive', contCases/contPT]/yearToDays
-                      , hazVXrandFinA = casesXVaccRandGrp[type=='EVstActive', vaccCases/vaccPT]/yearToDays
-                      , caseCXrandFin = casesXVaccRandGrp[type=='EVst', contCases]         ## total cases by vaccination randomization group at final
-                      , caseVXrandFin = casesXVaccRandGrp[type=='EVst', vaccCases]
-                      , hazCXrandFin = casesXVaccRandGrp[type=='EVst', contCases/contPT]/yearToDays
-                      , hazVXrandFin = casesXVaccRandGrp[type=='EVst', vaccCases/vaccPT]/yearToDays
-                      )
-            })
-            stopPoints <- rbind(stopPoints, stopPt)
-        }
-        if(returnAll) {
-            weeklyAnsList[[ss]] <- as.data.frame(res$weeklyAns)
-            caseXVaccRandGrpList[[ss]] <- as.data.frame(res$casesXVaccRandGrp)
-            caseXPT_ImmuneList[[ss]] <- as.data.frame(res$casesXPT_Immune)
-        }
+        ## res <- equiCalc(res)
         rm(res)
         gc()
     }
-    if(returnAll)
-        return(list(
-            stopPoints = stopPoints
-            , weeklyAnsList = weeklyAnsList
-            , caseXVaccRandGrpList = caseXVaccRandGrpList
-            , caseXPT_ImmuneList = caseXPT_ImmuneList
-            , finPoint=finPoint
-            ))
-    if(!returnAll)
-        return(list(stopPoints=stopPoints, finMods=finMods, finInfo=finInfo))
+        return(list(finMods=finMods, finInfo=finInfo))
 }
 
+## Simulate counterfactuals, similar to above but no analyses. Only
+## tracking infections for No Trial & Vaccine Rollout
+## coutnerfactuals. Do more than one simInfection for each population.
+simN_CFs <- function(seed = 1, parms=makeParms(), N = 2, returnInfTimes = T, verbFreq=10) {
+    set.seed(seed)
+    finInfo <- data.frame(NULL)
+    InfTimesLs <- NULL
+    for(ss in 1:N) {
+        if(parms$verbose>0 & (ss %% verbFreq == 0)) print(paste('on',ss,'of',N))
+        if(parms$verbose>.5 & (ss %% 1 == 0)) print(paste('on',ss,'of',N))
+        if(parms$verbose==2) browser()
+        res <- simTrial(parms)
+        res <- cfSims(res, seed=seed)
+        browser()
+        res$doCFs <- T
+        res <- finInfoFxn(res)
+        ## compile results from the final interim analysis (or all statistical analyses for a single fixed design)
+        finITmp <- data.table(sim = ss, res$finInfo)
+        finInfo <- rbind(finInfo, finITmp)
+        ## Infection time list (in case we want to compare # of infections by certain time,
+        ## i.e. endTrialDay, which differs across simulations)
+        if(returnInfTimes) {
+            res <- compInfTimes(res)
+            InfTimesLs <- c(InfTimesLs, res$InfTimes)
+        }
+        rm(res); gc()
+    }
+    names(InfTimesLs) <- 1:N
+    return(list(finInfo=finInfo, InfTimesLs=InfTimesLs))
+}
 
+## Wrapper to determine whether simulating factuals with analyses, or counterfactuals with only infection times
+simNtrialsWRP <- function(seed = 1, parms=makeParms(), N = 2, verbFreq=10) {
+    if(parms$doCFs) {
+        simN_CFs(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
+    }else{
+        simNtrials(seed = seed, parms=parms, N = N, verbFreq=verbFreq)
+    }
+}
+
+system.time(sim <- simNtrialsWRP(1, makeParms(verbose=1, doCFs=T, numCFs = 2), N=1))
+
+res$InfTimesLs[, list(caseTot = sum(infectDay < 168)), list(cf,cc, seed)]
